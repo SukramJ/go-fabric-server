@@ -1,0 +1,14 @@
+{
+  "type": "qr",
+  "payloads": [
+    {
+      "version": 0,
+      "vendor_id": 65521,
+      "product_id": 32768,
+      "flow_type": 0,
+      "discovery_capabilities": 4,
+      "discriminator": 3840,
+      "setup_pin_code": 20202021
+    }
+  ]
+}

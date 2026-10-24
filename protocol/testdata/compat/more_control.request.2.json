@@ -1,0 +1,13 @@
+{
+  "message_id": "1",
+  "command": "camera_snapshot",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "max_resolution": { "width": 1280, "height": 720 },
+    "resolution": { "width": 320 },
+    "codec": "JPEG",
+    "watermark_enabled": false,
+    "osd_enabled": false
+  }
+}

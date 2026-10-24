@@ -1,0 +1,12 @@
+{
+  "message_id": "1",
+  "command": "read",
+  "args": {
+    "node_id": 1,
+    "attribute_paths": ["1/6/0", "0/40/*"],
+    "event_paths": [{ "path": "1/59/*" }],
+    "event_min": 120,
+    "fabric_filtered": true,
+    "data_version_filters": [{ "path": "0/40", "data_version": 3141592 }]
+  }
+}

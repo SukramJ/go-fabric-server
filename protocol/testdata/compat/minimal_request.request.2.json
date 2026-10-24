@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "camera_snapshot",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1
+  }
+}

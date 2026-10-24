@@ -1,0 +1,7 @@
+{
+  "message_id": "1",
+  "command": "import_test_node",
+  "args": {
+    "dump": "{\"data\":{\"node\":{...}}}"
+  }
+}

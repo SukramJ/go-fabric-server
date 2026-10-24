@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "read_attribute",
+  "args": {
+    "node_id": 1,
+    "attribute_path": "1/6/0"
+  }
+}

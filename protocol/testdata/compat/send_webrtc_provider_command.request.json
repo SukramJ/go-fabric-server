@@ -1,0 +1,16 @@
+{
+  "message_id": "1",
+  "command": "send_webrtc_provider_command",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "command_name": "ProvideOffer",
+    "payload": {
+      "webRtcSessionId": null,
+      "sdp": "v=0\r\n...",
+      "streamUsage": 3,
+      "videoStreams": [1],
+      "ice_servers": [{ "urls": "stun:stun.example.org:3478" }]
+    }
+  }
+}

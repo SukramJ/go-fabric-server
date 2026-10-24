@@ -1,0 +1,10 @@
+{
+  "message_id": "1",
+  "command": "camera_start_stream",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "stream_usage": "LiveView",
+    "sdp": "v=0\r\n..."
+  }
+}

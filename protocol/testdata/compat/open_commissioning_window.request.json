@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "open_commissioning_window",
+  "args": {
+    "node_id": 1,
+    "timeout": 300
+  }
+}

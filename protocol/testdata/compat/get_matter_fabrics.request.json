@@ -1,0 +1,7 @@
+{
+  "message_id": "1",
+  "command": "get_matter_fabrics",
+  "args": {
+    "node_id": 1
+  }
+}

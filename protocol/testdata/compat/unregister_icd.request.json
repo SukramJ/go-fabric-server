@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "unregister_icd",
+  "args": {
+    "node_id": 1,
+    "force": false
+  }
+}

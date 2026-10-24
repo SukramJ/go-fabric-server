@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "set_thread_dataset",
+  "args": {
+    "dataset": "hex-encoded-operational-dataset",
+    "id": "MyThreadNet"
+  }
+}

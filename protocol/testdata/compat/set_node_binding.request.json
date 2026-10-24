@@ -1,0 +1,15 @@
+{
+  "message_id": "1",
+  "command": "set_node_binding",
+  "args": {
+    "node_id": 1,
+    "endpoint": 1,
+    "bindings": [
+      {
+        "node": 2,
+        "endpoint": 1,
+        "cluster": 6
+      }
+    ]
+  }
+}

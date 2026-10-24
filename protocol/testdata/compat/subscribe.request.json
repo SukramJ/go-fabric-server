@@ -1,0 +1,11 @@
+{
+  "message_id": "1",
+  "command": "subscribe",
+  "args": {
+    "node_id": 1,
+    "attribute_paths": ["1/6/0"],
+    "event_paths": [{ "path": "1/59/*", "is_urgent": true }],
+    "min_interval": 0,
+    "max_interval": 60
+  }
+}

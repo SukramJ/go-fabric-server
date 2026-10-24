@@ -1,0 +1,7 @@
+{
+  "message_id": "1",
+  "command": "get_vendor_names",
+  "args": {
+    "filter_vendors": [4874, 65521]
+  }
+}

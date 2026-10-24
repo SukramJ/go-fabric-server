@@ -1,0 +1,10 @@
+{
+  "message_id": "1",
+  "command": "commission_on_network",
+  "args": {
+    "setup_pin_code": 20202021,
+    "filter_type": 2,
+    "filter": 3840,
+    "ip_addr": "192.168.1.100"
+  }
+}

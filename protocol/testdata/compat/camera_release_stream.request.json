@@ -1,0 +1,10 @@
+{
+  "message_id": "1",
+  "command": "camera_release_stream",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "kind": "video",
+    "stream_id": 1
+  }
+}

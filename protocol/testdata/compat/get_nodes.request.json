@@ -1,0 +1,7 @@
+{
+  "message_id": "1",
+  "command": "get_nodes",
+  "args": {
+    "only_available": false
+  }
+}

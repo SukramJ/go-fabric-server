@@ -1,0 +1,12 @@
+{
+  "message_id": "1",
+  "result": {
+    "setup_pin_code": 12345678,
+    "setup_manual_code": "35325335079",
+    "setup_qr_code": "MT:Y.ABCDEFG123456789",
+    "discriminator": 3840,
+    "vendor_id": 65521,
+    "product_id": 32768,
+    "commissioning_timeout": 300
+  }
+}

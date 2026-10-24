@@ -1,0 +1,10 @@
+{
+  "message_id": "1",
+  "command": "camera_provide_ice_candidates",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "client_session_key": "living-room-1",
+    "ice_candidates": [{ "candidate": "candidate:1 1 UDP 2130706431 192.0.2.1 50000 typ host", "sdpMid": "0", "sdpMLineIndex": 0 }]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "remove_matter_fabric",
+  "args": {
+    "node_id": 1,
+    "fabric_index": 2
+  }
+}

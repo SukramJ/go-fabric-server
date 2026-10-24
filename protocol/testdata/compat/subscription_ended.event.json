@@ -1,0 +1,4 @@
+{
+  "event": "subscription_ended",
+  "data": { "node_id": 1, "subscription_id": 2864434397 }
+}

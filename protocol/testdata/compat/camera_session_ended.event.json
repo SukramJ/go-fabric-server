@@ -1,0 +1,4 @@
+{
+  "event": "camera_session_ended",
+  "data": { "node_id": 1, "endpoint_id": 1, "webrtc_session_id": 3, "cause": "peer", "reason": 2 }
+}

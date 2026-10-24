@@ -1,0 +1,10 @@
+{
+  "message_id": "1",
+  "command": "camera_provide_answer",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "webrtc_session_id": 3,
+    "sdp": "v=0\r\n..."
+  }
+}

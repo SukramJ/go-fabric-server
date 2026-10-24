@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "set_loglevel",
+  "args": {
+    "console_loglevel": "debug",
+    "file_loglevel": "info"
+  }
+}

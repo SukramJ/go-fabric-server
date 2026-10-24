@@ -1,0 +1,13 @@
+{
+  "event": "server_info_updated",
+  "data": {
+    "fabric_id": 1234567890,
+    "compressed_fabric_id": 9876543210,
+    "schema_version": 14,
+    "min_supported_schema_version": 11,
+    "sdk_version": "matter-server/1.1.7 (matter.js/0.17.5-alpha)",
+    "wifi_credentials_set": true,
+    "thread_credentials_set": true,
+    "bluetooth_enabled": true
+  }
+}
