@@ -49,7 +49,8 @@ Through go-fabric: filippo.io/nistec (BSD-3-Clause), github.com/grandcat/zerocon
 golang.org/x/sys (BSD-3-Clause), github.com/cenkalti/backoff (MIT), and
 modernc.org's libc, mathutil and memory with their dependencies
 (BSD-3-Clause, MIT). `make licenses` (go-licenses) checks the whole graph
-in CI.
+in CI; modernc.org/mathutil's licence is BSD-3-Clause by its text, which
+go-licenses' classifier does not recognise and only logs.
 
 ## Test fixtures
 

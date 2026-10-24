@@ -88,8 +88,13 @@ fuzz-smoke: ## every fuzz target of the JSON decoders and paths, $(FUZZTIME) eac
 vuln: ## govulncheck ./...
 	govulncheck ./...
 
+# GOROOT explicit: go-licenses tells the standard library by its GOROOT,
+# and a toolchain installed elsewhere than go-licenses was built for (a
+# snap, GOTOOLCHAIN) leaves every std package "without module info".
+# modernc.org/mathutil's LICENSE is BSD-3-Clause; the classifier does not
+# recognise its wording and logs it, without failing the check.
 licenses: ## fail on a forbidden, restricted or reciprocal dependency licence (go-licenses)
-	go-licenses check ./... --disallowed_types=forbidden,restricted,reciprocal
+	GOROOT=$$($(GO) env GOROOT) go-licenses check ./... --disallowed_types=forbidden,restricted,reciprocal
 
 # Git mode: the tracked history, not just the working tree. The server
 # stores Wi-Fi passwords and Thread datasets and guards its API with a

@@ -31,7 +31,7 @@ import (
 // siteBackend is the server's controller in the tests: fabrictest's
 // controller of the site. controller.New cannot take the site's network
 // and clock (it opens its own UDP socket and DNS-SD browser; report S1,
-// Questions Q1), so the tests drive fabrictest.AddController's stack —
+// Questions Q1-test), so the tests drive fabrictest.AddController's stack —
 // the same registry and commissioner types controller.New builds — and
 // pair through fabrictest's CommissionNode, which runs the registry route
 // controller.Pair runs (discover by discriminator, Registry.ForDevice,
