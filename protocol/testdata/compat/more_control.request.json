@@ -1,0 +1,16 @@
+{
+  "message_id": "1",
+  "command": "camera_start_stream",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "stream_usage": "LiveView",
+    "sdp": "v=0\r\n...",
+    "video": { "codecs": ["H264"], "max_resolution": { "width": 1920, "height": 1080 } },
+    "audio": false,
+    "ice_servers": [{ "urls": "stun:stun.example.org:3478" }],
+    "ice_transport_policy": "all",
+    "metadata_enabled": false,
+    "allow_eviction": true
+  }
+}

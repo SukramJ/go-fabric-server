@@ -1,0 +1,5 @@
+{
+  "message_id": "1",
+  "command": "parse_onboarding_payload",
+  "args": { "code": "MT:Y.K90AFN00KA0648G00" }
+}

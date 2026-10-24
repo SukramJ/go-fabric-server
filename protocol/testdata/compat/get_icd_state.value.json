@@ -1,0 +1,9 @@
+{
+  "supported": true,
+  "lit_supported": true,
+  "registered": true,
+  "operating_mode": "LIT",
+  "awake": false,
+  "available": true,
+  "next_expected_checkin": 1735689600000
+}

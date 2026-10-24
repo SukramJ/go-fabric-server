@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "commission_with_code",
+  "args": {
+    "code": "35325335079",
+    "network_only": true
+  }
+}

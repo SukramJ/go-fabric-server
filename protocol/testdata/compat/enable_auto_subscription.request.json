@@ -1,0 +1,5 @@
+{
+  "message_id": "1",
+  "command": "enable_auto_subscription",
+  "args": { "node_id": 1 }
+}

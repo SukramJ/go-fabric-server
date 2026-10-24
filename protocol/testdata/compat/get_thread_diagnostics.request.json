@@ -1,0 +1,5 @@
+{
+  "message_id": "1",
+  "command": "get_thread_diagnostics",
+  "args": { "ext_pan_id": "1122334455667788", "force": false }
+}

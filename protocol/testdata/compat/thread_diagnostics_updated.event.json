@@ -1,0 +1,11 @@
+{
+  "event": "thread_diagnostics_updated",
+  "data": {
+    "extPanIdHex": "1122334455667788",
+    "networkName": "MyThreadNet",
+    "collectedAt": 1730000000000,
+    "source": "meshcop",
+    "nodes": [],
+    "partialReason": "in_progress"
+  }
+}

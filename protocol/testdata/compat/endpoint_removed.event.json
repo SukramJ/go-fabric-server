@@ -1,0 +1,7 @@
+{
+  "event": "endpoint_removed",
+  "data": {
+    "node_id": 1,
+    "endpoint_id": 3
+  }
+}

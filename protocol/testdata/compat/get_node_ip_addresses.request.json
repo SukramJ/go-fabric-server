@@ -1,0 +1,9 @@
+{
+  "message_id": "1",
+  "command": "get_node_ip_addresses",
+  "args": {
+    "node_id": 1,
+    "prefer_cache": false,
+    "scoped": false
+  }
+}

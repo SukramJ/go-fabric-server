@@ -1,0 +1,7 @@
+{
+  "message_id": "1",
+  "command": "commission_with_code",
+  "args": {
+    "code": "MT:Y.ABCDEFG123456789"
+  }
+}

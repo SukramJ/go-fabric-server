@@ -1,0 +1,9 @@
+{
+  "message_id": "1",
+  "command": "register_icd",
+  "args": {
+    "node_id": 1,
+    "allow_multi_admin": false,
+    "ignored_vendors": [4874]
+  }
+}

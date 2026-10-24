@@ -1,0 +1,15 @@
+{
+  "message_id": "1",
+  "command": "set_acl_entry",
+  "args": {
+    "node_id": 1,
+    "entry": [
+      {
+        "privilege": 5,
+        "auth_mode": 2,
+        "subjects": [112233],
+        "targets": null
+      }
+    ]
+  }
+}

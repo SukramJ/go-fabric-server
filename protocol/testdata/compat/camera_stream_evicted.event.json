@@ -1,0 +1,4 @@
+{
+  "event": "camera_stream_evicted",
+  "data": { "node_id": 1, "endpoint_id": 1, "kind": "video", "stream_id": 7 }
+}

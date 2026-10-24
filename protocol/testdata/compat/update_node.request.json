@@ -1,0 +1,8 @@
+{
+  "message_id": "1",
+  "command": "update_node",
+  "args": {
+    "node_id": 1,
+    "software_version": 2
+  }
+}

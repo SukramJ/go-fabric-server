@@ -1,0 +1,15 @@
+{
+  "event": "webrtc_callback",
+  "data": {
+    "event_type": "offer",
+    "webrtc_session_id": 3,
+    "node_id": 1,
+    "endpoint_id": 1,
+    "fabric_index": 1,
+    "data": {
+      "sdp": "v=0\r\n...",
+      "ice_servers": [{ "urls": ["stun:stun.example.org:3478"] }],
+      "ice_transport_policy": "all"
+    }
+  }
+}

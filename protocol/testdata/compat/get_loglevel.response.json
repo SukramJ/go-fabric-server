@@ -1,0 +1,7 @@
+{
+  "message_id": "1",
+  "result": {
+    "console_loglevel": "info",
+    "file_loglevel": "debug"
+  }
+}

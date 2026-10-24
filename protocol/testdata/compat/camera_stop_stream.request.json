@@ -1,0 +1,9 @@
+{
+  "message_id": "1",
+  "command": "camera_stop_stream",
+  "args": {
+    "node_id": 1,
+    "endpoint_id": 1,
+    "webrtc_session_id": 3
+  }
+}
