@@ -3,7 +3,7 @@ module github.com/SukramJ/go-fabric-server
 go 1.27.3
 
 require (
-	github.com/SukramJ/go-fabric v0.10.9
+	github.com/SukramJ/go-fabric v0.11.0
 	github.com/coder/websocket v1.8.15
 	modernc.org/sqlite v1.60.1
 )

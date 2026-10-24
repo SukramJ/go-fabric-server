@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.1.0] - 2026-10-25
 
-Bundle S1 of go-fabric's concept v8, on go-fabric v0.10.9.
+Bundle S1 of go-fabric's concept v8, on go-fabric v0.11.0.
 
 ### Added
 

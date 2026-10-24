@@ -5,7 +5,7 @@ package schema
 // Provenance of the tables.
 const (
 	// GoFabricVersion is the go-fabric module the tables were generated from.
-	GoFabricVersion = "v0.10.9"
+	GoFabricVersion = "v0.11.0"
 	// MatterRevision is the Matter revision of the snapshot.
 	MatterRevision = "1.6.1"
 	// SourceCommit is the matter.js commit the snapshot was extracted at.
