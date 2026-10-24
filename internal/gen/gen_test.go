@@ -26,7 +26,8 @@ func TestCommittedOutputIsCurrent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Equal(got, want) {
+		// A checkout that converted line endings is not stale.
+		if !bytes.Equal(bytes.ReplaceAll(got, []byte("\r\n"), []byte("\n")), want) {
 			t.Errorf("protocol/schema/%s is stale: run go run ./internal/gen and commit the output", name)
 		}
 	}
