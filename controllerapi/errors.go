@@ -7,12 +7,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric/client/exchange"
 	"github.com/SukramJ/go-fabric/client/handshake"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/client"
 	"github.com/SukramJ/go-fabric/controller/commissioner"
+
+	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
 // statusOf is the Matter status a device answered with, when err is one —
@@ -73,7 +74,7 @@ func commissionError(err error) *protocol.Error {
 	}
 	e := protocol.Errorf(protocol.NodeCommissionFailed, "Commissioning failed: %v", err).WithReason(reason)
 	if status, cluster, ok := statusOf(err); ok {
-		e.WithStatus(status, cluster)
+		e = e.WithStatus(status, cluster)
 	}
 	return e
 }

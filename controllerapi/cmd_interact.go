@@ -9,10 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/SukramJ/go-fabric/controller/client"
+
 	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
-	"github.com/SukramJ/go-fabric/controller/client"
 )
 
 // readBatch is matterjs-server's batch of read_attribute paths per Read
@@ -98,7 +99,8 @@ func cmdReadAttribute(ctx context.Context, s *Server, c *call) (any, *protocol.E
 		if err != nil {
 			return nil, nodeError(c.req.Command, err)
 		}
-		for _, d := range rep.Attributes {
+		for i := range rep.Attributes {
+			d := &rep.Attributes[i]
 			out[wire.Key(d.Path.Endpoint, d.Path.Cluster, d.Path.Attribute)] = wire.Attribute(d.Path.Cluster, d.Path.Attribute, d.Value)
 		}
 	}
@@ -114,7 +116,7 @@ type readArgs struct {
 	nodeArg
 	AttributePaths []string `json:"attribute_paths"`
 	EventPaths     []struct {
-		Path    string `json:"path"`
+		Path     string `json:"path"`
 		IsUrgent *bool  `json:"is_urgent"`
 	} `json:"event_paths"`
 	EventMin           *protocol.Uint64 `json:"event_min"`
@@ -190,7 +192,8 @@ func newReportData() reportData {
 }
 
 func (r *reportData) add(nodeID uint64, rep *client.Report) {
-	for _, d := range rep.Attributes {
+	for i := range rep.Attributes {
+		d := &rep.Attributes[i]
 		r.Attributes[wire.Key(d.Path.Endpoint, d.Path.Cluster, d.Path.Attribute)] = wire.Attribute(d.Path.Cluster, d.Path.Attribute, d.Value)
 		if d.DataVersion != 0 {
 			if r.DataVersions == nil {
@@ -205,7 +208,8 @@ func (r *reportData) add(nodeID uint64, rep *client.Report) {
 		}
 		r.AttributeStatus[wire.Key(st.Path.Endpoint, st.Path.Cluster, st.Path.Attribute)] = statusEntry(int(st.Status), st.ClusterStatus)
 	}
-	for _, e := range rep.Events {
+	for i := range rep.Events {
+		e := &rep.Events[i]
 		r.Events = append(r.Events, eventData(nodeID, e))
 	}
 	for _, st := range rep.EventStatuses {

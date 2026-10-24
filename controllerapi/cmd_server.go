@@ -54,7 +54,7 @@ func parseLevel(s string) (slog.Level, bool) {
 		s = "warning"
 	}
 	for _, n := range levelNames {
-		if n.name == strings.ToLower(s) {
+		if strings.EqualFold(n.name, s) {
 			return n.level, true
 		}
 	}
@@ -190,7 +190,7 @@ func isHex(s string) bool {
 	if len(s)%2 != 0 {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
 			return false

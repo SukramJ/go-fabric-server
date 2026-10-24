@@ -13,9 +13,6 @@ import (
 	"testing"
 	"time"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/internal/daemon"
 	"github.com/SukramJ/go-fabric/client/discovery"
 	"github.com/SukramJ/go-fabric/clock"
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
@@ -25,6 +22,10 @@ import (
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
+
+	fsclient "github.com/SukramJ/go-fabric-server/client"
+	"github.com/SukramJ/go-fabric-server/controllerapi"
+	"github.com/SukramJ/go-fabric-server/internal/daemon"
 )
 
 // siteBackend is the server's controller in the tests: fabrictest's
@@ -40,8 +41,8 @@ type siteBackend struct {
 	dev *fabrictest.Device
 }
 
-func (b *siteBackend) Registry() *client.Registry      { return b.c.Registry() }
-func (b *siteBackend) Fabric() *commissioner.Fabric    { return b.c.Fabric() }
+func (b *siteBackend) Registry() *client.Registry   { return b.c.Registry() }
+func (b *siteBackend) Fabric() *commissioner.Fabric { return b.c.Fabric() }
 func (b *siteBackend) Discover(ctx context.Context, id discovery.Identifier, timeout time.Duration) ([]client.Device, error) {
 	return b.c.Discover(ctx, id, timeout)
 }
@@ -76,7 +77,7 @@ type envOptions struct {
 	noDial bool
 }
 
-func logger(t *testing.T) *slog.Logger {
+func logger() *slog.Logger {
 	if os.Getenv("FABRIC_SERVER_TEST_LOG") != "" {
 		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	}
@@ -87,7 +88,7 @@ func newEnv(t *testing.T, o envOptions) *env {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
-	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: logger(t)})
+	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: logger()})
 	light, err := device.NewOnOffLight(device.Options{StableKey: device.StringKey("light:1"), Name: "light"},
 		onoffdef.Declare{Initial: onoffdef.Patch{OnOff: new(false)}})
 	if err != nil {
@@ -101,7 +102,7 @@ func newEnv(t *testing.T, o envOptions) *env {
 		o.server.GoFabricVersion = "v-test"
 	}
 	if o.server.Logger == nil {
-		o.server.Logger = logger(t)
+		o.server.Logger = logger()
 	}
 	if o.server.StoragePath == "" {
 		o.server.StoragePath = t.TempDir()

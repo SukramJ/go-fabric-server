@@ -7,10 +7,11 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/SukramJ/go-fabric/controller/client"
+
 	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
-	"github.com/SukramJ/go-fabric/controller/client"
 )
 
 // eventHistorySize is matterjs-server's EVENT_HISTORY_SIZE
@@ -35,7 +36,7 @@ type nodeEventData struct {
 // (type 1), else the system timestamp (type 0), else the delta forms the
 // event carried (the interaction layer's convenience Timestamp, type 2);
 // the data name-based through the event's fields.
-func eventData(nodeID uint64, e client.EventData) nodeEventData {
+func eventData(nodeID uint64, e *client.EventData) nodeEventData {
 	d := nodeEventData{
 		NodeID: nodeID, EndpointID: e.Path.Endpoint, ClusterID: e.Path.Cluster, EventID: e.Path.Event,
 		EventNumber: e.Number, Priority: uint8(e.Priority),
@@ -71,7 +72,7 @@ func (s *Server) nodeEvent(local string, endpoint uint16, cluster, event uint32,
 		return
 	}
 	e.Path.Endpoint, e.Path.Cluster, e.Path.Event = endpoint, cluster, event
-	d := eventData(st.nodeID, e)
+	d := eventData(st.nodeID, &e)
 	s.history = append(s.history, d)
 	if len(s.history) > eventHistorySize {
 		s.history = s.history[len(s.history)-eventHistorySize:]

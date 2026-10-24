@@ -31,8 +31,9 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric/controller/client"
+
+	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
 // Options configures a [Server].

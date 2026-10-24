@@ -91,6 +91,7 @@ type Client struct {
 	pending map[string]chan frame
 	err     error
 	done    chan struct{}
+	cancel  context.CancelFunc
 }
 
 type frame struct {
@@ -137,7 +138,9 @@ func Dial(ctx context.Context, url string, opts Options) (*Client, error) {
 		_ = ws.CloseNow()
 		return nil, fmt.Errorf("client: server_info: %w", err)
 	}
-	go c.read()
+	rctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	c.cancel = cancel
+	go c.read(rctx)
 	if !opts.NoListen {
 		if err := c.Call(ctx, "start_listening", nil, &c.nodes); err != nil {
 			_ = c.Close()
@@ -164,13 +167,17 @@ func (c *Client) Done() <-chan struct{} { return c.done }
 
 // Close closes the connection.
 func (c *Client) Close() error {
-	return c.ws.Close(websocket.StatusNormalClosure, "")
+	err := c.ws.Close(websocket.StatusNormalClosure, "")
+	if c.cancel != nil {
+		c.cancel()
+	}
+	return err
 }
 
-func (c *Client) read() {
+func (c *Client) read(ctx context.Context) {
 	defer close(c.done)
 	for {
-		_, data, err := c.ws.Read(context.Background())
+		_, data, err := c.ws.Read(ctx)
 		if err != nil {
 			c.fail(err)
 			return

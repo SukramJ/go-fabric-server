@@ -47,7 +47,7 @@ const (
 // matterjs-server; CommissionFailureReason, ws-client model.ts:1757).
 const (
 	ReasonNotDiscovered       = "not-discovered"
-	ReasonPasscodeMismatch    = "passcode-mismatch"
+	ReasonPasscodeMismatch    = "passcode-mismatch" //nolint:gosec // a reason name, not a credential
 	ReasonInvalidPayload      = "invalid-payload"
 	ReasonAttestationRejected = "attestation-rejected"
 	ReasonTimeout             = "timeout"

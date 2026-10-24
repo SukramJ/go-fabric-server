@@ -10,11 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric/client/discovery"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/client"
 	"github.com/SukramJ/go-fabric/controller/commissioner"
+
+	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
 // maxDiscoveryTimeout is matterjs-server's MAX_DISCOVERY_TIMEOUT_S, 48
@@ -83,11 +84,11 @@ func (s *Server) pairOptions() controller.PairOptions {
 // is not on the facade's Pair route; report S1, Left out).
 func cmdCommissionWithCode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
-		Code               *string         `json:"code"`
-		NetworkOnly        bool            `json:"network_only"`
-		WifiCredentialsID  *string         `json:"wifi_credentials_id"`
-		ThreadDatasetID    *string         `json:"thread_dataset_id"`
-		DiscoveryTimeoutS  json.RawMessage `json:"discovery_timeout_s"`
+		Code              *string         `json:"code"`
+		NetworkOnly       bool            `json:"network_only"`
+		WifiCredentialsID *string         `json:"wifi_credentials_id"`
+		ThreadDatasetID   *string         `json:"thread_dataset_id"`
+		DiscoveryTimeoutS json.RawMessage `json:"discovery_timeout_s"`
 	}
 	if err := c.args(&a); err != nil {
 		return nil, err
@@ -176,13 +177,17 @@ func cmdCommissionOnNetwork(ctx context.Context, s *Server, c *call) (any, *prot
 	}
 	pctx, cancel := s.commissionContext(ctx, timeout)
 	defer cancel()
-	found, err := s.b().(Discoverer).Discover(pctx, id, s.discoverWindow(timeout))
+	disc, ok := s.b().(Discoverer)
+	if !ok {
+		return nil, protocol.Errorf(protocol.InvalidCommand, "%s: the controller has no discovery route", c.req.Command)
+	}
+	found, err := disc.Discover(pctx, id, s.discoverWindow(timeout))
 	if err != nil {
 		return nil, commissionError(err)
 	}
 	var dev *client.Device
 	for i := range found {
-		if !want.IsValid() || announces(found[i], want) {
+		if !want.IsValid() || announces(&found[i], want) {
 			dev = &found[i]
 			break
 		}
@@ -202,7 +207,7 @@ func cmdCommissionOnNetwork(ctx context.Context, s *Server, c *call) (any, *prot
 	return s.commissioned(n)
 }
 
-func announces(d client.Device, ip netip.Addr) bool {
+func announces(d *client.Device, ip netip.Addr) bool {
 	for _, a := range d.Addresses {
 		if a.IP.WithZone("") == ip {
 			return true
@@ -232,19 +237,23 @@ const discoverWindowList = 5 * time.Second
 
 // cmdDiscover lists the commissionable devices that answer within a few
 // seconds — CommissionableNodeData (model.ts:1825-1842).
-func cmdDiscover(ctx context.Context, s *Server, _ *call) (any, *protocol.Error) {
-	found, err := s.b().(Discoverer).Discover(ctx, discovery.AnyCommissionable(), discoverWindowList)
+func cmdDiscover(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	disc, ok := s.b().(Discoverer)
+	if !ok {
+		return nil, protocol.Errorf(protocol.InvalidCommand, "%s: the controller has no discovery route", c.req.Command)
+	}
+	found, err := disc.Discover(ctx, discovery.AnyCommissionable(), discoverWindowList)
 	if err != nil {
 		return nil, protocol.Errorf(protocol.UnknownError, "discover: %v", err)
 	}
 	out := make([]map[string]any, 0, len(found))
-	for _, d := range found {
-		out = append(out, commissionableData(d))
+	for i := range found {
+		out = append(out, commissionableData(&found[i]))
 	}
 	return out, nil
 }
 
-func commissionableData(d client.Device) map[string]any {
+func commissionableData(d *client.Device) map[string]any {
 	m := map[string]any{
 		"instance_name":      d.InstanceID,
 		"long_discriminator": d.D,
@@ -253,7 +262,7 @@ func commissionableData(d client.Device) map[string]any {
 	if d.Hostname != "" {
 		m["host_name"] = d.Hostname
 	}
-	addrs := []string{}
+	addrs := make([]string, 0, len(d.Addresses))
 	for _, a := range d.Addresses {
 		addrs = append(addrs, a.IP.String())
 		if _, ok := m["port"]; !ok && a.Port != 0 {

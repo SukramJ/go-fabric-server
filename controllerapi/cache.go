@@ -13,10 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SukramJ/go-fabric/controller/client"
+
 	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
-	"github.com/SukramJ/go-fabric/controller/client"
 )
 
 // nodeState is the cache entry of one commissioned node: its attributes

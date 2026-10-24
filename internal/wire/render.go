@@ -32,9 +32,10 @@ import (
 	"encoding/base64"
 	"strconv"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
 	"github.com/SukramJ/go-fabric/cluster/spec"
 	"github.com/SukramJ/go-fabric/tlv"
+
+	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
 // featureMapID is the FeatureMap attribute id, as the snapshot names it.
@@ -181,7 +182,9 @@ func number(el tlv.Element) any {
 
 func isBool(t tlv.ElementType) bool { return t == tlv.TypeBoolFalse || t == tlv.TypeBoolTrue }
 
-func isNumber(t tlv.ElementType) bool { return t <= tlv.TypeUnsignedInt8 || t == tlv.TypeFloat4 || t == tlv.TypeFloat8 }
+func isNumber(t tlv.ElementType) bool {
+	return t <= tlv.TypeUnsignedInt8 || t == tlv.TypeFloat4 || t == tlv.TypeFloat8
+}
 
 func isString(t tlv.ElementType) bool { return t >= tlv.TypeUTF8Str1 && t <= tlv.TypeUTF8Str8 }
 

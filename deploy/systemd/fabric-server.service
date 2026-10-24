@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+# go-fabric-server as a hardened system service (concept v7 B.2): a
+# dynamic user, the state in /var/lib/fabric-server, no capabilities (the
+# Matter port is unprivileged), a read-only system.
+#
+# Install: copy the binary to /usr/local/bin/fabric-server and this file
+# to /etc/systemd/system/, then `systemctl enable --now fabric-server`.
+# Options go into `systemctl edit fabric-server` as Environment= lines
+# (FABRIC_SERVER_<FLAG>, see docs/operations.md).
+[Unit]
+Description=go-fabric-server (Matter controller server, matterjs-server compatible API)
+Documentation=https://github.com/SukramJ/go-fabric-server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fabric-server
+# Home Assistant's Matter integration connects to ws://localhost:5580/ws.
+# A Unix socket instead: FABRIC_SERVER_LISTEN=unix:/run/fabric-server/fabric-server.sock
+Environment=FABRIC_SERVER_LISTEN=127.0.0.1:5580
+Environment=FABRIC_SERVER_STORAGE_PATH=/var/lib/fabric-server
+Restart=on-failure
+RestartSec=5s
+
+DynamicUser=yes
+StateDirectory=fabric-server
+StateDirectoryMode=0700
+RuntimeDirectory=fabric-server
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+# AF_NETLINK: the interface list mDNS joins its groups on.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

@@ -46,7 +46,7 @@ type gen struct {
 
 // datatype finds the datatype a value names: in the cluster, then in its
 // base cluster, then among the global datatypes (scope "global" first).
-func (g *gen) datatype(v sValue, cl *sCluster) (*sDatatype, string) {
+func (g *gen) datatype(v sValue, cl *sCluster) (dt *sDatatype, varName string) {
 	if v.Scope != "global" && cl != nil {
 		for c := cl; c != nil; c = g.byName[c.Base] {
 			for i := range c.Datatypes {
@@ -150,7 +150,8 @@ func (g *gen) fieldsExpr(fs []sField, cl *sCluster) string {
 	}
 	var b strings.Builder
 	b.WriteString("[]Field{\n")
-	for _, f := range fs {
+	for i := range fs {
+		f := &fs[i]
 		fmt.Fprintf(&b, "{ID: %d, Name: %q, Property: %q, Type: %s", f.ID, f.Name, camelize(f.Name), g.typeExpr(f.sValue, cl))
 		if f.Quality.Nullable {
 			b.WriteString(", Nullable: true")
@@ -178,13 +179,15 @@ func (g *gen) emitDatatype(dt *sDatatype, name string, cl *sCluster) {
 		fmt.Fprintf(&g.vars, "var %s = &Struct{Name: %q, Fields: %s}\n\n", name, dt.Name, body)
 	case "enum":
 		fmt.Fprintf(&g.vars, "var %s = &Enum{Name: %q, Values: []EnumValue{\n", name, dt.Name)
-		for _, f := range dt.Fields {
+		for i := range dt.Fields {
+			f := &dt.Fields[i]
 			fmt.Fprintf(&g.vars, "{Value: %d, Name: %q},\n", f.ID, f.Name)
 		}
 		g.vars.WriteString("}}\n\n")
 	case "bitmap":
 		fmt.Fprintf(&g.vars, "var %s = &Bitmap{Name: %q, Members: []BitmapMember{\n", name, dt.Name)
-		for _, f := range dt.Fields {
+		for i := range dt.Fields {
+			f := &dt.Fields[i]
 			bit, width := f.ID, uint32(1)
 			switch {
 			case f.Constraint.Value != nil:
@@ -216,7 +219,8 @@ func (g *gen) goSource() ([]byte, error) {
 			cl.WriteString("},\n")
 		}
 		cl.WriteString("Attributes: []Attribute{\n")
-		for _, a := range c.Attributes {
+		for i := range c.Attributes {
+			a := &c.Attributes[i]
 			if a.ID >= 0xF000 {
 				globals[a.ID] = a.Name
 			}
@@ -235,7 +239,8 @@ func (g *gen) goSource() ([]byte, error) {
 		cl.WriteString("},\n")
 		if len(c.Commands) > 0 {
 			cl.WriteString("Commands: []Command{\n")
-			for _, x := range c.Commands {
+			for i := range c.Commands {
+				x := &c.Commands[i]
 				timed := ""
 				if x.Effective.Access.Timed {
 					timed = " Timed: true,"
@@ -247,7 +252,8 @@ func (g *gen) goSource() ([]byte, error) {
 		}
 		if len(c.Events) > 0 {
 			cl.WriteString("Events: []Event{\n")
-			for _, e := range c.Events {
+			for i := range c.Events {
+				e := &c.Events[i]
 				fmt.Fprintf(&cl, "{ID: %d, Name: %q, Property: %q, Priority: %q, Fields: %s},\n", e.ID, e.Name, camelize(e.Name), e.Priority, g.fieldsExpr(e.Effective.Fields, c))
 			}
 			cl.WriteString("},\n")
@@ -294,7 +300,8 @@ func (g *gen) jsonSchema() ([]byte, error) {
 	for i := range g.s.Clusters {
 		c := &g.s.Clusters[i]
 		props := map[string]any{}
-		for _, a := range c.Attributes {
+		for i := range c.Attributes {
+			a := &c.Attributes[i]
 			s := g.valueSchema(a.Effective, c, defs)
 			s["title"] = a.Name
 			if a.Effective.Quality.Nullable {
@@ -400,13 +407,15 @@ func (g *gen) datatypeSchema(dt *sDatatype, cl *sCluster, defs map[string]any) m
 	switch dt.Metatype {
 	case "enum":
 		names := map[string]any{}
-		for _, f := range dt.Fields {
+		for i := range dt.Fields {
+			f := &dt.Fields[i]
 			names[strconv.FormatUint(uint64(f.ID), 10)] = f.Name
 		}
 		return map[string]any{"title": dt.Name, "type": "integer", "x-enum-names": names}
 	case "bitmap":
 		bits := map[string]any{}
-		for _, f := range dt.Fields {
+		for i := range dt.Fields {
+			f := &dt.Fields[i]
 			bits[f.Name] = f.ID
 			if f.Constraint.Value != nil {
 				bits[f.Name] = *f.Constraint.Value
@@ -416,7 +425,8 @@ func (g *gen) datatypeSchema(dt *sDatatype, cl *sCluster, defs map[string]any) m
 	}
 	props := map[string]any{}
 	var required []string
-	for _, f := range dt.Fields {
+	for i := range dt.Fields {
+		f := &dt.Fields[i]
 		s := g.valueSchema(f.sValue, cl, defs)
 		s["title"] = f.Name
 		if f.Quality.Nullable {

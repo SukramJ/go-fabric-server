@@ -9,10 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/SukramJ/go-fabric/controller/client"
+
 	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
-	"github.com/SukramJ/go-fabric/controller/client"
 )
 
 // nodeArg is the node_id argument every node-targeted command takes.
@@ -232,7 +233,8 @@ func cmdGetMatterFabrics(ctx context.Context, s *Server, c *call) (any, *protoco
 		return nil, nodeError(c.req.Command, err)
 	}
 	out := []map[string]any{}
-	for _, d := range rep.Attributes {
+	for i := range rep.Attributes {
+		d := &rep.Attributes[i]
 		if d.Path.Cluster != opCreds.ID || d.Path.Attribute != attrFabrics.ID {
 			continue
 		}

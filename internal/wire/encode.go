@@ -11,8 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
 	"github.com/SukramJ/go-fabric/cluster/spec"
+
+	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
 // ErrValue is a JSON value that does not fit its type; the message says

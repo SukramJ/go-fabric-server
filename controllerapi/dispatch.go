@@ -5,7 +5,6 @@ package controllerapi
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -203,10 +202,6 @@ func (s *Server) startListening(conn *wsConn, req protocol.Request) {
 	conn.send.SendReliable(b)
 	conn.listening = true
 }
-
-// noArgs checks that a command that reads no arguments got an object —
-// the dispatcher already did; it exists so each such handler states it.
-func noArgs(json.RawMessage) {}
 
 func invalidArgs(command, format string, args ...any) *protocol.Error {
 	return protocol.Errorf(protocol.InvalidArguments, "%s: %s", command, fmt.Sprintf(format, args...))

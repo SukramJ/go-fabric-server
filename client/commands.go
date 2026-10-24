@@ -10,20 +10,17 @@ import (
 
 // GetNodes is get_nodes.
 func (c *Client) GetNodes(ctx context.Context, onlyAvailable bool) ([]Node, error) {
-	var out []Node
-	return out, c.Call(ctx, "get_nodes", map[string]any{"only_available": onlyAvailable}, &out)
+	return call[[]Node](ctx, c, "get_nodes", map[string]any{"only_available": onlyAvailable})
 }
 
 // GetNode is get_node.
 func (c *Client) GetNode(ctx context.Context, nodeID uint64) (Node, error) {
-	var out Node
-	return out, c.Call(ctx, "get_node", map[string]any{"node_id": nodeID}, &out)
+	return call[Node](ctx, c, "get_node", map[string]any{"node_id": nodeID})
 }
 
 // CommissionWithCode is commission_with_code.
 func (c *Client) CommissionWithCode(ctx context.Context, code string, networkOnly bool) (Node, error) {
-	var out Node
-	return out, c.Call(ctx, "commission_with_code", map[string]any{"code": code, "network_only": networkOnly}, &out)
+	return call[Node](ctx, c, "commission_with_code", map[string]any{"code": code, "network_only": networkOnly})
 }
 
 // CommissionOnNetwork is commission_on_network; filterType 0 is no filter.
@@ -35,14 +32,12 @@ func (c *Client) CommissionOnNetwork(ctx context.Context, pin uint32, filterType
 	if ip != "" {
 		args["ip_addr"] = ip
 	}
-	var out Node
-	return out, c.Call(ctx, "commission_on_network", args, &out)
+	return call[Node](ctx, c, "commission_on_network", args)
 }
 
 // Discover is discover_commissionable_nodes.
 func (c *Client) Discover(ctx context.Context) ([]map[string]any, error) {
-	var out []map[string]any
-	return out, c.Call(ctx, "discover_commissionable_nodes", nil, &out)
+	return call[[]map[string]any](ctx, c, "discover_commissionable_nodes", nil)
 }
 
 // ReadAttribute is read_attribute with one or more paths.
@@ -51,8 +46,7 @@ func (c *Client) ReadAttribute(ctx context.Context, nodeID uint64, paths ...stri
 	if len(paths) == 1 {
 		path = paths[0]
 	}
-	var out map[string]any
-	return out, c.Call(ctx, "read_attribute", map[string]any{"node_id": nodeID, "attribute_path": path}, &out)
+	return call[map[string]any](ctx, c, "read_attribute", map[string]any{"node_id": nodeID, "attribute_path": path})
 }
 
 // WriteResult is one entry of a write_attribute result.
@@ -68,8 +62,7 @@ type WriteResult struct {
 
 // WriteAttribute is write_attribute.
 func (c *Client) WriteAttribute(ctx context.Context, nodeID uint64, path string, value any) ([]WriteResult, error) {
-	var out []WriteResult
-	return out, c.Call(ctx, "write_attribute", map[string]any{"node_id": nodeID, "attribute_path": path, "value": value}, &out)
+	return call[[]WriteResult](ctx, c, "write_attribute", map[string]any{"node_id": nodeID, "attribute_path": path, "value": value})
 }
 
 // DeviceCommand is device_command; the result is the response payload,
@@ -95,7 +88,7 @@ type Report struct {
 }
 
 // Read is read.
-func (c *Client) Read(ctx context.Context, nodeID uint64, attributePaths []string, eventPaths []string) (Report, error) {
+func (c *Client) Read(ctx context.Context, nodeID uint64, attributePaths, eventPaths []string) (Report, error) {
 	args := map[string]any{"node_id": nodeID}
 	if len(attributePaths) > 0 {
 		args["attribute_paths"] = attributePaths
@@ -107,16 +100,14 @@ func (c *Client) Read(ctx context.Context, nodeID uint64, attributePaths []strin
 		}
 		args["event_paths"] = ev
 	}
-	var out Report
-	return out, c.Call(ctx, "read", args, &out)
+	return call[Report](ctx, c, "read", args)
 }
 
 // Subscribe is subscribe on attribute paths.
 func (c *Client) Subscribe(ctx context.Context, nodeID uint64, attributePaths []string, minInterval, maxInterval uint16) (Report, error) {
-	var out Report
-	return out, c.Call(ctx, "subscribe", map[string]any{
+	return call[Report](ctx, c, "subscribe", map[string]any{
 		"node_id": nodeID, "attribute_paths": attributePaths, "min_interval": minInterval, "max_interval": maxInterval,
-	}, &out)
+	})
 }
 
 // Unsubscribe is unsubscribe.
@@ -136,26 +127,22 @@ func (c *Client) InterviewNode(ctx context.Context, nodeID uint64) error {
 
 // PingNode is ping_node.
 func (c *Client) PingNode(ctx context.Context, nodeID uint64) (map[string]bool, error) {
-	var out map[string]bool
-	return out, c.Call(ctx, "ping_node", map[string]any{"node_id": nodeID}, &out)
+	return call[map[string]bool](ctx, c, "ping_node", map[string]any{"node_id": nodeID})
 }
 
 // GetNodeIPAddresses is get_node_ip_addresses.
 func (c *Client) GetNodeIPAddresses(ctx context.Context, nodeID uint64) ([]string, error) {
-	var out []string
-	return out, c.Call(ctx, "get_node_ip_addresses", map[string]any{"node_id": nodeID}, &out)
+	return call[[]string](ctx, c, "get_node_ip_addresses", map[string]any{"node_id": nodeID})
 }
 
 // OpenCommissioningWindow is open_commissioning_window.
 func (c *Client) OpenCommissioningWindow(ctx context.Context, nodeID uint64, timeout int) (map[string]any, error) {
-	var out map[string]any
-	return out, c.Call(ctx, "open_commissioning_window", map[string]any{"node_id": nodeID, "timeout": timeout}, &out)
+	return call[map[string]any](ctx, c, "open_commissioning_window", map[string]any{"node_id": nodeID, "timeout": timeout})
 }
 
 // GetMatterFabrics is get_matter_fabrics.
 func (c *Client) GetMatterFabrics(ctx context.Context, nodeID uint64) ([]map[string]any, error) {
-	var out []map[string]any
-	return out, c.Call(ctx, "get_matter_fabrics", map[string]any{"node_id": nodeID}, &out)
+	return call[[]map[string]any](ctx, c, "get_matter_fabrics", map[string]any{"node_id": nodeID})
 }
 
 // RemoveMatterFabric is remove_matter_fabric.
@@ -175,8 +162,7 @@ func (c *Client) SetThreadDataset(ctx context.Context, dataset string) error {
 
 // GetAllCredentials is get_all_credentials.
 func (c *Client) GetAllCredentials(ctx context.Context) (map[string]any, error) {
-	var out map[string]any
-	return out, c.Call(ctx, "get_all_credentials", nil, &out)
+	return call[map[string]any](ctx, c, "get_all_credentials", nil)
 }
 
 // SetDefaultFabricLabel is set_default_fabric_label.
@@ -186,10 +172,10 @@ func (c *Client) SetDefaultFabricLabel(ctx context.Context, label string) error 
 
 // GetFabricLabel is get_fabric_label.
 func (c *Client) GetFabricLabel(ctx context.Context) (string, error) {
-	var out struct {
+	out, err := call[struct {
 		Label string `json:"fabric_label"`
-	}
-	return out.Label, c.Call(ctx, "get_fabric_label", nil, &out)
+	}](ctx, c, "get_fabric_label", nil)
+	return out.Label, err
 }
 
 // LogLevels is the result of get_loglevel and set_loglevel.
@@ -200,18 +186,22 @@ type LogLevels struct {
 
 // GetLogLevel is get_loglevel.
 func (c *Client) GetLogLevel(ctx context.Context) (LogLevels, error) {
-	var out LogLevels
-	return out, c.Call(ctx, "get_loglevel", nil, &out)
+	return call[LogLevels](ctx, c, "get_loglevel", nil)
 }
 
 // SetLogLevel is set_loglevel for the console.
 func (c *Client) SetLogLevel(ctx context.Context, console string) (LogLevels, error) {
-	var out LogLevels
-	return out, c.Call(ctx, "set_loglevel", map[string]any{"console_loglevel": console}, &out)
+	return call[LogLevels](ctx, c, "set_loglevel", map[string]any{"console_loglevel": console})
 }
 
 // Diagnostics is diagnostics.
 func (c *Client) Diagnostics(ctx context.Context) (map[string]json.RawMessage, error) {
-	var out map[string]json.RawMessage
-	return out, c.Call(ctx, "diagnostics", nil, &out)
+	return call[map[string]json.RawMessage](ctx, c, "diagnostics", nil)
+}
+
+// call is a [Client.Call] decoding into a T.
+func call[T any](ctx context.Context, c *Client, command string, args any) (T, error) {
+	var out T
+	err := c.Call(ctx, command, args, &out)
+	return out, err
 }

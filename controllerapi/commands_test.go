@@ -7,14 +7,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/coder/websocket"
+
+	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
+	"github.com/SukramJ/go-fabric/node"
 
 	fsclient "github.com/SukramJ/go-fabric-server/client"
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 	"github.com/SukramJ/go-fabric-server/protocol"
-	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
-	"github.com/SukramJ/go-fabric/node"
 )
 
 // wantCode fails unless err is a protocol error with code (and, when
@@ -317,6 +321,14 @@ func TestToken(t *testing.T) {
 	c := e.dial(fsclient.Options{Token: "s3cret"})
 	if c.ServerInfo().SchemaVersion != protocol.SchemaVersion {
 		t.Fatal("server_info")
+	}
+	// A browser page of another origin is refused even with the token.
+	h := http.Header{"Origin": []string{"http://evil.example"}, "Authorization": []string{"Bearer s3cret"}}
+	if ws, resp, err := websocket.Dial(e.ctx, e.url, &websocket.DialOptions{HTTPHeader: h}); err == nil {
+		_ = ws.CloseNow()
+		t.Fatal("a cross-origin handshake is refused")
+	} else if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
 	}
 	// The query form.
 	c2, err := fsclient.Dial(e.ctx, e.url+"?token=s3cret", fsclient.Options{})

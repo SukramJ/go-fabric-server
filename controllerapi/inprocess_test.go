@@ -10,10 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/protocol"
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
 	"github.com/SukramJ/go-fabric/node"
+
+	fsclient "github.com/SukramJ/go-fabric-server/client"
+	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
 func TestServerInfoShape(t *testing.T) {

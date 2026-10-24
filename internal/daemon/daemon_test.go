@@ -59,7 +59,7 @@ func TestRunRefuses(t *testing.T) {
 func TestMuxRoutes(t *testing.T) {
 	srv := httptest.NewServer(Mux(nil, "", "v-test"))
 	defer srv.Close()
-	get := func(path string) (*http.Response, []byte) {
+	get := func(path string) (int, http.Header, []byte) {
 		t.Helper()
 		resp, err := http.Get(srv.URL + path) //nolint:noctx // a test
 		if err != nil {
@@ -67,19 +67,25 @@ func TestMuxRoutes(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		b, _ := io.ReadAll(resp.Body)
-		return resp, b
+		return resp.StatusCode, resp.Header, b
 	}
-	resp, body := get("/health")
-	if resp.StatusCode != http.StatusServiceUnavailable || !strings.Contains(string(body), `"version":"v-test"`) {
-		t.Fatalf("health without a controller: %d %s", resp.StatusCode, body)
+	code, _, body := get("/health")
+	if code != http.StatusServiceUnavailable || !strings.Contains(string(body), `"version":"v-test"`) {
+		t.Fatalf("health without a controller: %d %s", code, body)
 	}
-	resp, body = get("/schema")
+	_, header, body := get("/schema")
 	var doc map[string]any
-	if err := json.Unmarshal(body, &doc); err != nil || resp.Header.Get("X-Go-Fabric-Version") != schema.GoFabricVersion || doc["$schema"] == nil {
-		t.Fatalf("schema: %v %v", resp.Header, err)
+	if err := json.Unmarshal(body, &doc); err != nil || header.Get("X-Go-Fabric-Version") != schema.GoFabricVersion || doc["$schema"] == nil {
+		t.Fatalf("schema: %v %v", header, err)
 	}
-	if resp, _ = get("/metrics"); resp.StatusCode != http.StatusOK {
-		t.Fatalf("metrics %d", resp.StatusCode)
+	if code, _, _ = get("/metrics"); code != http.StatusOK {
+		t.Fatalf("metrics %d", code)
+	}
+	if err := Run(context.Background(), Config{HealthCheck: srv.URL + "/health"}, io.Discard); err == nil {
+		t.Fatal("an unhealthy server fails the probe")
+	}
+	if err := Run(context.Background(), Config{HealthCheck: srv.URL + "/metrics"}, io.Discard); err != nil {
+		t.Fatalf("a 200 passes the probe: %v", err)
 	}
 	guarded := httptest.NewServer(Mux(nil, "t", "v-test"))
 	defer guarded.Close()

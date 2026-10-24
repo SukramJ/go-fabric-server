@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric/controller/client"
+
+	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
 // subKey names a subscription: an id is only unique per node

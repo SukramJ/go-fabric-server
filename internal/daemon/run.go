@@ -21,13 +21,14 @@ import (
 	// go-fabric's reference controller opens it (examples/reference-controller/cli/stack.go:20-21).
 	_ "modernc.org/sqlite"
 
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/internal/version"
-	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
 	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
+
+	"github.com/SukramJ/go-fabric-server/controllerapi"
+	"github.com/SukramJ/go-fabric-server/internal/version"
+	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
 // Config is the daemon's configuration: the flags, each with an
@@ -45,6 +46,10 @@ type Config struct {
 	Controller              bool
 	Bridge                  bool
 	ShowVersion             bool
+	// HealthCheck, when set, is a URL to probe instead of running: exit 0
+	// when it answers 200 (the image's HEALTHCHECK; distroless has no
+	// shell or curl).
+	HealthCheck string
 }
 
 // env returns the environment variable name of a flag.
@@ -70,6 +75,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.BoolVar(&c.Controller, "controller", true, "run the controller half (/ws)")
 	fs.BoolVar(&c.Bridge, "bridge", false, "run the bridge half (/bridge; arrives with S2)")
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
+	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	set := map[string]bool{}
 	if err := fs.Parse(args); err != nil {
 		return c, err
@@ -114,6 +120,9 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		_, _ = fmt.Fprintln(stderr, version.String())
 		return nil
 	}
+	if c.HealthCheck != "" {
+		return probe(ctx, c.HealthCheck, c.Token)
+	}
 	lvl := new(slog.LevelVar)
 	l, ok := levels[strings.ToLower(c.LogLevel)]
 	if !ok {
@@ -154,7 +163,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		api, err = controllerapi.New(controllerapi.Options{
 			Version: version.Version, GoFabricVersion: version.GoFabric(), StoragePath: c.StoragePath,
 			DisableAutoSubscription: c.DisableAutoSubscription, DefaultFabricLabel: c.DefaultFabricLabel,
@@ -207,5 +216,27 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		_ = os.Remove(listen.Address)
 	}
 	log.Info("fabricserver.stopped")
+	return nil
+}
+
+// probe is --health-check: GET url (with the token) and want 200.
+func probe(ctx context.Context, url, token string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health: %s", resp.Status)
+	}
 	return nil
 }

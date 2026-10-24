@@ -123,14 +123,14 @@ func TestListenAndToken(t *testing.T) {
 	if _, err := protocol.ParseListen("unix:"); err == nil {
 		t.Fatal("unix: needs a path")
 	}
-	h := protocol.RequireToken("tok", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
+	h := protocol.RequireToken("tok", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	for _, c := range []struct {
 		header, query string
 		code          int
 	}{
 		{"", "", 401}, {"Bearer bad", "", 401}, {"Bearer tok", "", 204}, {"", "tok", 204}, {"Basic tok", "", 401},
 	} {
-		r := httptest.NewRequest(http.MethodGet, "/ws?token="+c.query, nil)
+		r := httptest.NewRequest(http.MethodGet, "/ws?token="+c.query, http.NoBody)
 		if c.header != "" {
 			r.Header.Set("Authorization", c.header)
 		}
@@ -140,9 +140,9 @@ func TestListenAndToken(t *testing.T) {
 			t.Fatalf("%+v: %d", c, w.Code)
 		}
 	}
-	open := protocol.RequireToken("", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
+	open := protocol.RequireToken("", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	w := httptest.NewRecorder()
-	open.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ws", nil))
+	open.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ws", http.NoBody))
 	if w.Code != 204 {
 		t.Fatal("no token, no check")
 	}

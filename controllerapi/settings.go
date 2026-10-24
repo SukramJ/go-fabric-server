@@ -81,10 +81,10 @@ func (s *settingsStore) saveLocked() error {
 		return err
 	}
 	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+	if err := os.WriteFile(tmp, b, 0o600); err != nil { //nolint:gosec // the operator's --storage-path
 		return err
 	}
-	return os.Rename(tmp, s.path)
+	return os.Rename(tmp, s.path) //nolint:gosec // as above
 }
 
 func (s *settingsStore) label() string {
@@ -191,7 +191,7 @@ func (s *settingsStore) removeThread(id string) error {
 
 // summaries are get_all_credentials' lists, the default entry always
 // first and present (docs/websockets_api.md:1502-1506).
-func (s *settingsStore) summaries() (wifi []map[string]any, thread []map[string]any) {
+func (s *settingsStore) summaries() (wifi, thread []map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	wifi = []map[string]any{{"id": defaultCredentialID, "ssid": ""}}

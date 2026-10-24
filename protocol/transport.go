@@ -104,7 +104,7 @@ func (l Listen) Open(ctx context.Context) (net.Listener, error) {
 		return nil, err
 	}
 	if l.Network == "unix" {
-		_ = os.Chmod(l.Address, 0o660)
+		_ = os.Chmod(l.Address, 0o660) //nolint:gosec // the owner's group may connect, as to any daemon socket
 	}
 	return ln, nil
 }
