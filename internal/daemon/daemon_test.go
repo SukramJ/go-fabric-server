@@ -51,6 +51,8 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeVendorID: 70000, StoragePath: t.TempDir()}, "wider than its field"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "none", StoragePath: t.TempDir()}, "--trust"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", VendorID: 70000, StoragePath: t.TempDir()}, "--vendor-id"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "production", BluetoothAdapter: "0", StoragePath: t.TempDir()}, "ble/bluez on go-fabric v0.12"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Web: "127.0.0.1:0", WebAdminSource: "nope", StoragePath: t.TempDir()}, "--web-admin-source"},
 	} {
 		err := Run(ctx, c.cfg, io.Discard)
 		if err == nil || !strings.Contains(err.Error(), c.want) {
@@ -169,5 +171,54 @@ func TestRunBridge(t *testing.T) {
 	}
 	if err := <-done; err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestTrustStore(t *testing.T) {
+	for _, c := range []Config{{Trust: "production"}, {Trust: "development"}, {Trust: "production", EnableTestNetDCL: true}} {
+		store, err := trustStore(c)
+		if err != nil || store == nil {
+			t.Fatalf("%+v: %v", c, err)
+		}
+		if want := c.Trust == "development" || c.EnableTestNetDCL; store.AcceptsTestCertificates() != want {
+			t.Fatalf("%+v: accepts test certificates %v", c, !want)
+		}
+	}
+}
+
+// TestWebAdmin: the node pages' admin rule — read-only by default, the
+// page's token mode with --web-admin, the Ingress proxy's address with
+// --web-admin-source.
+func TestWebAdmin(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/node/window", nil)
+	r.RemoteAddr = "172.30.32.2:41000"
+	other := httptest.NewRequest(http.MethodPost, "/api/v1/node/window", nil)
+	other.RemoteAddr = "192.168.1.9:41000"
+	ro, err := webAdmin(Config{})
+	if err != nil || ro == nil || ro(r) {
+		t.Fatalf("read-only: %v", err)
+	}
+	tok, err := webAdmin(Config{WebAdmin: true})
+	if err != nil || tok != nil {
+		t.Fatalf("token mode is a nil Admin: %v", err)
+	}
+	src, err := webAdmin(Config{WebAdminSource: "172.30.32.2"})
+	if err != nil || !src(r) || src(other) {
+		t.Fatalf("source check: %v", err)
+	}
+	// The pages answer without a node: the family disabled.
+	h, err := webHandler(Config{}, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/node/status", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":false`) {
+		t.Fatalf("status %d %s", rec.Code, rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<") {
+		t.Fatalf("shell %d", rec.Code)
 	}
 }

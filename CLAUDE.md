@@ -42,5 +42,5 @@ make vuln licenses secrets   # the security job
   `internal/version.Version` and adds its changelog section in one commit.
 
 Go 1.27.3, `CGO_ENABLED=0`. Dependencies: go-fabric, coder/websocket,
-modernc.org/sqlite — every further one is a decision recorded in
+go-fabric-ui — every further one is a decision recorded in
 `THIRD-PARTY-NOTICES.md`.
