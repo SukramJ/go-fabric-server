@@ -190,9 +190,9 @@ func TestTrustStore(t *testing.T) {
 // page's token mode with --web-admin, the Ingress proxy's address with
 // --web-admin-source.
 func TestWebAdmin(t *testing.T) {
-	r := httptest.NewRequest(http.MethodPost, "/api/v1/node/window", nil)
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/node/window", http.NoBody)
 	r.RemoteAddr = "172.30.32.2:41000"
-	other := httptest.NewRequest(http.MethodPost, "/api/v1/node/window", nil)
+	other := httptest.NewRequest(http.MethodPost, "/api/v1/node/window", http.NoBody)
 	other.RemoteAddr = "192.168.1.9:41000"
 	ro, err := webAdmin(Config{})
 	if err != nil || ro == nil || ro(r) {
@@ -212,12 +212,12 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/node/status", nil))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/node/status", http.NoBody))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":false`) {
 		t.Fatalf("status %d %s", rec.Code, rec.Body)
 	}
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<") {
 		t.Fatalf("shell %d", rec.Code)
 	}
@@ -227,7 +227,7 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatal(err)
 	}
 	for addr, want := range map[string]int{"172.30.32.2:1234": http.StatusOK, "192.168.1.9:1234": http.StatusForbidden} {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/node/status", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/node/status", http.NoBody)
 		req.RemoteAddr = addr
 		rec = httptest.NewRecorder()
 		ing.ServeHTTP(rec, req)
