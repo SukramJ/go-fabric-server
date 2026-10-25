@@ -292,7 +292,9 @@ func TestErrors(t *testing.T) {
 	e := newEnv(t, envOptions{})
 	ctx := e.ctx
 	wantCode(t, e.client.Call(ctx, "no_such_command", nil, nil), protocol.InvalidCommand, "Unknown command: no_such_command")
-	wantCode(t, e.client.Call(ctx, "set_acl_entry", nil, nil), protocol.InvalidCommand, "planned for S2")
+	wantCode(t, e.client.Call(ctx, "get_icd_state", nil, nil), protocol.InvalidCommand, "planned for go-fabric v0.12.0 (milestone 5")
+	wantCode(t, e.client.Call(ctx, "update_node", nil, nil), protocol.InvalidCommand, "planned for go-fabric phase 25")
+	wantCode(t, e.client.Call(ctx, "import_test_node", nil, nil), protocol.InvalidCommand, "planned for S3")
 	wantCode(t, e.client.Call(ctx, "camera_snapshot", nil, nil), protocol.InvalidCommand, "planned for never")
 	wantCode(t, e.client.Call(ctx, "get_node", nil, nil), protocol.InvalidArguments, "node_id is required")
 	wantCode(t, e.client.Call(ctx, "get_node", map[string]any{"node_id": 4242}, nil), protocol.NodeNotExists, "4242")

@@ -66,6 +66,9 @@ type Options struct {
 	Conn protocol.ConnOptions
 	// MaxInFlight bounds the requests a connection runs at once; 0 is 64.
 	MaxInFlight int
+	// Vendors lists the vendor names of get_vendor_names; nil is the
+	// production DCL's vendor records.
+	Vendors VendorSource
 }
 
 // Server is the controller half. Its methods are safe for concurrent use.
@@ -109,6 +112,9 @@ func New(opts Options) (*Server, error) {
 	}
 	if opts.MaxInFlight <= 0 {
 		opts.MaxInFlight = 64
+	}
+	if opts.Vendors == nil {
+		opts.Vendors = dclVendors()
 	}
 	log := opts.Logger
 	if log == nil {
@@ -255,3 +261,5 @@ func (s *Server) newConn(ws *websocket.Conn) *wsConn {
 	s.mu.Unlock()
 	return c
 }
+
+func (s *Server) vendors(ctx context.Context) (map[uint16]string, error) { return s.opts.Vendors(ctx) }

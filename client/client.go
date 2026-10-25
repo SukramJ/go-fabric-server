@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2026 SukramJ.
 
-// Package client is a Go client of go-fabric-server's controller half
-// (/ws): [Dial] connects, reads server_info and, unless told otherwise,
-// sends start_listening; the typed methods send the S1 commands; events
-// arrive on [Client.Events]. The tests of this repository use it; a Go
-// program that wants Matter embeds go-fabric instead.
+// Package client is a Go client of both halves of go-fabric-server. [Dial]
+// connects to the controller half (/ws), reads server_info and, unless
+// told otherwise, sends start_listening; the typed methods send its
+// commands. [DialBridge] connects to the bridge half (/bridge) the same
+// way; [Bridge] has the host's commands. Events arrive on
+// [Client.Events]. The tests of this repository use it; a Go program that
+// wants Matter embeds go-fabric instead.
 package client
 
 import (
@@ -102,6 +104,26 @@ type frame struct {
 // Dial connects to url ("ws://host:port/ws", or "unix:/path" for the
 // server's Unix socket).
 func Dial(ctx context.Context, url string, opts Options) (*Client, error) {
+	c, first, err := open(ctx, url, "/ws", opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(first, &c.info); err != nil {
+		_ = c.Close()
+		return nil, fmt.Errorf("client: server_info: %w", err)
+	}
+	if !opts.NoListen {
+		if err := c.Call(ctx, "start_listening", nil, &c.nodes); err != nil {
+			_ = c.Close()
+			return nil, err
+		}
+	}
+	return c, nil
+}
+
+// open connects, reads the first frame (the bare server_info) and starts
+// the reader; a "unix:" url dials the socket and asks for path.
+func open(ctx context.Context, url, path string, opts Options) (*Client, []byte, error) {
 	hc := opts.HTTPClient
 	if p, ok := strings.CutPrefix(url, "unix:"); ok {
 		if hc == nil {
@@ -110,7 +132,7 @@ func Dial(ctx context.Context, url string, opts Options) (*Client, error) {
 				return d.DialContext(ctx, "unix", p)
 			}}}
 		}
-		url = "ws://localhost/ws"
+		url = "ws://localhost" + path
 	}
 	h := http.Header{}
 	if opts.Token != "" {
@@ -121,7 +143,7 @@ func Dial(ctx context.Context, url string, opts Options) (*Client, error) {
 		_ = resp.Body.Close()
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ws.SetReadLimit(64 << 20)
 	n := opts.EventBuffer
@@ -132,22 +154,22 @@ func Dial(ctx context.Context, url string, opts Options) (*Client, error) {
 	_, first, err := ws.Read(ctx)
 	if err != nil {
 		_ = ws.CloseNow()
-		return nil, fmt.Errorf("client: server_info: %w", err)
+		return nil, nil, fmt.Errorf("client: server_info: %w", err)
 	}
-	if err := json.Unmarshal(first, &c.info); err != nil {
+	var head struct {
+		ErrorCode *int `json:"error_code"`
+	}
+	if json.Unmarshal(first, &head) == nil && head.ErrorCode != nil {
+		// The server refused the connection (a second bridge client).
 		_ = ws.CloseNow()
-		return nil, fmt.Errorf("client: server_info: %w", err)
+		var e protocol.Error
+		_ = json.Unmarshal(first, &e)
+		return nil, nil, &e
 	}
 	rctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	c.cancel = cancel
 	go c.read(rctx)
-	if !opts.NoListen {
-		if err := c.Call(ctx, "start_listening", nil, &c.nodes); err != nil {
-			_ = c.Close()
-			return nil, err
-		}
-	}
-	return c, nil
+	return c, first, nil
 }
 
 // ServerInfo is the server_info the server sent on connect.

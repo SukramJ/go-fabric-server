@@ -26,9 +26,28 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--default-fabric-label` | — | pins the fabric label; `set_default_fabric_label` then has no effect |
 | `--disable-auto-subscription` | `false` | new nodes are paired without the server's subscription; `subscribe`/`unsubscribe` become available |
 | `--controller` | `true` | run the controller half (`/ws`) |
-| `--bridge` | `false` | the bridge half (`/bridge`); refused until S2 |
+| `--bridge` | `false` | run the bridge half (`/bridge`) and its bridge node |
+| `--bridge-listen` | `:5540` | the bridge node's UDP address for Matter |
+| `--bridge-passcode` | `20202021` | the bridge node's setup passcode — the public test value: change it before pairing for real |
+| `--bridge-discriminator` | `3840` | the bridge node's discriminator |
+| `--bridge-vendor-id`, `--bridge-product-id` | `0xFFF1`, `0x8001` | the bridge node's vendor and product (the CSA test vendor) |
+| `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel |
+| `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
 | `--version` | — | print the version and exit |
+
+## The bridge node
+
+With `--bridge` the daemon runs a Matter bridge node besides (or, with
+`--controller=false`, instead of) the controller: an Aggregator whose
+bridged devices the `/bridge` client declares (`docs/protocol.md`, the
+bridge half). At start it logs its pairing codes
+(`fabricserver.bridge.pairing`); the client reads them with
+`pairing_codes`. The node carries the CSA test vendor and go-fabric's test
+attestation chain, so a controller may warn that it is uncertified; set
+`--bridge-passcode` and `--bridge-discriminator` before pairing for real.
+The declared devices are not stored by the server: the client declares
+them after every connect, and each keeps its endpoint number under its key.
 
 ## Files
 
@@ -38,6 +57,7 @@ Under `--storage-path` (created with mode 0700):
 | --- | --- |
 | `fabric-server.db` (+ `-wal`, `-shm`) | the controller's SQLite database: our fabric and its CA, the paired nodes and their attribute images (go-fabric's stores) |
 | `server.json` (mode 0600) | the server's settings: the fabric label, the stored Wi-Fi credentials and Thread datasets |
+| `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys |
 
 Back up the whole directory with the daemon stopped (or with
 `sqlite3 fabric-server.db .backup`). Losing `fabric-server.db` loses the
@@ -46,8 +66,9 @@ fabric: every node must be commissioned again.
 ## Ports and network
 
 - The API: `--listen` (5580 in the image and the unit).
-- Matter: UDP on `--matter-listen`, IPv6 link-local and site addresses; DNS-SD
-  on UDP 5353 (multicast). The host needs IPv6 and multicast on the interface
+- Matter: UDP on `--matter-listen` (the controller) and `--bridge-listen`
+  (the bridge node, 5540), IPv6 link-local and site addresses; DNS-SD on UDP
+  5353 (multicast). The host needs IPv6 and multicast on the interface
   the devices are on; in a container, use host networking.
 
 ## Authentication
@@ -57,7 +78,7 @@ fabric: every node must be commissioned again.
 - A TCP listener beyond loopback requires `--token`; the daemon refuses to
   start without one. Clients send `Authorization: Bearer <token>` or the
   query parameter `?token=<token>`. Every route (`/ws`, `/health`,
-  `/metrics`, `/schema`) is behind it.
+  `/metrics`, `/schema`, `/bridge`) is behind it.
 - Home Assistant's Matter integration sends no token: run it on the same
   host against a loopback listener.
 - The WebSocket handshake refuses a cross-origin browser request (its
@@ -69,9 +90,11 @@ fabric: every node must be commissioned again.
 | Route | Answer |
 | --- | --- |
 | `/ws` | the controller half (WebSocket) |
-| `GET /health` | `{"version", "node_count", "healthy"}`; 503 while not healthy |
+| `/bridge` | the bridge half (WebSocket), with `--bridge`; one client at a time |
+| `GET /health` | `{"version", "node_count", "healthy"}`, with `--bridge` also `"device_count"`; 503 while a half is not healthy |
 | `GET /metrics` | expvar: `fabricserver.ws.connections`, `fabricserver.ws.queued_bytes`, `fabricserver.ws.dropped`, `fabricserver.ws.closed_overflow`, the Go runtime's `memstats` |
 | `GET /schema` | the JSON Schema of the node data values; header `X-Go-Fabric-Version` |
+| `GET /schema/declaration` | the JSON Schema of the bridge half's declaration and patches |
 
 ## Container
 
