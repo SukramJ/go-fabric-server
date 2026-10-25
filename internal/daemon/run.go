@@ -85,7 +85,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.BoolVar(&c.DisableAutoSubscription, "disable-auto-subscription", false, "pair new nodes without the server's own subscription; enables subscribe and unsubscribe")
 	fs.BoolVar(&c.Controller, "controller", true, "run the controller half (/ws)")
 	fs.BoolVar(&c.Bridge, "bridge", false, "run the bridge half (/bridge): a bridge node whose devices a client declares")
-	fs.StringVar(&c.BridgeListen, "bridge-listen", "", "the bridge node's UDP address for Matter (default [::]:5540)")
+	fs.StringVar(&c.BridgeListen, "bridge-listen", "", "the bridge node's UDP address for Matter (default :5540)")
 	fs.UintVar(&c.BridgePasscode, "bridge-passcode", 20202021, "the bridge node's setup passcode (the public test value by default: change it before pairing for real)")
 	fs.UintVar(&c.BridgeDiscriminator, "bridge-discriminator", 3840, "the bridge node's discriminator")
 	fs.UintVar(&c.BridgeVendorID, "bridge-vendor-id", 0xFFF1, "the bridge node's vendor id (the CSA test vendor by default)")

@@ -90,10 +90,11 @@ the two are separate composition roots in go-fabric (`controller.New`,
   events. Where go-fabric's controller facade lacks a route, the command
   answers `InvalidCommand` naming what it needs, and the gap goes to go-fabric
   as a facade fix — never a workaround here.
-- **With go-fabric's M5 (S2):** `set_acl_entry`, `set_node_binding`,
-  `check_node_update`, `update_node`, `initiate_ota_upload` with
-  `POST /ota-upload`, `get_vendor_names`, the four ICD commands,
-  `import_test_node`.
+- **S2:** `set_acl_entry`, `set_node_binding`, `get_vendor_names` (no new
+  facade needed). **With go-fabric's M5 (v0.12.0):** the four ICD commands.
+  **With go-fabric's phase 25:** `check_node_update`, `update_node`,
+  `initiate_ota_upload` with `POST /ota-upload`. `import_test_node` is not a
+  pure cache operation and moves to S3.
 - **With M6 (S3):** the Thread commands (`get_thread_border_routers`,
   `get_thread_diagnostics`, `get_network_topology`).
 - **Never:** camera/WebRTC, a BLE proxy endpoint.
@@ -104,13 +105,25 @@ the two are separate composition roots in go-fabric (`controller.New`,
 
 ### C.3 The device-side half (`/bridge`, S2)
 
-The host's commands `declare` (the topology document, names not ids),
-`set` (state deltas), `host`, `result` (the answer to a `command` event, with
-correlation and deadline), `pairing_codes`, `node_info`, `start_listening`;
-events to the host `command`, `write`, `fabric_added/removed`,
-`commissioning_window`, `subscription_count`, `server_shutdown`. Deadlines and
-correlation are mandatory; every `declare`/`set` is checked against the
-generated JSON Schema at the door.
+The host's commands `declare` (the topology document, names not ids, one
+`Aggregator.Batch`), `set` (state deltas through the typed `Server.Set`),
+`host` (name, addresses, reachability, label), `remove`, `result` (the answer
+to a `write` or `command` event, with correlation and deadline),
+`pairing_codes`, `node_info`, `start_listening`.
+
+The events follow the device kit's model (brief S2 §1.2, correcting the
+command-and-result model this section first had): `changed` after every
+change the host did not make itself — a controller's write or a command the
+kit applied, with the change's origin; `write` and `command` only for what
+the host opted into per cluster in the declaration (`handle_writes`,
+`handle_commands`: the kit's `OnWrite` veto and `Handle<Command>`), else the
+kit answers from its state; `result_timeout` when a deadline passed;
+`fabric_added/removed`, `commissioning_window`, `subscriptions` (the count),
+`server_shutdown`. Deadlines and correlation are mandatory; a missed one
+answers the controller and the endpoint stays. Every `declare`/`set` is
+decoded through go-fabric's generated typed `Patch` structs, and the
+generated JSON Schema of the declaration documents it. One bridge client at a
+time: the node has one author.
 
 ## D — Bundles
 

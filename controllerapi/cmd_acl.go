@@ -244,7 +244,7 @@ func dclVendors() VendorSource {
 }
 
 // cmdGetVendorNames answers the vendor names by decimal vendor id, all of
-// them or those filter_vendors names (WebSocketControllerHandler.ts:2814-2847).
+// them or those filter_vendors names (WebSocketControllerHandler.ts:1695-1728).
 // matterjs-server merges its own static vendor table under the DCL's;
 // this server has no table of its own (report S2, Questions Q18): without
 // the ledger the command fails.
@@ -276,7 +276,7 @@ func cmdGetVendorNames(ctx context.Context, s *Server, c *call) (any, *protocol.
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, id := range ids {
-		if name, ok := names[uint16(id)]; ok && name != "" {
+		if name, ok := names[uint16(id)]; ok && name != "" { //nolint:gosec // parsed with bitSize 16
 			out[strconv.FormatUint(id, 10)] = name
 		}
 	}

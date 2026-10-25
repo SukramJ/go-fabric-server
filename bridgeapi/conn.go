@@ -128,7 +128,8 @@ func init() {
 
 // Capabilities are the commands of the bridge half, sorted.
 func Capabilities() []string {
-	out := []string{"start_listening"}
+	out := make([]string, 0, 1+len(handlers))
+	out = append(out, "start_listening")
 	for name := range handlers {
 		out = append(out, name)
 	}

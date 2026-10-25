@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ type defPackage struct {
 // goFabricDir is the directory of the go-fabric module this build uses —
 // the module cache entry of the pinned version, or a replace target.
 func goFabricDir() (string, error) {
-	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", goFabricModule).Output()
+	out, err := exec.CommandContext(context.Background(), "go", "list", "-m", "-f", "{{.Dir}}", goFabricModule).Output()
 	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) {
@@ -183,7 +184,7 @@ func (g *gen) declarationSchema(pkgs map[string]defPackage) ([]byte, error) {
 			"properties":           props,
 			"additionalProperties": false,
 		}
-		var features []string
+		features := make([]string, 0, 2*len(c.Features))
 		for _, f := range c.Features {
 			features = append(features, f.Effective.Title, f.Name)
 		}
@@ -211,7 +212,7 @@ func (g *gen) declarationSchema(pkgs map[string]defPackage) ([]byte, error) {
 		}
 		clusterProps[c.Name] = map[string]any{"$ref": "#/$defs/cluster." + c.Name}
 	}
-	var types []string
+	types := make([]string, 0, len(g.s.DeviceTypes))
 	for _, d := range g.s.DeviceTypes {
 		types = append(types, d.Name)
 	}

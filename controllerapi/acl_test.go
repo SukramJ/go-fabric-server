@@ -27,7 +27,7 @@ type listResult struct {
 func TestSetACLEntryAndBinding(t *testing.T) {
 	e := newEnv(t, envOptions{})
 	n := e.commission()
-	ctrlID := uint64(*e.client.ServerInfo().ControllerNodeID)
+	ctrlID := *e.client.ServerInfo().ControllerNodeID
 	var res []listResult
 	err := e.client.Call(e.ctx, "set_acl_entry", map[string]any{"node_id": n.NodeID, "entry": []any{
 		map[string]any{"privilege": 5, "auth_mode": 2, "subjects": []uint64{ctrlID}, "targets": nil},

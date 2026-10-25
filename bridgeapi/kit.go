@@ -284,8 +284,9 @@ func kindName(t reflect.Type) string {
 		return "list"
 	case reflect.Struct:
 		return "object"
+	default:
+		return t.String()
 	}
-	return t.String()
 }
 
 func (k *kit[P, S, D, T]) declare(patch any, features uint32, h *hooks) (device.Declaration, error) {

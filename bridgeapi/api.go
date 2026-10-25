@@ -226,7 +226,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // refuse answers a second client: one error frame naming the holder,
 // then the close.
-func (s *Server) refuse(ctx context.Context, c *bconn, holder *bconn) {
+func (s *Server) refuse(ctx context.Context, c, holder *bconn) {
 	details := fmt.Sprintf("the bridge half has a client: %s from %s since %s; one bridge client at a time",
 		holder.id, holder.remote, holder.since.UTC().Format(time.RFC3339))
 	s.log.Info("fabricserver.bridge.refused", slog.String("conn", c.id), slog.String("remote", c.remote), slog.String("holder", holder.id))
