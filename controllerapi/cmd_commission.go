@@ -5,6 +5,7 @@ package controllerapi
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"net/netip"
 	"strings"
@@ -35,24 +36,17 @@ func discoveryTimeout(command string, raw json.RawMessage) (time.Duration, *prot
 	return time.Duration(v * float64(time.Second)), nil
 }
 
-// wellFormedCode is the outer form of a pairing code
-// (docs/websockets_api.md:1628): a QR payload starting with "MT:" or an
-// 11- or 21-digit manual code (dashes and spaces aside).
-func wellFormedCode(code string) bool {
-	if strings.HasPrefix(code, "MT:") {
-		return len(code) > 3
+// parseCode decodes a pairing code with go-fabric's decoder
+// (controller.ParsePairingCode, matter.js's PairingCodeSchema). A code it
+// refuses is InvalidArguments with reason invalid-payload and the details
+// matterjs-server gives (packages/ws-controller/src/controller/onboardingPayload.ts:40-52
+// at a7922e85: "Invalid pairing code: <message>").
+func parseCode(code string) (controller.PairingCode, *protocol.Error) {
+	pc, err := controller.ParsePairingCode(code)
+	if err != nil {
+		return pc, protocol.Errorf(protocol.InvalidArguments, "Invalid pairing code: %v", err).WithReason(protocol.ReasonInvalidPayload)
 	}
-	digits := 0
-	for _, r := range code {
-		switch {
-		case r >= '0' && r <= '9':
-			digits++
-		case r == '-' || r == ' ':
-		default:
-			return false
-		}
-	}
-	return digits == 11 || digits == 21
+	return pc, nil
 }
 
 // commissionContext bounds a commissioning: it outlives the connection that
@@ -67,9 +61,10 @@ func (s *Server) commissionContext(ctx context.Context, timeout time.Duration) (
 
 // pairOptions are the pairing options of the server's mode: with
 // --disable-auto-subscription a new node gets no subscription of the
-// server's.
+// server's; the attestation policy is the server's (--enable-test-net-dcl
+// accepts the findings of a test certificate, report S3 D4).
 func (s *Server) pairOptions() controller.PairOptions {
-	var o controller.PairOptions
+	o := controller.PairOptions{OnAttestationFailure: s.opts.Attestation}
 	if s.opts.DisableAutoSubscription {
 		off := false
 		o.AutoSubscribe = &off
@@ -77,11 +72,37 @@ func (s *Server) pairOptions() controller.PairOptions {
 	return o
 }
 
+// bleNetwork picks the stored credentials a BLE commissioning provisions:
+// the ids given, else the default entries; an id given that is not stored
+// is InvalidArguments (matterjs-server WebSocketControllerHandler.ts:1311-1358,
+// "Unknown wifi_credentials_id: <id>").
+func (s *Server) bleNetwork(command string, wifiID, threadID *string) (*commissioner.WiFiNetwork, *commissioner.ThreadNetwork, *protocol.Error) {
+	w, t, missing := s.cfg.credentials(wifiID, threadID)
+	if missing != "" {
+		return nil, nil, invalidArgs(command, "%s", missing)
+	}
+	var wn *commissioner.WiFiNetwork
+	if w != nil && w.SSID != "" {
+		wn = &commissioner.WiFiNetwork{SSID: w.SSID, Credentials: w.Credentials}
+	}
+	var tn *commissioner.ThreadNetwork
+	if t != nil && t.Dataset != "" {
+		b, err := hex.DecodeString(t.Dataset)
+		if err == nil {
+			tn = &commissioner.ThreadNetwork{OperationalDataset: b}
+		}
+	}
+	return wn, tn, nil
+}
+
 // cmdCommissionWithCode pairs the device a QR or manual code names
-// (controller.Controller.Pair) and answers its node data. The stored
-// Wi-Fi and Thread credentials are not handed to the commissioner: Pair
-// finds the device over DNS-SD, where it is on the network already (BLE
-// is not on the facade's Pair route; report S1, Left out).
+// (controller.Controller.Pair) and answers its node data. Over DNS-SD by
+// default; over BLE (controller.PairOptions.BLE, go-fabric v0.12.1) when
+// the server has an adapter (--ble-adapter), network_only is false, the
+// code does not rule BLE out (a QR code's discovery capabilities without
+// the BLE bit do) and a stored Wi-Fi or Thread credential can put the
+// device on its network — matterjs-server takes BLE whenever it is
+// enabled and network_only is false (ControllerCommandHandler.ts:1965-2115).
 func cmdCommissionWithCode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Code              *string         `json:"code"`
@@ -96,19 +117,26 @@ func cmdCommissionWithCode(ctx context.Context, s *Server, c *call) (any, *proto
 	if a.Code == nil {
 		return nil, invalidArgs(c.req.Command, "code is required")
 	}
-	if !wellFormedCode(*a.Code) {
-		return nil, invalidArgs(c.req.Command, "the pairing code cannot be decoded").WithReason(protocol.ReasonInvalidPayload)
+	pc, perr := parseCode(*a.Code)
+	if perr != nil {
+		return nil, perr
 	}
 	timeout, perr := discoveryTimeout(c.req.Command, a.DiscoveryTimeoutS)
 	if perr != nil {
 		return nil, perr
 	}
+	wifi, thread, perr := s.bleNetwork(c.req.Command, a.WifiCredentialsID, a.ThreadDatasetID)
+	if perr != nil {
+		return nil, perr
+	}
+	opts := s.pairOptions()
+	if s.opts.BLE != nil && !a.NetworkOnly && (pc.Manual || pc.Capabilities&capabilityBLE != 0) && (wifi != nil || thread != nil) {
+		opts.BLE, opts.WiFi, opts.Thread = s.opts.BLE, wifi, thread
+	}
 	pctx, cancel := s.commissionContext(ctx, timeout)
 	defer cancel()
-	n, err := s.b().Pair(pctx, *a.Code, s.pairOptions())
+	n, err := s.b().Pair(pctx, *a.Code, opts)
 	if err != nil {
-		// A code of the right form the facade still cannot decode is
-		// "other": controller.Pair has no sentinel for it (Questions Q4).
 		return nil, commissionError(err)
 	}
 	return s.commissioned(n)
@@ -177,11 +205,7 @@ func cmdCommissionOnNetwork(ctx context.Context, s *Server, c *call) (any, *prot
 	}
 	pctx, cancel := s.commissionContext(ctx, timeout)
 	defer cancel()
-	disc, ok := s.b().(Discoverer)
-	if !ok {
-		return nil, protocol.Errorf(protocol.InvalidCommand, "%s: the controller has no discovery route", c.req.Command)
-	}
-	found, err := disc.Discover(pctx, id, s.discoverWindow(timeout))
+	found, err := s.discoverUntil(pctx, id, want, s.discoverWindow(timeout))
 	if err != nil {
 		return nil, commissionError(err)
 	}
@@ -200,7 +224,8 @@ func cmdCommissionOnNetwork(ctx context.Context, s *Server, c *call) (any, *prot
 	if err != nil {
 		return nil, commissionError(err)
 	}
-	o := client.CommissionOptions{Options: commissioner.Options{Passcode: *a.SetupPinCode}, AutoSubscribe: s.pairOptions().AutoSubscribe}
+	po := s.pairOptions()
+	o := client.CommissionOptions{Options: commissioner.Options{Passcode: *a.SetupPinCode, OnAttestationFailure: po.OnAttestationFailure}, AutoSubscribe: po.AutoSubscribe}
 	if err := reg.Commission(pctx, n, o); err != nil {
 		return nil, commissionError(err)
 	}
@@ -226,23 +251,89 @@ func (s *Server) discoverWindow(timeout time.Duration) time.Duration {
 	return 3 * time.Minute
 }
 
-// cmdParseOnboardingPayload is answered by the dispatcher's gap check
-// (Questions Q4).
-func cmdParseOnboardingPayload(context.Context, *Server, *call) (any, *protocol.Error) {
-	return nil, protocol.Errorf(protocol.InvalidCommand, "parse_onboarding_payload is not available")
+// capabilityBLE is the BLE bit of a QR payload's discovery capabilities
+// (controller.PairingCode.Capabilities: bit 0 SoftAP, bit 1 BLE, bit 2 on
+// the IP network).
+const capabilityBLE = 1 << 1
+
+// cmdParseOnboardingPayload decodes a QR or manual pairing code without
+// contacting a device (controller.ParsePairingCode) — matterjs-server's
+// #handleParseOnboardingPayload (WebSocketControllerHandler.ts:1360-1390):
+// a QR code is {type: "qr", payloads: [{version, vendor_id, product_id,
+// flow_type, discovery_capabilities, discriminator, setup_pin_code}]}, a
+// manual code {type: "manual", short_discriminator, setup_pin_code,
+// vendor_id, product_id}; vendor_id and product_id are left out where the
+// code says 0 (docs/websockets_api.md, python client models.py:912-944).
+// go-fabric's decoder reads one QR payload; a concatenated QR code ("*"
+// between payloads) is refused as matter.js's single-payload decode
+// refuses it.
+func cmdParseOnboardingPayload(_ context.Context, _ *Server, c *call) (any, *protocol.Error) {
+	var a struct {
+		Code *string `json:"code"`
+	}
+	if err := c.args(&a); err != nil {
+		return nil, err
+	}
+	if a.Code == nil {
+		return nil, invalidArgs(c.req.Command, "requires code as a string")
+	}
+	pc, perr := parseCode(*a.Code)
+	if perr != nil {
+		return nil, perr
+	}
+	if pc.Manual {
+		return manualPayload{
+			Type: "manual", ShortDiscriminator: pc.Discriminator, SetupPinCode: pc.Passcode,
+			VendorID: nonZero(pc.VendorID), ProductID: nonZero(pc.ProductID),
+		}, nil
+	}
+	return qrResult{Type: "qr", Payloads: []qrPayload{{
+		Version: pc.Version, VendorID: nonZero(pc.VendorID), ProductID: nonZero(pc.ProductID),
+		FlowType: pc.Flow, DiscoveryCapabilities: pc.Capabilities, Discriminator: pc.Discriminator, SetupPinCode: pc.Passcode,
+	}}}, nil
 }
 
-// discoverWindowList is how long discover listens before it answers.
-const discoverWindowList = 5 * time.Second
+// qrResult and manualPayload are QrOnboardingPayloadResult and
+// ManualOnboardingPayloadResult (python client models.py:912-944).
+type qrResult struct {
+	Type     string      `json:"type"`
+	Payloads []qrPayload `json:"payloads"`
+}
 
-// cmdDiscover lists the commissionable devices that answer within a few
-// seconds — CommissionableNodeData (model.ts:1825-1842).
-func cmdDiscover(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
-	disc, ok := s.b().(Discoverer)
-	if !ok {
-		return nil, protocol.Errorf(protocol.InvalidCommand, "%s: the controller has no discovery route", c.req.Command)
+type qrPayload struct {
+	Version               uint8   `json:"version"`
+	VendorID              *uint16 `json:"vendor_id,omitempty"`
+	ProductID             *uint16 `json:"product_id,omitempty"`
+	FlowType              uint8   `json:"flow_type"`
+	DiscoveryCapabilities uint8   `json:"discovery_capabilities"`
+	Discriminator         uint16  `json:"discriminator"`
+	SetupPinCode          uint32  `json:"setup_pin_code"`
+}
+
+type manualPayload struct {
+	Type               string  `json:"type"`
+	ShortDiscriminator uint16  `json:"short_discriminator"`
+	SetupPinCode       uint32  `json:"setup_pin_code"`
+	VendorID           *uint16 `json:"vendor_id,omitempty"`
+	ProductID          *uint16 `json:"product_id,omitempty"`
+}
+
+func nonZero(v uint16) *uint16 {
+	if v == 0 {
+		return nil
 	}
-	found, err := disc.Discover(ctx, discovery.AnyCommissionable(), discoverWindowList)
+	return &v
+}
+
+// discoverWindowList is how long discover listens before it answers:
+// matterjs-server's 3 seconds (ControllerCommandHandler.ts:2135-2185).
+const discoverWindowList = 3 * time.Second
+
+// cmdDiscover lists the commissionable devices that answer within the
+// window (controller.Controller.Discover) — CommissionableNodeData
+// (model.ts:1825-1842), each device once.
+func cmdDiscover(ctx context.Context, s *Server, _ *call) (any, *protocol.Error) {
+	found, err := s.b().Discover(ctx, discovery.AnyCommissionable(), discoverWindowList)
 	if err != nil {
 		return nil, protocol.Errorf(protocol.UnknownError, "discover: %v", err)
 	}
@@ -251,6 +342,38 @@ func cmdDiscover(ctx context.Context, s *Server, c *call) (any, *protocol.Error)
 		out = append(out, commissionableData(&found[i]))
 	}
 	return out, nil
+}
+
+// discoverRound is one search of discoverUntil.
+const discoverRound = 2 * time.Second
+
+// discoverUntil searches for the device id selects (and, when want is
+// valid, that announces want) in rounds until one answers or window
+// passes: controller.Controller.Discover returns what a whole search
+// found, while matter.js's search for one device ends with the first
+// answer (CommissioningController.commissionNode,
+// CommissioningController.ts:462-500 at 862ad75f), so the server searches
+// in short rounds (report S3, Q21).
+func (s *Server) discoverUntil(ctx context.Context, id discovery.Identifier, want netip.Addr, window time.Duration) ([]client.Device, error) {
+	deadline := time.Now().Add(window)
+	for {
+		round := min(discoverRound, time.Until(deadline))
+		if round <= 0 {
+			return nil, nil
+		}
+		found, err := s.b().Discover(ctx, id, round)
+		if err != nil {
+			return nil, err
+		}
+		for i := range found {
+			if !want.IsValid() || announces(&found[i], want) {
+				return found, nil
+			}
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+	}
 }
 
 func commissionableData(d *client.Device) map[string]any {

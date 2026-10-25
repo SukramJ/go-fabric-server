@@ -34,8 +34,13 @@ func TestServerInfoShape(t *testing.T) {
 			t.Fatalf("capabilities %v lack %s", info.Capabilities, want)
 		}
 	}
-	if slices.Contains(info.Capabilities, "batched_device_commands") {
-		t.Fatal("a command without a facade route is in capabilities")
+	for _, want := range []string{"batched_device_commands", "parse_onboarding_payload", "open_commissioning_window", "discover", "get_icd_state", "get_network_topology", "import_test_node"} {
+		if !slices.Contains(info.Capabilities, want) {
+			t.Fatalf("capabilities %v lack %s", info.Capabilities, want)
+		}
+	}
+	if slices.Contains(info.Capabilities, "update_node") || slices.Contains(info.Capabilities, "camera_snapshot") {
+		t.Fatal("a command the server does not answer is in capabilities")
 	}
 	// The same object as a result.
 	var again fsclient.ServerInfo

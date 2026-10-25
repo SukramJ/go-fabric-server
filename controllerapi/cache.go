@@ -241,15 +241,23 @@ func (st *nodeState) matterVersion() *string {
 
 // nodeListLocked is the node data of every node in node id order; the
 // caller holds s.mu.
-func (s *Server) nodeListLocked(onlyAvailable bool) []nodeData {
+func (s *Server) nodeListLocked(onlyAvailable bool) []any {
 	states := slices.Collect(maps.Values(s.nodes))
 	sort.Slice(states, func(i, j int) bool { return states[i].nodeID < states[j].nodeID })
-	out := make([]nodeData, 0, len(states))
+	out := make([]any, 0, len(states)+len(s.testNodes))
 	for _, st := range states {
 		if onlyAvailable && !st.available {
 			continue
 		}
 		out = append(out, st.data())
+	}
+	// The test nodes follow, as matterjs-server lists them after the real
+	// ones (WebSocketControllerHandler.ts, #collectNodes).
+	for _, n := range s.testNodeListLocked() {
+		if onlyAvailable && string(n.Available) != "true" {
+			continue
+		}
+		out = append(out, n)
 	}
 	return out
 }
@@ -291,11 +299,12 @@ func (s *Server) loop() {
 		s.dirtyMu.Unlock()
 		if ids[""] {
 			s.refreshAll()
-			continue
+		} else {
+			for id := range ids {
+				s.refresh(id)
+			}
 		}
-		for id := range ids {
-			s.refresh(id)
-		}
+		s.topologyUpdated()
 	}
 }
 

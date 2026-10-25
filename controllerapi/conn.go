@@ -31,6 +31,11 @@ type wsConn struct {
 	subs   map[subKey]*ownedSub
 	closed atomic.Bool
 	wg     sync.WaitGroup
+
+	// topology is set once the connection asked for get_network_topology:
+	// it gets network_topology_updated from then on
+	// (WebSocketControllerHandler.ts:2220-2229).
+	topology atomic.Bool
 }
 
 // run sends server_info, then reads requests until the connection ends.

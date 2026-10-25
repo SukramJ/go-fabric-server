@@ -44,7 +44,14 @@ var facade = map[string]bool{
 	"controller/dcl/snapshot": true,
 	// The DCL client of get_vendor_names (brief S2 §2): the ledger's
 	// vendor records, as matterjs-server's vendor info service reads them.
-	"controller/dcl":     true,
+	"controller/dcl": true,
+	// The BLE central of controller.PairOptions.BLE and its BlueZ
+	// implementation (a module of its own; --ble-adapter), and the Thread
+	// dataset codec the CJ report names as the dataset reader (go-fabric
+	// notes/briefs/reports/CJ.md, 1.13: controller/thread.DecodeDataset).
+	"controller/ble":     true,
+	"ble/bluez":          true,
+	"controller/thread":  true,
 	"client/discovery":   true,
 	"client/exchange":    true,
 	"client/handshake":   true,

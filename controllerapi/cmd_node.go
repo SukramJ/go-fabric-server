@@ -280,8 +280,55 @@ func cmdRemoveMatterFabric(ctx context.Context, s *Server, c *call) (any, *proto
 	return struct{}{}, nil
 }
 
-// cmdOpenCommissioningWindow is answered by the dispatcher's gap check
-// (Questions Q5); the handler exists so the command is in the S1 table.
-func cmdOpenCommissioningWindow(context.Context, *Server, *call) (any, *protocol.Error) {
-	return nil, protocol.Errorf(protocol.InvalidCommand, "open_commissioning_window is not available")
+// windowData is CommissioningParameters (python client models.py:280-290):
+// every key present, commissioning_timeout in seconds.
+type windowData struct {
+	SetupPinCode         uint32 `json:"setup_pin_code"`
+	SetupManualCode      string `json:"setup_manual_code"`
+	SetupQRCode          string `json:"setup_qr_code"`
+	Discriminator        uint16 `json:"discriminator"`
+	VendorID             uint16 `json:"vendor_id"`
+	ProductID            uint16 `json:"product_id"`
+	CommissioningTimeout int64  `json:"commissioning_timeout"`
+}
+
+// cmdOpenCommissioningWindow opens an enhanced commissioning window on the
+// node (client.Node.OpenCommissioningWindow, go-fabric v0.12.1) for
+// timeout seconds — matterjs-server's #handleOpenCommissioningWindow
+// (WebSocketControllerHandler.ts:2316-2330, ControllerCommandHandler.ts:2364-2379):
+// iteration, option and discriminator are accepted and not used (the
+// window takes a random discriminator and passcode), a timeout that is not
+// a positive number is InvalidArguments, and the answer carries the
+// pairing codes. The answer holds the passcode and is never logged.
+func cmdOpenCommissioningWindow(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	var a struct {
+		nodeArg
+		Timeout       *float64 `json:"timeout"`
+		Iteration     *float64 `json:"iteration"`
+		Option        *float64 `json:"option"`
+		Discriminator *float64 `json:"discriminator"`
+	}
+	if err := c.args(&a); err != nil {
+		return nil, err
+	}
+	n, _, perr := s.node(c.req.Command, a.NodeID)
+	if perr != nil {
+		return nil, perr
+	}
+	var timeout time.Duration
+	if a.Timeout != nil {
+		if *a.Timeout <= 0 || *a.Timeout > 0xFFFF {
+			return nil, invalidArgs(c.req.Command, "Commissioning window timeout must be a positive number of seconds (at most 65535)")
+		}
+		timeout = time.Duration(*a.Timeout * float64(time.Second))
+	}
+	w, err := n.OpenCommissioningWindow(ctx, timeout, client.WindowOptions{})
+	if err != nil {
+		return nil, nodeError(c.req.Command, err)
+	}
+	return windowData{
+		SetupPinCode: w.Passcode, SetupManualCode: w.ManualCode, SetupQRCode: w.QRCode,
+		Discriminator: w.Discriminator, VendorID: w.VendorID, ProductID: w.ProductID,
+		CommissioningTimeout: int64(w.Timeout / time.Second),
+	}, nil
 }

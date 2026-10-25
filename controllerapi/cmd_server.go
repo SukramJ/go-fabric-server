@@ -7,6 +7,9 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"time"
+
+	"github.com/SukramJ/go-fabric/controller/thread"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -132,8 +135,18 @@ func cmdSetThreadDataset(_ context.Context, s *Server, c *call) (any, *protocol.
 	if err := c.args(&a); err != nil {
 		return nil, err
 	}
-	if a.Dataset == nil || *a.Dataset == "" || !isHex(*a.Dataset) {
-		return nil, invalidArgs(c.req.Command, "dataset must be a non-empty hex-encoded operational dataset")
+	if a.Dataset == nil {
+		return nil, invalidArgs(c.req.Command, "requires dataset to be a hex string")
+	}
+	if *a.Dataset == "" || !isHex(*a.Dataset) {
+		return nil, invalidArgs(c.req.Command, "Invalid Thread operational dataset: must be a non-empty hex string with even length (each byte is two hex characters)")
+	}
+	// The dataset must also read as MeshCoP TLVs (controller/thread, the
+	// port of matter.js OperationalDataset.ts): matterjs-server checks the
+	// hex only (WebSocketControllerHandler.ts:2173-2200), a dataset no
+	// device could join is refused here (report S3, by_design candidate).
+	if _, err := thread.DecodeDatasetHex(*a.Dataset); err != nil {
+		return nil, invalidArgs(c.req.Command, "Invalid Thread operational dataset: %v", err)
 	}
 	if err := s.cfg.setThread(credentialID(a.ID), *a.Dataset); err != nil {
 		return nil, protocol.Errorf(protocol.UnknownError, "%s: %v", c.req.Command, err)
@@ -175,8 +188,8 @@ func cmdRemoveThreadDataset(_ context.Context, s *Server, c *call) (any, *protoc
 // the operational dataset go-fabric's facade does not export (report S1,
 // Left out).
 func cmdGetAllCredentials(_ context.Context, s *Server, _ *call) (any, *protocol.Error) {
-	wifi, thread := s.cfg.summaries()
-	return map[string]any{"wifi": wifi, "thread": thread}, nil
+	wifi, threads := s.cfg.summaries()
+	return map[string]any{"wifi": wifi, "thread": threads}, nil
 }
 
 func credentialID(id *string) string {
@@ -205,10 +218,13 @@ func isHex(s string) bool {
 // "HomeAssistant"; the argument itself is required,
 // docs/websockets_api.md:2483-2486). The first connection that sets it
 // owns it until it disconnects; a pinned --default-fabric-label ignores
-// every request. The label reaches our fabric on the controller's next
-// first run only: go-fabric's facade has no route to change the label of
-// a running fabric and push it to the nodes (report S1, Questions Q8).
-func cmdSetDefaultFabricLabel(_ context.Context, s *Server, c *call) (any, *protocol.Error) {
+// every request. The label is stored for the next start and pushed to the
+// fabric and every connected node in the background
+// (client.Registry.SetFabricLabel, go-fabric v0.12.1; a node offline gets
+// it at its next connection), as matterjs-server pushes it
+// (ControllerCommandHandler.ts:1559-1626); a newer label cancels the push
+// of an older one, and the answer does not wait for it.
+func cmdSetDefaultFabricLabel(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Label *string `json:"label"`
 	}
@@ -237,7 +253,35 @@ func cmdSetDefaultFabricLabel(_ context.Context, s *Server, c *call) (any, *prot
 	if err := s.cfg.setLabel(label); err != nil {
 		return nil, protocol.Errorf(protocol.UnknownError, "%s: %v", c.req.Command, err)
 	}
+	s.pushLabel(context.WithoutCancel(ctx), s.cfg.label())
 	return nil, nil
+}
+
+// labelPushTimeout bounds one background label push.
+const labelPushTimeout = 2 * time.Minute
+
+// pushLabel sets our fabric's label and reconciles it to the connected
+// nodes in the background, cancelling a push still running.
+func (s *Server) pushLabel(parent context.Context, label string) {
+	b := s.b()
+	if b == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(parent, labelPushTimeout)
+	s.labelMu.Lock()
+	if s.labelCancel != nil {
+		s.labelCancel()
+	}
+	s.labelCancel = cancel
+	s.labelMu.Unlock()
+	s.bg.Add(1)
+	go func() {
+		defer s.bg.Done()
+		defer cancel()
+		if err := b.Registry().SetFabricLabel(ctx, label); err != nil {
+			s.log.Warn("fabricserver.label.push", slog.String("label", label), slog.Any("error", err))
+		}
+	}()
 }
 
 func cmdGetFabricLabel(_ context.Context, s *Server, _ *call) (any, *protocol.Error) {

@@ -158,6 +158,11 @@ func cmdSubscribe(ctx context.Context, s *Server, c *call) (any, *protocol.Error
 	if perr != nil {
 		return nil, perr
 	}
+	// The server's own subscription of the node (enable_auto_subscription)
+	// does not keep other subscriptions (docs/websockets_api.md:842-846).
+	if n.AutoSubscribe() {
+		return nil, invalidArgs(c.req.Command, "node %d has the server's own subscription (enable_auto_subscription); disable it first", nodeID)
+	}
 	paths, perr := a.request(c.req.Command)
 	if perr != nil {
 		return nil, perr

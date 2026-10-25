@@ -4,6 +4,7 @@
 package controllerapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strconv"
@@ -369,13 +370,9 @@ func cmdDeviceCommand(ctx context.Context, s *Server, c *call) (any, *protocol.E
 	if perr != nil {
 		return nil, perr
 	}
-	var processing time.Duration
-	if a.InteractionTimeout != nil {
-		v, err := strconv.ParseUint(a.InteractionTimeout.String(), 10, 53)
-		if err != nil {
-			return nil, invalidArgs(c.req.Command, "interaction_timeout_ms must be an integer from 0 to 2^53-1")
-		}
-		processing = time.Duration(v) * time.Millisecond //nolint:gosec // bounded above
+	processing, perr := interactionTimeout(c.req.Command, a.InteractionTimeout)
+	if perr != nil {
+		return nil, perr
 	}
 	cl := schema.ClusterByID(*a.ClusterID)
 	cmd := cl.CommandByName(*a.CommandName)
@@ -397,15 +394,157 @@ func cmdDeviceCommand(ctx context.Context, s *Server, c *call) (any, *protocol.E
 	return responseJSON(*a.ClusterID, res.Command, res.Fields), nil
 }
 
-// cmdBatchedDeviceCommands is answered by the dispatcher's gap check
-// (Questions Q7).
-func cmdBatchedDeviceCommands(context.Context, *Server, *call) (any, *protocol.Error) {
-	return nil, protocol.Errorf(protocol.InvalidCommand, "batched_device_commands is not available")
+// batchedResult is BatchedCommandResult (python client models.py:903-909):
+// the command's status, its cluster status when the device sent one, its
+// response's fields by name when it answered with data.
+type batchedResult struct {
+	Status        int             `json:"status"`
+	ClusterStatus *int            `json:"cluster_status,omitempty"`
+	Response      json.RawMessage `json:"response,omitempty"`
 }
 
-// cmdSetAutoSubscription refuses outside --disable-auto-subscription, as
-// matterjs-server does (docs/websockets_api.md:3118); in that mode the
-// dispatcher's gap check answers (Questions Q9).
-func cmdSetAutoSubscription(_ context.Context, _ *Server, c *call) (any, *protocol.Error) {
-	return nil, invalidArgs(c.req.Command, "only available with the server running with --disable-auto-subscription")
+// cmdBatchedDeviceCommands invokes several commands on one node in one
+// InvokeRequest, in their order (client.Node.InvokeBatch, go-fabric
+// v0.12.1) — matterjs-server's #handleBatchedDeviceCommands
+// (WebSocketControllerHandler.ts:1821-1883, ControllerCommandHandler.ts:1826-1911):
+// every entry is checked before anything is sent; more commands than the
+// node's MaxPathsPerInvoke are refused, so the batch is never split; one
+// command failing does not fail the others, a failed exchange fails the
+// request.
+func cmdBatchedDeviceCommands(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	var a struct {
+		nodeArg
+		Commands           []json.RawMessage `json:"commands"`
+		TimedTimeout       *json.Number      `json:"timed_request_timeout_ms"`
+		InteractionTimeout *json.Number      `json:"interaction_timeout_ms"`
+	}
+	if err := c.args(&a); err != nil {
+		return nil, err
+	}
+	n, nodeID, perr := s.node(c.req.Command, a.NodeID)
+	if perr != nil {
+		return nil, perr
+	}
+	if len(a.Commands) == 0 {
+		return nil, invalidArgs(c.req.Command, "requires a non-empty commands list")
+	}
+	timed, perr := timedTimeout(c.req.Command, a.TimedTimeout)
+	if perr != nil {
+		return nil, perr
+	}
+	processing, perr := interactionTimeout(c.req.Command, a.InteractionTimeout)
+	if perr != nil {
+		return nil, perr
+	}
+	reqs, anyTimed, perr := batchRequests(c.req.Command, a.Commands)
+	if perr != nil {
+		return nil, perr
+	}
+	if most := n.MaxPathsPerInvoke(); len(reqs) > most {
+		return nil, invalidArgs(c.req.Command, "has %d commands, but node %d accepts at most %d per invoke (its MaxPathsPerInvoke, 1 when it reports none)", len(reqs), nodeID, most)
+	}
+	opts := client.InvokeOptions{Timed: timed > 0 || anyTimed, TimedTimeout: timed, ExpectedProcessingTime: processing}
+	results, err := n.InvokeBatch(ctx, reqs, opts)
+	if err != nil {
+		return nil, nodeError(c.req.Command, err)
+	}
+	out := make([]batchedResult, len(results))
+	for i := range results {
+		r := &results[i]
+		out[i].Status = int(r.Status)
+		if r.ClusterStatus != nil {
+			cs := int(*r.ClusterStatus)
+			out[i].ClusterStatus = &cs
+		}
+		if r.HasFields {
+			out[i].Response = responseJSON(reqs[i].Path.Cluster, r.Command, r.Fields)
+		}
+	}
+	return out, nil
+}
+
+// batchRequests checks and encodes the entries of batched_device_commands
+// (WebSocketControllerHandler.ts:1826-1850).
+func batchRequests(command string, raw []json.RawMessage) (reqs []client.CommandRequest, anyTimed bool, perr *protocol.Error) {
+	reqs = make([]client.CommandRequest, 0, len(raw))
+	for i, r := range raw {
+		var e struct {
+			EndpointID  *uint16         `json:"endpoint_id"`
+			ClusterID   *uint32         `json:"cluster_id"`
+			CommandName *string         `json:"command_name"`
+			Payload     json.RawMessage `json:"payload"`
+		}
+		if b := bytes.TrimSpace(r); len(b) == 0 || b[0] != '{' {
+			return nil, false, invalidArgs(command, "command %d must be an object", i)
+		}
+		if json.Unmarshal(r, &e) != nil || e.EndpointID == nil || *e.EndpointID == 0xFFFF || e.ClusterID == nil || e.CommandName == nil {
+			return nil, false, invalidArgs(command, "command %d needs endpoint_id, cluster_id and command_name", i)
+		}
+		cl := schema.ClusterByID(*e.ClusterID)
+		if cl == nil {
+			return nil, false, invalidArgs(command, "command %d: Cluster Id \"%d\" unknown", i, *e.ClusterID)
+		}
+		if cl.Name == "WebRtcTransportProvider" {
+			return nil, false, invalidArgs(command, "command %d: send WebRTC Transport Provider commands with device_command or send_webrtc_provider_command", i)
+		}
+		cmd := cl.CommandByName(*e.CommandName)
+		if cmd == nil {
+			return nil, false, invalidArgs(command, "command %d: Command \"%s\" does not exist on cluster \"%s\"", i, *e.CommandName, cl.Name)
+		}
+		fields, err := encodeCommand(cl.ID, cmd.ID, e.Payload)
+		if err != nil {
+			return nil, false, invalidArgs(command, "command %d: Invalid command fields: %v", i, err)
+		}
+		anyTimed = anyTimed || cmd.Timed
+		reqs = append(reqs, client.CommandRequest{Path: client.CommandAt(*e.EndpointID, cl.ID, cmd.ID), Fields: fields})
+	}
+	return reqs, anyTimed, nil
+}
+
+// interactionTimeout reads interaction_timeout_ms: an integer from 0 to
+// 2^53-1.
+func interactionTimeout(command string, raw *json.Number) (time.Duration, *protocol.Error) {
+	if raw == nil {
+		return 0, nil
+	}
+	v, err := strconv.ParseUint(raw.String(), 10, 53)
+	if err != nil {
+		return 0, invalidArgs(command, "interaction_timeout_ms must be an integer from 0 to 2^53-1")
+	}
+	return time.Duration(v) * time.Millisecond, nil //nolint:gosec // bounded above
+}
+
+// cmdSetAutoSubscription switches the server's own subscription to one
+// node on or off (client.Node.SetAutoSubscribe, go-fabric v0.12.1) — only
+// with --disable-auto-subscription, as matterjs-server
+// (ControllerCommandHandler.ts:2488-2562): enabling ends the node's
+// subscriptions opened with subscribe (each gets subscription_ended), and
+// subscribe to the node is refused while it is on. go-fabric persists the
+// choice in the node's settings, matterjs-server does not (report S3,
+// by_design candidate).
+func cmdSetAutoSubscription(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	if !s.opts.DisableAutoSubscription {
+		return nil, invalidArgs(c.req.Command, "requires the server to run with --disable-auto-subscription")
+	}
+	var a nodeArg
+	if err := c.args(&a); err != nil {
+		return nil, err
+	}
+	if a.NodeID != nil && isTestNodeID(uint64(*a.NodeID)) {
+		return nil, protocol.Errorf(protocol.InvalidArguments, "Auto subscription commands are not supported for test nodes")
+	}
+	n, nodeID, perr := s.node(c.req.Command, a.NodeID)
+	if perr != nil {
+		return nil, perr
+	}
+	on := c.req.Command == "enable_auto_subscription"
+	if err := n.SetAutoSubscribe(ctx, on); err != nil {
+		return nil, nodeError(c.req.Command, err)
+	}
+	if on {
+		s.mu.Lock()
+		s.endNodeSubscriptions(nodeID)
+		s.mu.Unlock()
+	}
+	return nil, nil
 }
