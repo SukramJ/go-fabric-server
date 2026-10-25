@@ -98,8 +98,8 @@ func cmdSetACLEntry(ctx context.Context, s *Server, c *call) (any, *protocol.Err
 	var a struct {
 		nodeArg
 		Entry *[]struct {
-			Privilege *json.Number      `json:"privilege"`
-			AuthMode  *json.Number      `json:"auth_mode"`
+			Privilege *json.Number       `json:"privilege"`
+			AuthMode  *json.Number       `json:"auth_mode"`
 			Subjects  *[]protocol.Uint64 `json:"subjects"`
 			Targets   *[]struct {
 				Cluster    *json.Number `json:"cluster"`
