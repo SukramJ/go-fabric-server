@@ -16,6 +16,14 @@ var jsonSchema []byte
 // as GET /schema serves it. The caller must not modify it.
 func JSONSchema() []byte { return jsonSchema }
 
+//go:embed declaration.schema.json
+var declarationSchema []byte
+
+// DeclarationSchema is the JSON Schema (draft 2020-12) of the bridge
+// half's declaration document and of a set's patch, as GET
+// /schema/declaration serves it. The caller must not modify it.
+func DeclarationSchema() []byte { return declarationSchema }
+
 type index struct {
 	byID     map[uint32]*Cluster
 	byName   map[string]*Cluster

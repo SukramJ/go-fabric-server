@@ -1279,10 +1279,10 @@ var clusters = []*Cluster{
 			{ID: 65533, Name: "ClusterRevision", Property: "clusterRevision", Type: Type{Name: "ClusterRevision", Meta: MetaUint, Bits: 16}},
 		},
 		Commands: []Command{
-			{ID: 0, Name: "Pause", Property: "pause", Request: false, Response: "", Fields: nil},
-			{ID: 1, Name: "Stop", Property: "stop", Request: false, Response: "", Fields: nil},
-			{ID: 2, Name: "Start", Property: "start", Request: false, Response: "", Fields: nil},
-			{ID: 3, Name: "Resume", Property: "resume", Request: false, Response: "", Fields: nil},
+			{ID: 0, Name: "Pause", Property: "pause", Request: true, Response: "OperationalCommandResponse", Fields: nil},
+			{ID: 1, Name: "Stop", Property: "stop", Request: true, Response: "OperationalCommandResponse", Fields: nil},
+			{ID: 2, Name: "Start", Property: "start", Request: true, Response: "OperationalCommandResponse", Fields: nil},
+			{ID: 3, Name: "Resume", Property: "resume", Request: true, Response: "OperationalCommandResponse", Fields: nil},
 			{ID: 4, Name: "OperationalCommandResponse", Property: "operationalCommandResponse", Request: false, Response: "", Fields: []Field{
 				{ID: 0, Name: "CommandResponseState", Property: "commandResponseState", Type: Type{Name: "ErrorStateStruct", Meta: MetaStruct, Struct: dt0048_ErrorStateStruct}, Mandatory: true},
 			}},
@@ -1712,10 +1712,10 @@ var clusters = []*Cluster{
 			{ID: 65533, Name: "ClusterRevision", Property: "clusterRevision", Type: Type{Name: "ClusterRevision", Meta: MetaUint, Bits: 16}},
 		},
 		Commands: []Command{
-			{ID: 0, Name: "Pause", Property: "pause", Request: false, Response: "", Fields: nil},
-			{ID: 1, Name: "Stop", Property: "stop", Request: false, Response: "", Fields: nil},
-			{ID: 2, Name: "Start", Property: "start", Request: false, Response: "", Fields: nil},
-			{ID: 3, Name: "Resume", Property: "resume", Request: false, Response: "", Fields: nil},
+			{ID: 0, Name: "Pause", Property: "pause", Request: true, Response: "OperationalCommandResponse", Fields: nil},
+			{ID: 1, Name: "Stop", Property: "stop", Request: true, Response: "OperationalCommandResponse", Fields: nil},
+			{ID: 2, Name: "Start", Property: "start", Request: true, Response: "OperationalCommandResponse", Fields: nil},
+			{ID: 3, Name: "Resume", Property: "resume", Request: true, Response: "OperationalCommandResponse", Fields: nil},
 			{ID: 4, Name: "OperationalCommandResponse", Property: "operationalCommandResponse", Request: false, Response: "", Fields: []Field{
 				{ID: 0, Name: "CommandResponseState", Property: "commandResponseState", Type: Type{Name: "ErrorStateStruct", Meta: MetaStruct, Struct: dt0061_ErrorStateStruct}, Mandatory: true},
 			}},

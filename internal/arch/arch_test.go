@@ -42,11 +42,14 @@ var facade = map[string]bool{
 	// The trust anchors of a production attestation store: the facade has
 	// no one-call production store (report S1, Questions Q10).
 	"controller/dcl/snapshot": true,
-	"client/discovery":        true,
-	"client/exchange":         true,
-	"client/handshake":        true,
-	"client/interaction":      true,
-	"client/peer":             true,
+	// The DCL client of get_vendor_names (brief S2 §2): the ledger's
+	// vendor records, as matterjs-server's vendor info service reads them.
+	"controller/dcl":     true,
+	"client/discovery":   true,
+	"client/exchange":    true,
+	"client/handshake":   true,
+	"client/interaction": true,
+	"client/peer":        true,
 }
 
 // exceptions are imports below the facade one package may make, each a
@@ -70,12 +73,13 @@ var layers = map[string][]string{
 	"internal/arch":   {},
 	"client":          {"protocol"},
 	"controllerapi":   {"protocol", "protocol/schema", "internal/wire"},
-	"bridgeapi":       {},
+	"bridgeapi":       {"protocol", "protocol/schema"},
 }
 
 // testLayers widen layers for a package's tests.
 var testLayers = map[string][]string{
 	"controllerapi": {"client", "internal/daemon"},
+	"bridgeapi":     {"client", "internal/daemon", "controllerapi"},
 }
 
 func isDef(rel string) bool {
@@ -167,6 +171,10 @@ func TestGuardRefuses(t *testing.T) {
 		{"protocol", "transport/udp", false},
 		{"client", "secure/setup", true},
 		{"controllerapi", "cluster/spec/onoff/internal", false},
+		{"bridgeapi", "cluster/spec", false},
+		{"bridgeapi", "endpoint", false},
+		{"bridgeapi", "bridge", false},
+		{"bridgeapi", "im", false},
 	} {
 		if facadeImport(c.pkg, c.dep, c.test) {
 			t.Errorf("%s may not import %s", c.pkg, c.dep)
@@ -180,6 +188,9 @@ func TestGuardRefuses(t *testing.T) {
 		{"controllerapi", "cluster/spec/onoff", false},
 		{"internal/wire", "tlv", false},
 		{"controllerapi", "fabrictest", true},
+		{"bridgeapi", "cluster/spec/powersource", false},
+		{"bridgeapi", "device", false},
+		{"bridgeapi", "node", false},
 	} {
 		if !facadeImport(c.pkg, c.dep, c.test) {
 			t.Errorf("%s may import %s", c.pkg, c.dep)

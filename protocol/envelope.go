@@ -42,6 +42,14 @@ const (
 	CameraResourceExhausted  ErrorCode = 103
 )
 
+// The codes of the bridge half (/bridge) beyond matterjs-server's: our own
+// protocol, numbered from 200 so they never meet a controller-half code.
+const (
+	// BridgeClientConnected refuses a second bridge client: the daemon's
+	// node has one author.
+	BridgeClientConnected ErrorCode = 200
+)
+
 // Commissioning failure reasons — the reason field of a
 // NodeCommissionFailed error (docs/websockets_api.md:82-90 of
 // matterjs-server; CommissionFailureReason, ws-client model.ts:1757).
