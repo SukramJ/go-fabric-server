@@ -3,7 +3,10 @@
 # gofumpt + golangci-lint + go.mod tidiness), security (govulncheck +
 # go-licenses + the gitleaks history scan), test (the OS triplet, race
 # detector on), coverage (the per-package floors), fuzz-smoke (the JSON
-# decoders and paths), build (the daemon, the image, the release matrix).
+# decoders and paths), build (the daemon, the image, the release matrix),
+# compat-python (matterjs-server's python client at Home Assistant's pin
+# against the running daemon and a commissioned reference bridge; required
+# for merge from v0.3.0 on).
 name: ci
 
 on:
@@ -138,3 +141,24 @@ jobs:
         run: make release
       - name: image
         run: docker build -f deploy/Dockerfile -t go-fabric-server:ci .
+
+  compat-python:
+    name: compat-python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - name: matter-python-client (pinned, hashed)
+        run: |
+          python -m venv "$RUNNER_TEMP/compat"
+          "$RUNNER_TEMP/compat/bin/pip" install --require-hashes -r test/compat/requirements.txt
+      - name: the python client against the daemon and a reference bridge
+        env:
+          COMPAT_BRIDGE: "1"
+        run: PYTHON="$RUNNER_TEMP/compat/bin/python" test/compat/run.sh
