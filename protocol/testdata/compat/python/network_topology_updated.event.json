@@ -1,0 +1,8 @@
+{
+  "event": "network_topology_updated",
+  "data": {
+    "collected_at": 1735689600000,
+    "nodes": [{ "id": "4", "kind": "matter", "network_type": "ethernet", "node_id": 4, "available": false }],
+    "connections": []
+  }
+}

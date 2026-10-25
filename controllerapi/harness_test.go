@@ -13,12 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SukramJ/go-fabric/client/discovery"
 	"github.com/SukramJ/go-fabric/clock"
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
 	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/client"
-	"github.com/SukramJ/go-fabric/controller/commissioner"
+	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
@@ -27,36 +25,6 @@ import (
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 	"github.com/SukramJ/go-fabric-server/internal/daemon"
 )
-
-// siteBackend is the server's controller in the tests: fabrictest's
-// controller of the site. controller.New cannot take the site's network
-// and clock (it opens its own UDP socket and DNS-SD browser; report S1,
-// Questions Q1-test), so the tests drive fabrictest.AddController's stack —
-// the same registry and commissioner types controller.New builds — and
-// pair through fabrictest's CommissionNode, which runs the registry route
-// controller.Pair runs (discover by discriminator, Registry.ForDevice,
-// Registry.Commission) on the site's DNS-SD.
-type siteBackend struct {
-	c   *fabrictest.Controller
-	dev *fabrictest.Device
-}
-
-func (b *siteBackend) Registry() *client.Registry   { return b.c.Registry() }
-func (b *siteBackend) Fabric() *commissioner.Fabric { return b.c.Fabric() }
-func (b *siteBackend) Discover(ctx context.Context, id discovery.Identifier, timeout time.Duration) ([]client.Device, error) {
-	return b.c.Discover(ctx, id, timeout)
-}
-
-func (b *siteBackend) Pair(ctx context.Context, code string, opts controller.PairOptions) (*client.Node, error) {
-	qr, manual, err := b.dev.Node().PairingCodes()
-	if err != nil {
-		return nil, err
-	}
-	if code != qr && code != manual {
-		return nil, controller.ErrNoDevice
-	}
-	return b.c.CommissionNode(ctx, b.dev, client.CommissionOptions{AutoSubscribe: opts.AutoSubscribe})
-}
 
 // env is one test's site, server and client.
 type env struct {
@@ -68,6 +36,7 @@ type env struct {
 	url    string
 	ctx    context.Context
 	client *fsclient.Client
+	ctrl   *controller.Controller
 }
 
 type envOptions struct {
@@ -75,6 +44,11 @@ type envOptions struct {
 	token  string
 	// noDial skips the client connection.
 	noDial bool
+	// rejectAttestation keeps the server's default policy, which rejects
+	// the site device's test certificate.
+	rejectAttestation bool
+	// configure edits the controller's configuration.
+	configure func(*controller.Config)
 }
 
 func logger() *slog.Logger {
@@ -104,6 +78,11 @@ func newEnv(t *testing.T, o envOptions) *env {
 	if o.server.Logger == nil {
 		o.server.Logger = logger()
 	}
+	// The site's devices carry test certificates: accept their findings
+	// unless the test checks the rejection.
+	if !o.rejectAttestation {
+		o.server.Attestation = attestation.Accept()
+	}
 	if o.server.StoragePath == "" {
 		o.server.StoragePath = t.TempDir()
 	}
@@ -111,8 +90,24 @@ func newEnv(t *testing.T, o envOptions) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctrl := site.AddController(fabrictest.ControllerOptions{Registry: func(rc *client.RegistryConfig) { rc.HooksFor = api.Hooks }})
-	if err := api.Start(ctx, &siteBackend{c: ctrl, dev: dev}); err != nil {
+	// The daemon's own composition on the site (go-fabric v0.12.1,
+	// Site.ControllerConfig): controller.New with the site's network,
+	// DNS-SD and clock, the server's hooks per node.
+	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: logger()})
+	cfg.HooksFor = api.Hooks
+	if o.configure != nil {
+		o.configure(&cfg)
+	}
+	ctrl, err := controller.New(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cctx, ccancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer ccancel()
+		_ = ctrl.Close(cctx)
+	})
+	if err := api.Start(ctx, ctrl); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.Mux(api, o.token, "test"))
@@ -122,7 +117,7 @@ func newEnv(t *testing.T, o envOptions) *env {
 		api.Shutdown(sctx)
 		srv.Close()
 	})
-	e := &env{t: t, site: site, light: light, dev: dev, api: api, url: "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws", ctx: ctx}
+	e := &env{t: t, site: site, light: light, dev: dev, api: api, ctrl: ctrl, url: "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws", ctx: ctx}
 	if !o.noDial {
 		e.client = e.dial(fsclient.Options{Token: o.token})
 	}

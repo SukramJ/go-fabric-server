@@ -33,6 +33,11 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-vendor-id`, `--bridge-product-id` | `0xFFF1`, `0x8001` | the bridge node's vendor and product (the CSA test vendor) |
 | `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel |
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
+| `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
+| `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag); refused at start until go-fabric releases its BlueZ central on v0.12 |
+| `--web` | — | serve the bridge node's pages (go-fabric-ui) on this address; read-only unless `--web-admin` or `--web-admin-source` |
+| `--web-admin` | `false` | the pages may write and show the pairing code (the page's token mode) |
+| `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
 | `--version` | — | print the version and exit |
 
@@ -120,3 +125,25 @@ into `systemctl edit fabric-server` as `Environment=FABRIC_SERVER_…` lines.
 slog text lines on stderr (journald, `docker logs`); the message keys follow
 go-fabric's convention (`fabricserver.*` for the server, `matter.*` for the
 stack).
+
+## The node pages
+
+`--web host:port` serves go-fabric-ui's node pages (`fabricui.Handler`,
+v0.1.1) for the bridge node of `--bridge`: status, pairing, fabrics, the
+commissioning window, diagnostics. Without `--bridge` the node family is
+shown as disabled. The host decides what is exposed over `/bridge`, so the
+pages have no exposure selection. Three admin modes:
+
+- default — read-only: no writes, no pairing code;
+- `--web-admin` — the page's token mode: a random per-process token in
+  `GET /api/v1/node/status` the page sends with every write;
+- `--web-admin-source IP` — only requests from that address are answered,
+  each as an admin: the Ingress proxy of a Home Assistant add-on
+  authenticates the user ([addon.md](addon.md)).
+
+The controller pages come with go-fabric-ui's next family (U2).
+
+## Home Assistant
+
+[home-assistant.md](home-assistant.md) says how the Matter integration is
+pointed at the server; [addon.md](addon.md) is the add-on.

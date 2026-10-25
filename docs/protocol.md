@@ -13,15 +13,19 @@ python-matter-server that Home Assistant's Matter integration speaks:
 
 - the same envelope, error codes, event names and shapes;
 - `server_info` reports `schema_version` 14 and `min_supported_schema_version` 11;
-- every command of matterjs-server's dispatch is answered: the S1 set as
-  matterjs-server answers it, the rest with `InvalidCommand` (9) and a
-  `details` that names what brings it (`planned for S3|never`, or the
-  go-fabric release it waits for: `go-fabric v0.12.0 (milestone 5, …)`,
-  `go-fabric phase 25 (…)`) or the go-fabric facade route it needs.
+- every command of matterjs-server's dispatch is answered: the implemented
+  ones as matterjs-server answers them, the rest with `InvalidCommand` (9)
+  and a `details` that names the go-fabric route it waits for (`needs the
+  OTA provider on go-fabric's controller (milestone 5 phase 25 …)`, `needs
+  a Thread border router route in go-fabric (milestone 6, ADR 0027 …)`) or
+  says it is not planned (camera and WebRTC).
 
 The test `controllerapi/compat_internal_test.go` holds the server's types
 against matterjs-server's documented examples
-(`protocol/testdata/compat/`).
+(`protocol/testdata/compat/`) and against the shapes of its python client
+(`protocol/testdata/compat/python/`); the CI job `compat-python` runs the
+python client Home Assistant pins (`matter-python-client==1.4.0`) against
+the daemon and a commissioned device ([compat.md](compat.md)).
 
 ## Envelope
 
@@ -74,38 +78,71 @@ reported as `other` until go-fabric names an attestation rejection.
 | Command | Status | Notes |
 | --- | --- | --- |
 | `server_info` | implemented | plus `capabilities` |
-| `start_listening` | implemented | the dump, then events |
+| `start_listening` | implemented | the dump (test nodes after the real ones), then events |
 | `get_nodes`, `get_node` | implemented | |
-| `commission_with_code` | implemented | QR or manual code; the stored Wi-Fi/Thread credentials are not used yet (devices on the network) |
-| `commission_on_network` | needs go-fabric | discovery route on the controller facade; works with a backend that has one |
-| `parse_onboarding_payload` | needs go-fabric | an exported payload decoder |
-| `discover_commissionable_nodes`, `discover` | needs go-fabric | discovery route |
+| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` and a stored Wi-Fi or Thread credential (the flag waits for a go-fabric BlueZ release, see operations); an attestation the policy rejects: 1, reason `attestation-rejected` |
+| `commission_on_network` | implemented | `Controller.Discover` in 2-second rounds until the device of the filter (and `ip_addr`) answers, then the registry's commissioning |
+| `parse_onboarding_payload` | implemented | `{type: "qr", payloads: […]}` or `{type: "manual", …}`; `vendor_id`/`product_id` left out where the code says 0 |
+| `discover_commissionable_nodes`, `discover` | implemented | `Controller.Discover`, 3 seconds |
 | `read_attribute` | implemented | wildcards, batches of 9, unfiltered unless `fabric_filtered` |
 | `read` | implemented | strict paths, `attribute_status`, `event_status`, `data_versions` |
 | `write_attribute` | implemented | `*` endpoint, `timed_request_timeout_ms` |
-| `device_command` | implemented | `command_name` in any case, payload by field names; no group ids |
-| `batched_device_commands` | needs go-fabric | a multi-command invoke |
-| `subscribe`, `unsubscribe` | implemented | only with `--disable-auto-subscription` |
-| `enable_auto_subscription`, `disable_auto_subscription` | needs go-fabric | per-node switching of the server's subscription |
+| `device_command` | implemented | `command_name` in any case, payload by field names; a mandatory field left out takes matter.js's fallback; no group ids |
+| `batched_device_commands` | implemented | one InvokeRequest (`client.Node.InvokeBatch`), never split: more commands than the node's MaxPathsPerInvoke are refused (8); `[{status, cluster_status?, response?}]` |
+| `subscribe`, `unsubscribe` | implemented | only with `--disable-auto-subscription`; refused for a node with the server's own subscription on |
+| `enable_auto_subscription`, `disable_auto_subscription` | implemented | only with `--disable-auto-subscription` (`client.Node.SetAutoSubscribe`); enabling ends the node's `subscribe` subscriptions |
 | `remove_node` | implemented | `client.Registry.Decommission` |
 | `interview_node` | implemented | a full read without version filters |
 | `ping_node` | implemented | a Matter read instead of ICMP (see below) |
 | `get_node_ip_addresses` | implemented | from the node's record |
-| `open_commissioning_window` | needs go-fabric | an enhanced commissioning window route |
-| `set_/remove_wifi_credentials`, `set_/remove_thread_dataset`, `get_all_credentials` | implemented | secrets are write-only; Thread summaries carry the id only |
-| `set_default_fabric_label`, `get_fabric_label` | implemented | stored; reaches the fabric on its first run only (see below) |
+| `open_commissioning_window` | implemented | an enhanced window (`client.Node.OpenCommissioningWindow`), `timeout` in seconds; `iteration`, `option`, `discriminator` accepted and not used, as matterjs-server |
+| `set_/remove_wifi_credentials`, `get_all_credentials` | implemented | secrets are write-only |
+| `set_/remove_thread_dataset` | implemented | the dataset must be hex and MeshCoP TLVs; `get_all_credentials` names its `networkName` and `extPanId` |
+| `set_default_fabric_label`, `get_fabric_label` | implemented | trimmed, empty is `HomeAssistant`, at most 32 characters; stored and pushed to every connected node in the background |
 | `get_matter_fabrics`, `remove_matter_fabric` | implemented | |
 | `diagnostics` | implemented | `{info, nodes, events}`, the last 25 node events |
 | `get_loglevel`, `set_loglevel` | implemented | console level; `file_loglevel` is `null` |
-| `set_acl_entry` | implemented (S2) | the whole ACL of our fabric in one write; a subject naming the node itself is left out; result `[{path: {endpoint_id, cluster_id, attribute_id}, status}]` |
-| `set_node_binding` | implemented (S2) | the whole Binding list of `endpoint`; the same result shape |
-| `get_vendor_names` | implemented (S2) | the production DCL's vendor records, kept for a day; `filter_vendors` narrows them |
-| `get_icd_state`, `register_icd`, `resync_icd`, `unregister_icd` | waits for go-fabric v0.12.0 | the ICD client of go-fabric's milestone 5 |
-| `check_node_update`, `update_node`, `initiate_ota_upload` | waits for go-fabric phase 25 | the OTA provider on the controller |
-| `import_test_node` | planned for S3 | not a pure cache operation: every node command would route test nodes apart |
+| `set_acl_entry` | implemented | the whole ACL of our fabric in one write; a subject naming the node itself is left out; result `[{path: {endpoint_id, cluster_id, attribute_id}, status}]` |
+| `set_node_binding` | implemented | the whole Binding list of `endpoint`; the same result shape |
+| `get_vendor_names` | implemented | the production DCL's vendor records, kept for a day; `filter_vendors` narrows them |
+| `get_icd_state`, `register_icd`, `resync_icd`, `unregister_icd` | implemented | go-fabric's ICD client; `IcdStateData` with every key; a multi-admin refusal is `IcdMultiAdmin` (100) with matterjs-server's JSON details |
+| `get_network_topology` | implemented | from the node data: Thread links from the neighbor tables, Wi-Fi access points, our `ip_addresses`; opts the connection in to `network_topology_updated` |
+| `import_test_node` | implemented | a diagnostics dump's nodes as test nodes (ids from `0xFFFFFFFE00000000`), in memory, answered as matterjs-server's TestNodeCommandHandler answers |
+| `check_node_update`, `update_node`, `initiate_ota_upload` | waits for go-fabric | the OTA provider on the controller (milestone 5 phase 25) |
+| `get_thread_border_routers`, `get_thread_diagnostics` | waits for go-fabric | a Thread border router route (milestone 6, ADR 0027) |
+| `camera_*`, `send_webrtc_provider_command` | never | camera and WebRTC are out of scope |
 
-"needs go-fabric" commands answer `InvalidCommand` with `details` naming the
-missing route and are absent from `capabilities`.
+A command the server does not answer is absent from `capabilities`.
+
+### Test nodes
+
+`import_test_node {dump}` takes a JSON string of a Home Assistant
+diagnostics dump (`data.node`, `data.server.nodes` or `data.nodes`) and adds
+each node under the next free id from `0xFFFFFFFE00000000` (`node_added`).
+A test node answers `get_node`, `read_attribute` (from the dump, wildcards
+too), `write_attribute` (status 0, nothing written; a wildcard endpoint is
+8), `device_command` (`null`), `batched_device_commands` (status 0 each),
+`get_node_ip_addresses` and `ping_node` (matterjs-server's two placeholder
+addresses), `interview_node` (`node_updated`) and `remove_node`
+(`node_removed`); `read` and `subscribe` are 8, the ICD and
+auto-subscription commands 8, every other node command 5. Test nodes are
+lost on a restart, as in matterjs-server.
+
+### The network topology
+
+`get_network_topology {refresh}` answers `{collected_at, nodes,
+connections}`: a node per commissioned and test node (`kind: "matter"`,
+`network_type` from the root's NetworkCommissioning FeatureMap, Thread
+before Wi-Fi before Ethernet), a Thread node's role, extended address,
+RLOC16, extended PAN id and network name, a Wi-Fi node's SSID and BSSID;
+one connection per pair of Thread nodes that see each other (each
+direction's LQI and RSSI, dead links dropped), unknown Thread neighbours as
+`thread_unknown` nodes, one `wifi_ap` node per BSSID with a link from each
+station. `refresh` reads the network diagnostics clusters of every
+available node first. The connection then gets `network_topology_updated`
+whenever the topology changes. What matterjs-server adds from a Thread
+border router registry and from route tables waits for go-fabric's
+milestone 6.
 
 ## Node data and values
 
@@ -124,6 +161,14 @@ Values follow matterjs-server's conversion:
 - bytes are base64, enums and bitmaps numbers, epoch times the raw value;
 - a cluster or attribute outside go-fabric's model is sent as decoded from
   the TLV (structs keyed by tag), and its FeatureMap as `{}`.
+
+The conversion is go-fabric's (`client.EncodeJSON`/`DecodeJSON`, typed by
+its generated cluster definitions). For the 16 clusters go-fabric has no
+generated definition of (AccessControl, OperationalCredentials,
+GroupKeyManagement, the Thread, camera, TLS and Joint Fabric clusters) the
+server shapes go-fabric's untyped form by the snapshot's tables: names for
+command responses and events, field ids for attributes, and on the way in
+chip's typed prefixes for bytes, signed and float values.
 
 The JSON Schema of the values is served at `GET /schema`
 (`protocol/schema/schema.json`, generated with the go-fabric version in
@@ -157,6 +202,8 @@ are never queued. Metrics: `ws.connections`, `ws.queued_bytes`,
 Ignorable by a client that does not know them:
 
 - `capabilities` in `server_info`: the commands this server answers;
+- `ip_addresses` on a `matter` node of `get_network_topology`: the node's
+  known addresses;
 - `GET /schema`: the JSON Schema of the values;
 - `GET /health`: `{version, node_count, healthy}`;
 - the bearer token (see operations).
@@ -177,13 +224,23 @@ Ignorable by a client that does not know them:
   it differs.
 - `write_attribute` changes the node data with the device's next report, not
   at once.
-- `get_vendor_names` answers from the DCL only: matterjs-server merges a
-  static vendor table of its own under the ledger's, which this server does
-  not carry (no Matter tables of its own), so without the ledger the command
-  fails with `UnknownError`.
 - `set_acl_entry` and `set_node_binding` take our fabric's index on the node
   from its `CurrentFabricIndex` in the node data; without one the entries go
   without it and the node fills in the accessing fabric.
+
+- `enable_auto_subscription`'s choice persists in the node's settings
+  (go-fabric's `SetAutoSubscribe`); matterjs-server forgets it on a restart.
+- `set_thread_dataset` refuses a dataset that is hex but no MeshCoP TLVs;
+  matterjs-server checks the hex only.
+- `commission_on_network` with `ip_addr` searches by DNS-SD for the device
+  that announces the address; matterjs-server commissions at the address
+  first and falls back to discovery.
+- `discover` answers the keys a device announced; matterjs-server fills
+  absent ones with defaults (`""`, `0`, `-1`). The python client's
+  `CommissionableNodeData` has a default for every key.
+- A float value of the TLV's 4-byte form is the shortest decimal that reads
+  back as that float (`0.1`), not the double expansion matter.js's
+  JavaScript number prints (`0.10000000149011612`).
 
 `docs/by_design.md` keeps each deliberate difference with its reason.
 

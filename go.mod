@@ -3,9 +3,9 @@ module github.com/SukramJ/go-fabric-server
 go 1.27.3
 
 require (
-	github.com/SukramJ/go-fabric v0.11.0
+	github.com/SukramJ/go-fabric v0.12.1
+	github.com/SukramJ/go-fabric-ui v0.1.1
 	github.com/coder/websocket v1.8.15
-	modernc.org/sqlite v1.60.1
 )
 
 require (
@@ -23,4 +23,5 @@ require (
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
+	modernc.org/sqlite v1.60.1 // indirect
 )

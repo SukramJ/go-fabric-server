@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 go-fabric-server is licensed under the Apache License 2.0 (see
-[`LICENSE`](LICENSE)). It depends on three Go modules directly; every
+[`LICENSE`](LICENSE)). It depends on three Go modules directly (go-fabric, coder/websocket, go-fabric-ui); every
 further dependency is a decision recorded here (MIT, Apache-2.0, BSD and
 the equivalent ISC only). No third-party source is copied into this tree,
 except the documented JSON examples of matterjs-server that serve as test
@@ -30,23 +30,24 @@ The WebSocket transport: pure Go, context-aware, concurrent writes.
 - Decision: brief S1 §1 names it; the ISC licence is the permissive
   equivalent of MIT (report S1, Differences).
 
-### modernc.org/sqlite — BSD-3-Clause
+### github.com/SukramJ/go-fabric-ui — Apache-2.0
 
-The pure-Go SQLite driver the controller's database runs on (go-fabric's
-reference controller opens its database with it). Already in the module
-graph through go-fabric; a direct import here because the daemon opens the
-database the controller facade takes (`controller.Config.DB`).
+The node pages (`--web`, the add-on's Ingress): `fabricui.Handler` with
+its built bundle embedded in the module (no Node.js toolchain here).
 
-- Source: <https://gitlab.com/cznic/sqlite>
-- Copyright (c) 2017 The Sqlite Authors. BSD-3-Clause, see
-  [`licenses/LICENSE-modernc-sqlite.txt`](licenses/LICENSE-modernc-sqlite.txt).
-- Decision: report S1, Questions (the facade has no database opener).
+- Source: <https://github.com/SukramJ/go-fabric-ui>
+- Copyright (C) 2026 SukramJ. Apache License 2.0; the bundle's own notices
+  travel in its `THIRD-PARTY-NOTICES.md`.
+- Decision: brief S3 §5 (concept v9, one UI for the family's daemons).
 
 ## Indirect dependencies
 
 Through go-fabric: filippo.io/nistec (BSD-3-Clause), github.com/grandcat/zeroconf
 (MIT), github.com/miekg/dns (BSD-3-Clause), golang.org/x/net and
 golang.org/x/sys (BSD-3-Clause), github.com/cenkalti/backoff (MIT), and
+modernc.org/sqlite (BSD-3-Clause; a direct dependency until S3, when the
+daemon moved to `controller.OpenDB`, see
+[`licenses/LICENSE-modernc-sqlite.txt`](licenses/LICENSE-modernc-sqlite.txt)) and
 modernc.org's libc, mathutil and memory with their dependencies
 (BSD-3-Clause, MIT). `make licenses` (go-licenses) checks the whole graph
 in CI; modernc.org/mathutil's licence is BSD-3-Clause by its text, which

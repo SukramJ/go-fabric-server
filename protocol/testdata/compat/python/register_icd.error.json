@@ -1,0 +1,5 @@
+{
+  "message_id": "7",
+  "error_code": 100,
+  "details": "{\"message\":\"Peer has administrators from other vendors that may not support LIT\",\"admin_vendor_ids\":[4937]}"
+}

@@ -6,7 +6,6 @@ package controllerapi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -14,8 +13,8 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/client"
 	"github.com/SukramJ/go-fabric/controller/dcl"
+	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
 
-	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
@@ -46,7 +45,7 @@ func (s *Server) writeList(ctx context.Context, command string, n *client.Node, 
 	if err != nil {
 		return nil, invalidArgs(command, "%v", err)
 	}
-	value, timed, err := wire.EncodeAttribute(cl.ID, a.ID, raw)
+	value, timed, err := encodeAttribute(cl.ID, a.ID, raw)
 	if err != nil {
 		return nil, invalidArgs(command, "%v", err)
 	}
@@ -82,12 +81,8 @@ func (s *Server) fabricIndexOf(n *client.Node) (uint64, bool) {
 	if st == nil {
 		return 0, false
 	}
-	v, ok := st.attrs[wire.Key(0, cl.ID, a.ID)]
-	if !ok {
-		return 0, false
-	}
-	idx, err := strconv.ParseUint(fmt.Sprint(v), 10, 8)
-	return idx, err == nil
+	idx, ok := uintOf(st.attrs[attrKey(0, cl.ID, a.ID)])
+	return idx, ok && idx <= 0xFF
 }
 
 // cmdSetACLEntry replaces our fabric's ACL entries on the node
@@ -211,9 +206,13 @@ func cmdSetNodeBinding(ctx context.Context, s *Server, c *call) (any, *protocol.
 // records ([dcl.Client.Vendors]) unless Options.Vendors sets another.
 type VendorSource func(ctx context.Context) (map[uint16]string, error)
 
-// dclVendors is the default VendorSource: the production ledger's vendor
-// records (matterjs-server's vendor info service,
-// MatterController.ts:677-679), fetched once and kept for a day.
+// dclVendors is the default VendorSource — matterjs-server's vendor info
+// service (MatterController.ts:677-679, WebSocketControllerHandler.ts:1695-1728):
+// the vendors of go-fabric's embedded ledger snapshot
+// (controller/dcl/snapshot.Vendors, v0.12.1, itself over matter.js's
+// static vendors), with the production ledger's live records over them,
+// fetched once and kept for a day. Without the ledger the snapshot
+// answers alone.
 func dclVendors() VendorSource {
 	var (
 		mu      sync.Mutex
@@ -221,6 +220,12 @@ func dclVendors() VendorSource {
 		fetched time.Time
 	)
 	ledger := dcl.NewClient("")
+	base := map[uint16]string{}
+	if snap, err := snapshot.Embedded(); err == nil && snap != nil {
+		for _, v := range snap.Vendors() {
+			base[v.ID] = v.Name
+		}
+	}
 	return func(ctx context.Context) (map[uint16]string, error) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -232,9 +237,15 @@ func dclVendors() VendorSource {
 			if cache != nil {
 				return cache, nil
 			}
+			if len(base) > 0 {
+				return base, nil
+			}
 			return nil, err
 		}
-		cache = make(map[uint16]string, len(vendors))
+		cache = make(map[uint16]string, len(base)+len(vendors))
+		for id, name := range base {
+			cache[id] = name
+		}
 		for _, v := range vendors {
 			cache[v.VendorID] = v.VendorName
 		}
@@ -245,9 +256,9 @@ func dclVendors() VendorSource {
 
 // cmdGetVendorNames answers the vendor names by decimal vendor id, all of
 // them or those filter_vendors names (WebSocketControllerHandler.ts:1695-1728).
-// matterjs-server merges its own static vendor table under the DCL's;
-// this server has no table of its own (report S2, Questions Q18): without
-// the ledger the command fails.
+// The names are the embedded snapshot's with the ledger's over them
+// (dclVendors), as matterjs-server merges its static table under the
+// DCL's.
 func cmdGetVendorNames(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Filter []json.Number `json:"filter_vendors"`
