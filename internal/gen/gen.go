@@ -32,7 +32,24 @@ func Generate() (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string][]byte{"tables_gen.go": src, "schema.json": js}, nil
+	pkgs, err := defPackages()
+	if err != nil {
+		return nil, err
+	}
+	bridge, err := g.bridgeSource(pkgs)
+	if err != nil {
+		return nil, err
+	}
+	decl, err := g.declarationSchema(pkgs)
+	if err != nil {
+		return nil, err
+	}
+	return map[string][]byte{
+		"protocol/schema/tables_gen.go":           src,
+		"protocol/schema/schema.json":             js,
+		"protocol/schema/declaration.schema.json": decl,
+		"bridgeapi/clusters_gen.go":               bridge,
+	}, nil
 }
 
 type gen struct {
@@ -42,6 +59,9 @@ type gen struct {
 
 	vars    bytes.Buffer // the datatype variables
 	emitted map[string]bool
+	// named keys struct members by property name (the declaration
+	// schema) instead of by field id (the node data schema).
+	named bool
 }
 
 // datatype finds the datatype a value names: in the cluster, then in its
@@ -65,6 +85,35 @@ func (g *gen) datatype(v sValue, cl *sCluster) (dt *sDatatype, varName string) {
 		}
 	}
 	return nil, ""
+}
+
+// command resolves what a derived cluster's command leaves to its base:
+// the snapshot states only the overridden parts of an inherited command
+// (RvcOperationalState's Pause carries its conformance, not its
+// direction), and the base's command of the same id supplies the rest —
+// matter.js's model inherits the element (packages/model's
+// ClusterModel.base).
+func (g *gen) command(c *sCluster, x *sCommand) (direction, response string, fields []sField) {
+	direction, response, fields = x.Direction, x.Response, x.Effective.Fields
+	for b := g.byName[c.Base]; direction == "" && b != nil; b = g.byName[b.Base] {
+		for i := range b.Commands {
+			y := &b.Commands[i]
+			if y.ID != x.ID || y.Direction == "" {
+				continue
+			}
+			direction = y.Direction
+			if response == "" {
+				response = y.Response
+			}
+			if len(fields) == 0 {
+				fields = y.Effective.Fields
+			}
+		}
+		if b.Base == "" {
+			break
+		}
+	}
+	return direction, response, fields
 }
 
 func ident(name string) string {
@@ -245,8 +294,9 @@ func (g *gen) goSource() ([]byte, error) {
 				if x.Effective.Access.Timed {
 					timed = " Timed: true,"
 				}
+				direction, response, fields := g.command(c, x)
 				fmt.Fprintf(&cl, "{ID: %d, Name: %q, Property: %q, Request: %t, Response: %q,%s Fields: %s},\n",
-					x.ID, x.Name, camelize(x.Name), x.Direction == "request", x.Response, timed, g.fieldsExpr(x.Effective.Fields, c))
+					x.ID, x.Name, camelize(x.Name), direction == "request", response, timed, g.fieldsExpr(fields, c))
 			}
 			cl.WriteString("},\n")
 		}
@@ -433,12 +483,15 @@ func (g *gen) datatypeSchema(dt *sDatatype, cl *sCluster, defs map[string]any) m
 			s = nullable(s)
 		}
 		id := strconv.FormatUint(uint64(f.ID), 10)
+		if g.named {
+			id = camelize(f.Name)
+		}
 		props[id] = s
 		if f.Conformance.Text == "M" {
 			required = append(required, id)
 		}
 	}
-	s := map[string]any{"title": dt.Name, "type": "object", "properties": props, "additionalProperties": true}
+	s := map[string]any{"title": dt.Name, "type": "object", "properties": props, "additionalProperties": !g.named}
 	if len(required) > 0 {
 		s["required"] = required
 	}

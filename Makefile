@@ -70,7 +70,7 @@ tidy-check: ## verify go.mod/go.sum are tidy and the module checksums verify
 	$(GO) mod tidy -diff
 	$(GO) mod verify
 
-generate: ## regenerate protocol/schema from go-fabric's snapshot
+generate: ## regenerate protocol/schema and bridgeapi/clusters_gen.go from go-fabric
 	$(GO) run ./internal/gen
 
 cover: ## coverage profile of every package, as the floors count it
@@ -79,11 +79,13 @@ cover: ## coverage profile of every package, as the floors count it
 cover-check: cover ## fail when a package is below its floor (script/coverfloor/floors.txt)
 	$(GO) run ./script/coverfloor coverage.out
 
-fuzz-smoke: ## every fuzz target of the JSON decoders and paths, $(FUZZTIME) each
+fuzz-smoke: ## every fuzz target of the JSON decoders, the declaration and the paths, $(FUZZTIME) each
 	$(GO) test -run '^$$' -fuzz '^FuzzDecodeRequest$$' -fuzztime $(FUZZTIME) ./protocol/
 	$(GO) test -run '^$$' -fuzz '^FuzzParseUint64$$' -fuzztime $(FUZZTIME) ./protocol/
 	$(GO) test -run '^$$' -fuzz '^FuzzParsePath$$' -fuzztime $(FUZZTIME) ./internal/wire/
 	$(GO) test -run '^$$' -fuzz '^FuzzEncodeFields$$' -fuzztime $(FUZZTIME) ./internal/wire/
+	$(GO) test -run '^$$' -fuzz '^FuzzDecodeDeclaration$$' -fuzztime $(FUZZTIME) ./bridgeapi/
+	$(GO) test -run '^$$' -fuzz '^FuzzDecodePatch$$' -fuzztime $(FUZZTIME) ./bridgeapi/
 
 vuln: ## govulncheck ./...
 	govulncheck ./...

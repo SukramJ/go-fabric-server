@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,8 +25,10 @@ import (
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
+	"github.com/SukramJ/go-fabric/node"
 	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
 
+	"github.com/SukramJ/go-fabric-server/bridgeapi"
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 	"github.com/SukramJ/go-fabric-server/internal/version"
 	"github.com/SukramJ/go-fabric-server/protocol"
@@ -45,7 +48,15 @@ type Config struct {
 	DisableAutoSubscription bool
 	Controller              bool
 	Bridge                  bool
-	ShowVersion             bool
+	// The bridge half's node (--bridge).
+	BridgeListen        string
+	BridgePasscode      uint
+	BridgeDiscriminator uint
+	BridgeVendorID      uint
+	BridgeProductID     uint
+	BridgeLabel         string
+	BridgeResultTimeout time.Duration
+	ShowVersion         bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
 	// shell or curl).
@@ -73,7 +84,14 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.DefaultFabricLabel, "default-fabric-label", "", "pin the fabric label; set_default_fabric_label then has no effect")
 	fs.BoolVar(&c.DisableAutoSubscription, "disable-auto-subscription", false, "pair new nodes without the server's own subscription; enables subscribe and unsubscribe")
 	fs.BoolVar(&c.Controller, "controller", true, "run the controller half (/ws)")
-	fs.BoolVar(&c.Bridge, "bridge", false, "run the bridge half (/bridge; arrives with S2)")
+	fs.BoolVar(&c.Bridge, "bridge", false, "run the bridge half (/bridge): a bridge node whose devices a client declares")
+	fs.StringVar(&c.BridgeListen, "bridge-listen", "", "the bridge node's UDP address for Matter (default :5540)")
+	fs.UintVar(&c.BridgePasscode, "bridge-passcode", 20202021, "the bridge node's setup passcode (the public test value by default: change it before pairing for real)")
+	fs.UintVar(&c.BridgeDiscriminator, "bridge-discriminator", 3840, "the bridge node's discriminator")
+	fs.UintVar(&c.BridgeVendorID, "bridge-vendor-id", 0xFFF1, "the bridge node's vendor id (the CSA test vendor by default)")
+	fs.UintVar(&c.BridgeProductID, "bridge-product-id", 0x8001, "the bridge node's product id")
+	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel")
+	fs.DurationVar(&c.BridgeResultTimeout, "bridge-result-timeout", 5*time.Second, "how long a write or command event waits for the bridge client's result")
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	set := map[string]bool{}
@@ -137,9 +155,6 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if err := protocol.CheckListen(listen, c.Token); err != nil {
 		return err
 	}
-	if c.Bridge {
-		return errors.New("--bridge: the bridge half arrives with go-fabric-server S2")
-	}
 	if err := os.MkdirAll(c.StoragePath, 0o700); err != nil {
 		return fmt.Errorf("--storage-path: %w", err)
 	}
@@ -191,11 +206,21 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		}
 	}
 
+	var br *bridgeapi.Server
+	if c.Bridge {
+		var n *node.Node
+		br, n, err = startBridge(ctx, c, log)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = n.Stop(context.WithoutCancel(ctx)) }()
+	}
+
 	ln, err := listen.Open(ctx)
 	if err != nil {
 		return err
 	}
-	srv := &http.Server{Handler: Mux(api, c.Token, version.Version), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: MuxWith(api, br, c.Token, version.Version), ReadHeaderTimeout: 10 * time.Second}
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("fabricserver.listening", slog.String("listen", listen.String()))
@@ -211,12 +236,74 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if api != nil {
 		api.Shutdown(shutdown)
 	}
+	if br != nil {
+		br.Shutdown(shutdown)
+	}
 	_ = srv.Shutdown(shutdown)
 	if listen.Network == "unix" {
 		_ = os.Remove(listen.Address)
 	}
 	log.Info("fabricserver.stopped")
 	return nil
+}
+
+// bridgeSalt is the PBKDF salt of the bridge node's passcode verifier, a
+// constant of the daemon as of any host (go-fabric's
+// docs/guides/embed-in-a-daemon.md §2).
+var bridgeSalt = []byte("go-fabric-server bridge node")
+
+// bridgeConfig is the bridge node's configuration from the flags: its
+// commissioning identity, its store under --storage-path, the daemon's
+// logger.
+func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
+	// Widths only: node.New validates the values (Config.Validate).
+	if c.BridgePasscode > math.MaxUint32 || c.BridgeDiscriminator > math.MaxUint16 || c.BridgeVendorID > math.MaxUint16 || c.BridgeProductID > math.MaxUint16 {
+		return node.Config{}, errors.New("--bridge-passcode, --bridge-discriminator, --bridge-vendor-id or --bridge-product-id is wider than its field")
+	}
+	return node.Config{
+		Network: node.Network{Listen: c.BridgeListen},
+		Commissioning: node.Commissioning{
+			Passcode: uint32(c.BridgePasscode), Discriminator: uint16(c.BridgeDiscriminator), //nolint:gosec // checked above
+			PBKDFIterations: 1000, Salt: bridgeSalt,
+		},
+		ProductDescription: node.ProductDescription{VendorID: uint16(c.BridgeVendorID), ProductID: uint16(c.BridgeProductID)}, //nolint:gosec // checked above
+		BasicInformation: node.BasicInformation{
+			VendorName: "go-fabric-server", ProductName: "fabric-server bridge", NodeLabel: c.BridgeLabel,
+			SerialNumber: "FABRIC-SERVER-BRIDGE", SoftwareVersionString: version.Version,
+		},
+		Store:  node.Store{Path: filepath.Join(c.StoragePath, "bridge.db")},
+		Logger: log,
+	}, nil
+}
+
+// startBridge builds the bridge node with the bridge half's observers,
+// starts it and binds the half to it.
+func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
+	cfg, err := bridgeConfig(c, log)
+	if err != nil {
+		return nil, nil, err
+	}
+	br := bridgeapi.New(bridgeapi.Options{
+		Version: version.Version, GoFabricVersion: version.GoFabric(), ResultTimeout: c.BridgeResultTimeout,
+		Logger: log, Metrics: expvarmetrics.New("fabricserver.bridge."),
+	})
+	cfg.Observers = br.Observers()
+	n, err := node.New(cfg) //nolint:contextcheck // the node's constructor takes no context
+	if err != nil {
+		return nil, nil, fmt.Errorf("bridge node: %w", err)
+	}
+	if err := n.Start(ctx); err != nil {
+		_ = n.Stop(context.WithoutCancel(ctx))
+		return nil, nil, fmt.Errorf("bridge node: %w", err)
+	}
+	if err := br.Start(ctx, n); err != nil {
+		_ = n.Stop(context.WithoutCancel(ctx))
+		return nil, nil, err
+	}
+	if qr, manual, err := n.PairingCodes(); err == nil {
+		log.Info("fabricserver.bridge.pairing", slog.String("qr", qr), slog.String("manual", manual))
+	}
+	return br, n, nil
 }
 
 // probe is --health-check: GET url (with the token) and want 200.

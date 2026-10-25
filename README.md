@@ -7,12 +7,15 @@
 A stand-alone daemon on [go-fabric](https://github.com/SukramJ/go-fabric) with
 a WebSocket/JSON API in both Matter roles: a **controller server**
 wire-compatible with the API Home Assistant's Matter integration speaks (the
-python-matter-server / matterjs-server contract, schema 14), and — from
-bundle S2 — a **bridge door** for hosts that are not written in Go.
+python-matter-server / matterjs-server contract, schema 14), and a
+**bridge door** (`/bridge`) for hosts that are not written in Go.
 
-> **Status: S1.** The controller half (`/ws`) answers the core command set;
-> commands whose route go-fabric's controller facade does not offer yet answer
-> `InvalidCommand` naming what they need. See [`docs/protocol.md`](docs/protocol.md).
+> **Status: S2.** The controller half (`/ws`) answers the core command set
+> and the ACL, binding and vendor commands; commands whose route go-fabric's
+> controller facade does not offer yet answer `InvalidCommand` naming what
+> they need. The bridge half (`/bridge`, `--bridge`) lets a host declare
+> devices by name; [`examples/bridge-python/`](examples/bridge-python/) is a
+> host in 71 lines of Python. See [`docs/protocol.md`](docs/protocol.md).
 
 ## Quickstart
 
@@ -40,7 +43,8 @@ certified by the Alliance. See go-fabric's README, section "Not certified".
 - [`CONCEPT.md`](CONCEPT.md) — the design (go-fabric's concept v8, parts B–E)
 - [`docs/protocol.md`](docs/protocol.md) — the envelope, the compatibility statement, the commands, the extensions
 - [`docs/operations.md`](docs/operations.md) — flags, files, ports, token, container, systemd
-- [`docs/reports/S1.md`](docs/reports/S1.md) — what bundle S1 delivered and what it left to go-fabric
+- [`docs/by_design.md`](docs/by_design.md) — the deliberate differences, each with its reason
+- [`docs/reports/S1.md`](docs/reports/S1.md), [`docs/reports/S2.md`](docs/reports/S2.md) — what each bundle delivered and what it left to go-fabric
 
 ## Development
 
@@ -51,7 +55,7 @@ make race         # go test -race (CGO_ENABLED=1 for this run only)
 make lint         # gofumpt + golangci-lint + go mod tidy -diff
 make cover-check  # the per-package coverage floors
 make fuzz-smoke   # the fuzz targets of the decoders, iteration-budgeted
-make generate     # regenerate protocol/schema from go-fabric's snapshot
+make generate     # regenerate protocol/schema and bridgeapi/clusters_gen.go from go-fabric
 make release      # the release matrix into dist/ (dry run)
 make ci           # build vet test lint
 ```

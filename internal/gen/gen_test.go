@@ -22,13 +22,13 @@ func TestCommittedOutputIsCurrent(t *testing.T) {
 		t.Fatalf("go-fabric version %q: the build carries no module information", v)
 	}
 	for name, want := range files {
-		got, err := os.ReadFile(filepath.Join("..", "..", "protocol", "schema", name))
+		got, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
 		}
 		// A checkout that converted line endings is not stale.
 		if !bytes.Equal(bytes.ReplaceAll(got, []byte("\r\n"), []byte("\n")), want) {
-			t.Errorf("protocol/schema/%s is stale: run go run ./internal/gen and commit the output", name)
+			t.Errorf("%s is stale: run go run ./internal/gen and commit the output", name)
 		}
 	}
 }
