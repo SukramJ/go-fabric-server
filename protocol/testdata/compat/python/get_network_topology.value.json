@@ -1,0 +1,14 @@
+{
+  "collected_at": 1735689600000,
+  "nodes": [
+    { "id": "1", "kind": "matter", "network_type": "thread", "node_id": 1, "role": "router", "available": true, "ext_address": "0102030405060708", "rloc16": 1024, "ext_pan_id": "1111111111111111", "network_name": "Mesh" },
+    { "id": "3", "kind": "matter", "network_type": "wifi", "node_id": 3, "role": "station", "available": true, "ssid": "home", "bssid": "00:11:22:33:44:55" },
+    { "id": "4", "kind": "matter", "network_type": "ethernet", "node_id": 4, "available": true, "is_bridge": true },
+    { "id": "unknown_00000000DEADBEEF", "kind": "thread_unknown", "network_type": "thread", "role": "router", "ext_address": "00000000DEADBEEF", "ext_pan_id": "1111111111111111" },
+    { "id": "ap_001122334455", "kind": "wifi_ap", "network_type": "wifi", "role": "ap", "network_name": "00:11:22:33:44:55", "ssid": "home", "bssid": "00:11:22:33:44:55" }
+  ],
+  "connections": [
+    { "source": "1", "target": "unknown_00000000DEADBEEF", "network": "thread", "strength": "weak", "source_to_target": { "strength": "weak", "lqi": 1 } },
+    { "source": "3", "target": "ap_001122334455", "network": "wifi", "strength": "strong", "source_to_target": { "strength": "strong", "rssi": -60 } }
+  ]
+}

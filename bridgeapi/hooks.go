@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/SukramJ/go-fabric/contract"
 )
 
 // hooks are the host's hooks on one declared cluster of one device: the
@@ -24,9 +26,11 @@ type hooks struct {
 	commands []uint32
 }
 
-// Errors a hook answers the controller with. go-fabric's facade has no
-// error type that carries an IM status (report S2, Questions Q15): every
-// one of them reaches the controller as FAILURE.
+// Errors a hook answers the controller with. A refusal with the host's
+// status and a missed deadline go to go-fabric as contract.StatusError
+// (v0.12.1, Q15 closed; [asStatus]), which answers the controller with
+// that status — TIMEOUT for the deadline — as matter.js answers a
+// StatusResponseError; everything else is FAILURE.
 var (
 	// errNoHost: no bridge client is listening.
 	errNoHost = errors.New("bridgeapi: no bridge client is listening")
@@ -52,6 +56,27 @@ func (e *hostError) Error() string {
 	default:
 		return fmt.Sprintf("bridgeapi: the host answered status 0x%02X", *e.status)
 	}
+}
+
+// asStatus is the error the kit answers the controller with: the host's
+// status (and cluster status) or TIMEOUT as a contract.StatusError, other
+// errors as they are (FAILURE).
+func asStatus(err error) error {
+	var he *hostError
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, errTimeout):
+		return contract.StatusError{Status: contract.StatusTimeout, Message: err.Error()}
+	case errors.As(err, &he) && he.status != nil && *he.status >= 0 && *he.status <= 0xFF:
+		se := contract.StatusError{Status: uint8(*he.status), Message: he.Error()} //nolint:gosec // range checked
+		if he.clusterStatus != nil && *he.clusterStatus >= 0 && *he.clusterStatus <= 0xFF {
+			cs := uint8(*he.clusterStatus) //nolint:gosec // range checked
+			se.ClusterStatus = &cs
+		}
+		return se
+	}
+	return err
 }
 
 // outcome is a client's result for one pending event.
@@ -86,7 +111,7 @@ func (h *hooks) write(ctx context.Context, attrID uint32, value any) error {
 	p := &pending{device: h.device, cluster: h.cluster, what: "write", element: name, done: make(chan outcome, 1)}
 	data := map[string]any{"device": h.device, "cluster": h.cluster, "attribute": name, "value": value}
 	_, err = h.s.await(ctx, p, "write", data)
-	return err
+	return asStatus(err)
 }
 
 // command is a command handler: the command event, and the client's
@@ -104,7 +129,7 @@ func (h *hooks) command(ctx context.Context, cmdID uint32, fields any, decode fu
 	data := map[string]any{"device": h.device, "cluster": h.cluster, "command": name, "fields": fields}
 	o, err := h.s.await(ctx, p, "command", data)
 	if err != nil {
-		return err
+		return asStatus(err)
 	}
 	// The response was checked when the result arrived.
 	return decode(o.response)

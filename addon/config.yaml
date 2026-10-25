@@ -1,0 +1,61 @@
+# Home Assistant add-on manifest for go-fabric-server.
+#
+# version MUST equal internal/version's Version and the published image tag
+# (ghcr.io/sukramj/go-fabric-server-addon-{arch}); `make version-check` and
+# the release workflow refuse a tag where they differ.
+name: go-fabric-server
+version: "0.3.0"
+slug: go_fabric_server
+description: >-
+  A Matter controller server for Home Assistant's Matter integration, on
+  go-fabric (wire-compatible with matterjs-server, schema 14). Uncertified.
+url: https://github.com/SukramJ/go-fabric-server
+arch:
+  - amd64
+  - aarch64
+  - armv7
+
+# Per-arch add-on image (HA base + bashio + run.sh) published by
+# .github/workflows/addon-image.yml; the Supervisor substitutes {arch} and
+# pulls <image>:<version>. Remove this key to build addon/Dockerfile on the
+# host.
+image: "ghcr.io/sukramj/go-fabric-server-addon-{arch}"
+
+# The HA base image ships s6-overlay as its init.
+init: false
+
+# Matter needs the host's network: the controller finds devices over mDNS
+# and talks to them over UDP, IPv6 included; Home Assistant's integration
+# connects to ws://localhost:<port>/ws on the same host. The API listens on
+# loopback only (Home Assistant sends no token). With host networking the
+# node pages listen on the host too; the daemon answers only the Ingress
+# proxy (172.30.32.2).
+host_network: true
+
+# The controller's database and the server's settings are SQLite and JSON
+# files under /data; a cold backup stops the add-on first.
+backup: cold
+
+# No `discovery` key: Home Assistant's Matter config flow selects an add-on
+# by the official slug only (config_flow.py:259-260 at 2026.10.3), so a
+# discovery message of this add-on is never acted on. DOCS.md says how the
+# integration is pointed at the server.
+
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:access-point-network
+panel_title: go-fabric-server
+
+options:
+  port: 5580
+  log_level: info
+  enable_test_net_dcl: false
+  bridge: false
+  bridge_port: 5540
+
+schema:
+  port: port
+  log_level: list(critical|error|warning|notice|info|debug)
+  enable_test_net_dcl: bool
+  bridge: bool
+  bridge_port: port

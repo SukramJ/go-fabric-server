@@ -15,8 +15,7 @@ import (
 
 	"github.com/SukramJ/go-fabric/clock"
 	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/client"
-	"github.com/SukramJ/go-fabric/controller/commissioner"
+	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
 
@@ -35,27 +34,6 @@ import (
 // wall clock: the host answers over a real WebSocket, whose round trip no
 // site counter sees, so a fake clock would be stepped past a result's
 // deadline while the answer is on its way.
-
-// siteBackend is controllerapi's backend on the site's controller
-// (controllerapi/harness_test.go explains it).
-type siteBackend struct {
-	c   *fabrictest.Controller
-	dev *fabrictest.Device
-}
-
-func (b *siteBackend) Registry() *client.Registry   { return b.c.Registry() }
-func (b *siteBackend) Fabric() *commissioner.Fabric { return b.c.Fabric() }
-
-func (b *siteBackend) Pair(ctx context.Context, code string, opts controller.PairOptions) (*client.Node, error) {
-	qr, manual, err := b.dev.Node().PairingCodes()
-	if err != nil {
-		return nil, err
-	}
-	if code != qr && code != manual {
-		return nil, controller.ErrNoDevice
-	}
-	return b.c.CommissionNode(ctx, b.dev, client.CommissionOptions{AutoSubscribe: opts.AutoSubscribe})
-}
 
 type env struct {
 	t    *testing.T
@@ -90,12 +68,27 @@ func newEnv(t *testing.T, opts bridgeapi.Options) *env {
 	if err := br.Start(ctx, dev.Node()); err != nil {
 		t.Fatal(err)
 	}
-	api, err := controllerapi.New(controllerapi.Options{Version: "test", GoFabricVersion: "v-test", Logger: logger(), StoragePath: t.TempDir()})
+	api, err := controllerapi.New(controllerapi.Options{
+		Version: "test", GoFabricVersion: "v-test", Logger: logger(), StoragePath: t.TempDir(),
+		Attestation: attestation.Accept(), // the site device's test certificate
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctrl := site.AddController(fabrictest.ControllerOptions{Registry: func(rc *client.RegistryConfig) { rc.HooksFor = api.Hooks }})
-	if err := api.Start(ctx, &siteBackend{c: ctrl, dev: dev}); err != nil {
+	// The controller half on controller.New, wired to the site
+	// (fabrictest.Site.ControllerConfig, go-fabric v0.12.1).
+	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: logger()})
+	cfg.HooksFor = api.Hooks
+	ctrl, err := controller.New(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cctx, ccancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer ccancel()
+		_ = ctrl.Close(cctx)
+	})
+	if err := api.Start(ctx, ctrl); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.MuxWith(api, br, "", "test"))

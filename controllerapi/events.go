@@ -9,9 +9,7 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
 // eventHistorySize is matterjs-server's EVENT_HISTORY_SIZE
@@ -50,14 +48,7 @@ func eventData(nodeID uint64, e *client.EventData) nodeEventData {
 		d.Timestamp, d.TimestampType = e.Timestamp, 2
 	}
 	if e.HasValue {
-		var fields []schema.Field
-		if ev := schema.ClusterByID(e.Path.Cluster).Event(e.Path.Event); ev != nil {
-			fields = ev.Fields
-			if fields == nil {
-				fields = []schema.Field{}
-			}
-		}
-		d.Data = wire.Fields(fields, e.Value)
+		d.Data = eventJSON(e.Path.Cluster, e.Path.Event, e.Value)
 	}
 	return d
 }

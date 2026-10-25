@@ -1,0 +1,5 @@
+{
+  "message_id": "4f1c",
+  "command": "open_commissioning_window",
+  "args": { "node_id": 1, "timeout": 300, "iteration": 1000, "option": 1, "discriminator": null }
+}

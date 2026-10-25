@@ -38,7 +38,6 @@ protocol/schema/    generated from go-fabric's parity/schema.json: names ↔ ids
                     events, datatypes, device types; the JSON Schema of the values (an artefact for clients)
 controllerapi/      the matterjs-server-compatible half: dispatch table, node cache, events
 bridgeapi/          the device-side half: declaration, deltas, commands, events (S2)
-internal/wire/      Matter values ↔ JSON (name-based where known, tag-based where not), paths
 client/             a Go client of both halves (for tests; go-ha2fabric does not use it)
 deploy/             Dockerfile (distroless, non-root), systemd unit, release matrix
 ```
@@ -168,7 +167,7 @@ hosts (Go programs would pay a protocol for an import); one daemon per role
 (the roles already share a process in `fabrictest`; one daemon with flags is
 the smaller surface). Inside the server: `protocol` knows no Matter,
 `controllerapi`/`bridgeapi` know go-fabric's facades and the protocol,
-`internal/wire` knows the schema; nothing reaches below the facades, and a
+values go through go-fabric's JSON route (S3); nothing reaches below the facades, and a
 guard (`internal/arch`) holds that.
 
 ## F — Risks

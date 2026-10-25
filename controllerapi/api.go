@@ -31,6 +31,8 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/SukramJ/go-fabric/controller/attestation"
+	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/controller/client"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
@@ -69,6 +71,13 @@ type Options struct {
 	// Vendors lists the vendor names of get_vendor_names; nil is the
 	// production DCL's vendor records.
 	Vendors VendorSource
+	// Attestation decides a commissioning whose device attestation has
+	// findings; the zero value rejects it (attestation.Reject), as
+	// matterjs-server without its test-net DCL option.
+	Attestation attestation.Policy
+	// BLE is the Bluetooth LE central commission_with_code finds a device
+	// on BLE through (--ble-adapter); nil commissions over DNS-SD only.
+	BLE ble.Central
 }
 
 // Server is the controller half. Its methods are safe for concurrent use.
@@ -96,11 +105,23 @@ type Server struct {
 	loopDone chan struct{}
 	started  atomic.Bool
 
+	// testNodes are the nodes import_test_node imported, by node id
+	// (testnodes.go); guarded by mu.
+	testNodes map[uint64]*testNode
+
+	// topoMu guards topoSig, the last network_topology_updated sent.
+	topoMu  sync.Mutex
+	topoSig string
+
 	connSeq atomic.Uint64
 	labelMu sync.Mutex
 	// labelOwner is the connection whose set_default_fabric_label owns
 	// the label (docs/websockets_api.md:1521-1527).
 	labelOwner *wsConn
+	// labelCancel cancels the label push running (pushLabel).
+	labelCancel context.CancelFunc
+	// bg are the background pushes Shutdown waits for.
+	bg sync.WaitGroup
 }
 
 type backendRef struct{ b Backend }
@@ -126,7 +147,7 @@ func New(opts Options) (*Server, error) {
 	}
 	return &Server{
 		opts: opts, log: log, meter: protocol.NewMeter(opts.Metrics), cfg: cfg,
-		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{},
+		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{},
 		dirty: map[string]bool{}, wake: make(chan struct{}, 1), stop: make(chan struct{}), loopDone: make(chan struct{}),
 	}, nil
 }
@@ -161,7 +182,7 @@ func (s *Server) Hooks(id string) client.Hooks {
 // Start binds the server to its controller: the node cache is built from
 // the registry's nodes (no events for them), and changes are followed from
 // then on.
-func (s *Server) Start(_ context.Context, b Backend) error {
+func (s *Server) Start(ctx context.Context, b Backend) error {
 	if b == nil {
 		return errors.New("controllerapi: Start needs a backend")
 	}
@@ -177,6 +198,9 @@ func (s *Server) Start(_ context.Context, b Backend) error {
 	}
 	s.mu.Unlock()
 	go s.loop()
+	if f := b.Fabric(); f != nil && f.CurrentLabel() != s.FabricLabel() {
+		s.pushLabel(context.WithoutCancel(ctx), s.FabricLabel())
+	}
 	return nil
 }
 
@@ -191,7 +215,7 @@ func (s *Server) b() Backend {
 func (s *Server) NodeCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return len(s.nodes)
+	return len(s.nodes) + len(s.testNodes)
 }
 
 // Health is the controller half's state for GET /health: healthy once
@@ -223,6 +247,12 @@ func (s *Server) Shutdown(ctx context.Context) {
 		_ = c.send.Flush(ctx)
 		c.close(websocket.StatusGoingAway, "server shutting down")
 	}
+	s.labelMu.Lock()
+	if s.labelCancel != nil {
+		s.labelCancel()
+	}
+	s.labelMu.Unlock()
+	s.bg.Wait()
 	if s.started.Load() {
 		close(s.stop)
 		<-s.loopDone

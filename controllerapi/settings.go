@@ -4,13 +4,18 @@
 package controllerapi
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
+
+	"github.com/SukramJ/go-fabric/controller/commissioner"
+	"github.com/SukramJ/go-fabric/controller/thread"
 )
 
 // defaultCredentialID is the reserved entry pre-schema-12 callers use
@@ -93,13 +98,24 @@ func (s *settingsStore) label() string {
 	return s.data.FabricLabel
 }
 
+// normalizeLabel is matterjs-server's label rule (WebSocketControllerHandler.ts:201,
+// :1227-1262): trimmed, empty is "HomeAssistant", at most 32 characters
+// (commissioner.MaxLabelLength).
+func normalizeLabel(label string) string {
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return defaultFabricLabel
+	}
+	if r := []rune(label); len(r) > commissioner.MaxLabelLength {
+		label = string(r[:commissioner.MaxLabelLength])
+	}
+	return label
+}
+
 func (s *settingsStore) setLabel(label string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if label == "" {
-		label = defaultFabricLabel
-	}
-	s.data.FabricLabel = label
+	s.data.FabricLabel = normalizeLabel(label)
 	return s.saveLocked()
 }
 
@@ -126,6 +142,44 @@ func (s *settingsStore) defaults() (*wifiCredential, *threadCredential) {
 
 // setWifi stores an entry. A blank password keeps the stored one for an
 // unchanged SSID only (docs/websockets_api.md:1460-1465).
+// credentials returns the stored Wi-Fi and Thread entries of the ids
+// given (nil or empty: the default entries, absent ones nil); missing
+// names an id given that is not stored.
+func (s *settingsStore) credentials(wifiID, threadID *string) (w *wifiCredential, t *threadCredential, missing string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	find := func(id *string, isWifi bool) (int, bool) {
+		want := credentialID(id)
+		if isWifi {
+			for i := range s.data.Wifi {
+				if s.data.Wifi[i].ID == want {
+					return i, true
+				}
+			}
+		} else {
+			for i := range s.data.Thread {
+				if s.data.Thread[i].ID == want {
+					return i, true
+				}
+			}
+		}
+		return 0, false
+	}
+	if i, ok := find(wifiID, true); ok {
+		c := s.data.Wifi[i]
+		w = &c
+	} else if wifiID != nil && *wifiID != "" {
+		return nil, nil, "Unknown wifi_credentials_id: " + *wifiID
+	}
+	if i, ok := find(threadID, false); ok {
+		c := s.data.Thread[i]
+		t = &c
+	} else if threadID != nil && *threadID != "" {
+		return nil, nil, "Unknown thread_dataset_id: " + *threadID
+	}
+	return w, t, ""
+}
+
 func (s *settingsStore) setWifi(id, ssid, credentials string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -191,11 +245,11 @@ func (s *settingsStore) removeThread(id string) error {
 
 // summaries are get_all_credentials' lists, the default entry always
 // first and present (docs/websockets_api.md:1502-1506).
-func (s *settingsStore) summaries() (wifi, thread []map[string]any) {
+func (s *settingsStore) summaries() (wifi, threads []map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	wifi = []map[string]any{{"id": defaultCredentialID, "ssid": ""}}
-	thread = []map[string]any{{"id": defaultCredentialID}}
+	threads = []map[string]any{{"id": defaultCredentialID}}
 	ws := append([]wifiCredential(nil), s.data.Wifi...)
 	sort.SliceStable(ws, func(i, j int) bool { return ws[i].ID < ws[j].ID })
 	for _, e := range ws {
@@ -208,9 +262,32 @@ func (s *settingsStore) summaries() (wifi, thread []map[string]any) {
 	ts := append([]threadCredential(nil), s.data.Thread...)
 	sort.SliceStable(ts, func(i, j int) bool { return ts[i].ID < ts[j].ID })
 	for _, e := range ts {
-		if e.ID != defaultCredentialID {
-			thread = append(thread, map[string]any{"id": e.ID})
+		m := threadSummary(e)
+		if e.ID == defaultCredentialID {
+			threads[0] = m
+			continue
 		}
+		threads = append(threads, m)
 	}
-	return wifi, thread
+	return wifi, threads
+}
+
+// threadSummary is a get_all_credentials Thread entry: the id, and the
+// dataset's network name and extended PAN id (uppercase hex) when it
+// decodes (controller/thread.DecodeDatasetHex, go-fabric's port of
+// matter.js OperationalDataset.ts) — matterjs-server's
+// WebSocketControllerHandler.ts:2250-2302. The secrets are never returned.
+func threadSummary(e threadCredential) map[string]any {
+	m := map[string]any{"id": e.ID}
+	ds, err := thread.DecodeDatasetHex(e.Dataset)
+	if err != nil {
+		return m
+	}
+	if ds.NetworkName != nil {
+		m["networkName"] = *ds.NetworkName
+	}
+	if len(ds.ExtPANID) > 0 {
+		m["extPanId"] = strings.ToUpper(hex.EncodeToString(ds.ExtPANID))
+	}
+	return m
 }

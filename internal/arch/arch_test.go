@@ -44,7 +44,13 @@ var facade = map[string]bool{
 	"controller/dcl/snapshot": true,
 	// The DCL client of get_vendor_names (brief S2 §2): the ledger's
 	// vendor records, as matterjs-server's vendor info service reads them.
-	"controller/dcl":     true,
+	"controller/dcl": true,
+	// The BLE central type of controller.PairOptions.BLE, and the Thread
+	// dataset codec the CJ report names as the dataset reader (go-fabric
+	// notes/briefs/reports/CJ.md, 1.13: controller/thread.DecodeDataset).
+	"controller/ble":     true,
+	"ble/bluez":          true,
+	"controller/thread":  true,
 	"client/discovery":   true,
 	"client/exchange":    true,
 	"client/handshake":   true,
@@ -53,12 +59,9 @@ var facade = map[string]bool{
 }
 
 // exceptions are imports below the facade one package may make, each a
-// reported facade gap.
-var exceptions = map[string]map[string]string{
-	// Q1: controller/client hands values out as spec.Node trees and has no
-	// JSON route of its own; internal/wire reads and builds them.
-	"internal/wire": {"cluster/spec": "Q1", "tlv": "Q1"},
-}
+// reported facade gap. Empty since S3: go-fabric v0.12.1's JSON route
+// (client.EncodeJSON/DecodeJSON) closed Q1, and internal/wire is gone.
+var exceptions = map[string]map[string]string{}
 
 // testOnly are the go-fabric packages a test may import besides.
 var testOnly = map[string]bool{"fabrictest": true, "clock": true}
@@ -68,11 +71,10 @@ var testOnly = map[string]bool{"fabrictest": true, "clock": true}
 var layers = map[string][]string{
 	"protocol":        {},
 	"protocol/schema": {},
-	"internal/wire":   {"protocol", "protocol/schema"},
 	"internal/gen":    {},
 	"internal/arch":   {},
 	"client":          {"protocol"},
-	"controllerapi":   {"protocol", "protocol/schema", "internal/wire"},
+	"controllerapi":   {"protocol", "protocol/schema"},
 	"bridgeapi":       {"protocol", "protocol/schema"},
 }
 
@@ -175,6 +177,9 @@ func TestGuardRefuses(t *testing.T) {
 		{"bridgeapi", "endpoint", false},
 		{"bridgeapi", "bridge", false},
 		{"bridgeapi", "im", false},
+		// The Q1 exception is gone (S3): no package reads TLV.
+		{"controllerapi", "tlv", false},
+		{"internal/wire", "tlv", false},
 	} {
 		if facadeImport(c.pkg, c.dep, c.test) {
 			t.Errorf("%s may not import %s", c.pkg, c.dep)
@@ -186,7 +191,6 @@ func TestGuardRefuses(t *testing.T) {
 	}{
 		{"controllerapi", "controller/client", false},
 		{"controllerapi", "cluster/spec/onoff", false},
-		{"internal/wire", "tlv", false},
 		{"controllerapi", "fabrictest", true},
 		{"bridgeapi", "cluster/spec/powersource", false},
 		{"bridgeapi", "device", false},

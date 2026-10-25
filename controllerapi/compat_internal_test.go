@@ -141,15 +141,82 @@ var typed = map[string]func(*testing.T, []byte) []byte{
 	"subscription_ended.event.json":             roundTrip[event[subscriptionEnded]],
 	"server_info_updated.event.json":            roundTrip[event[serverInfoData]],
 	"server_shutdown.event.json":                roundTrip[event[struct{}]],
+	// S3.
+	"parse_onboarding_payload.value.json":     roundTrip[qrResult],
+	"parse_onboarding_payload.value.2.json":   roundTrip[manualPayload],
+	"open_commissioning_window.response.json": roundTrip[result[windowData]],
+	"batched_device_commands.value.json":      roundTrip[[]batchedResult],
+	"get_icd_state.value.json":                roundTrip[icdState],
+}
+
+// pythonDir holds the S3 fixtures in the python client's shape
+// (python/README.md).
+const pythonDir = compatDir + "/python"
+
+// typedPython are those fixtures' results, events and errors with the
+// type the server encodes them with; the requests decode as above.
+var typedPython = map[string]func(*testing.T, []byte) []byte{
+	"parse_onboarding_payload.value.manual21.json": roundTrip[manualPayload],
+	"batched_device_commands.value.response.json":  roundTrip[[]batchedResult],
+	"icd_state.unsupported.value.json":             roundTrip[icdState],
+	"register_icd.error.json":                      roundTrip[protocol.Error],
+	"commission_with_code.error.attestation.json":  roundTrip[protocol.Error],
+	"get_network_topology.value.json":              roundTrip[networkTopology],
+	"network_topology_updated.event.json":          roundTrip[event[networkTopology]],
+	"get_all_credentials.value.json":               roundTrip[map[string][]map[string]any],
+	"discover.value.json":                          roundTrip[[]map[string]any],
 }
 
 // notInS1 are documented shapes of commands and events S1 does not
 // implement (InvalidCommand or not emitted); they stay as fixtures for the
 // bundle that brings them.
 var notInS1 = []string{
-	"parse_onboarding_payload.value", "open_commissioning_window.response", "batched_device_commands.value",
-	"initiate_ota_upload.value", "get_icd_state.value", "thread_diagnostics_updated.event",
+	"initiate_ota_upload.value", "thread_diagnostics_updated.event",
 	"webrtc_callback.event", "camera_session_ended.event", "camera_stream_evicted.event",
+}
+
+// TestCompatPythonFixtures holds the S3 fixtures of python/: every
+// request decodes and round-trips, every result, event and error
+// round-trips through the server's type.
+func TestCompatPythonFixtures(t *testing.T) {
+	files, err := filepath.Glob(filepath.Join(pythonDir, "*.json"))
+	if err != nil || len(files) < 10 {
+		t.Fatalf("fixtures: %d %v", len(files), err)
+	}
+	checked := map[string]bool{}
+	for _, f := range files {
+		name := filepath.Base(f)
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Run(name, func(t *testing.T) {
+			if strings.Contains(name, ".request") {
+				req, perr := protocol.DecodeRequest(b)
+				if perr != nil {
+					t.Fatalf("the request does not decode: %v", perr)
+				}
+				if !sameModuloExtensions(normalize(t, b), normalize(t, protocol.MustEncode(req))) {
+					t.Fatalf("request round trip %s", b)
+				}
+				return
+			}
+			rt := typedPython[name]
+			if rt == nil {
+				t.Fatalf("a fixture without a check: %s", name)
+			}
+			out := rt(t, b)
+			if !sameModuloExtensions(normalize(t, b), normalize(t, out)) {
+				t.Fatalf("shape round trip\nwant %s\ngot  %s", b, out)
+			}
+			checked[name] = true
+		})
+	}
+	for name := range typedPython {
+		if !checked[name] {
+			t.Errorf("no fixture %s", name)
+		}
+	}
 }
 
 func TestCompatFixtures(t *testing.T) {

@@ -59,12 +59,19 @@ func nodeError(command string, err error) *protocol.Error {
 }
 
 // commissionError maps a failed commissioning to NodeCommissionFailed with
-// the reason (docs/websockets_api.md:82-90). go-fabric names no
-// attestation rejection of its own (report S1, Questions Q6): it is
-// "other".
+// the reason (docs/websockets_api.md:82-90) — matterjs-server's
+// commissionFailureOf (ControllerCommandHandler.ts:305-345 at a7922e85):
+// an attestation the policy rejects is attestation-rejected
+// (commissioner.ErrAttestationRejected, go-fabric v0.12.1), a code the
+// decoder refuses InvalidArguments with invalid-payload.
 func commissionError(err error) *protocol.Error {
+	if errors.Is(err, controller.ErrPairingCode) {
+		return protocol.Errorf(protocol.InvalidArguments, "Invalid pairing code: %v", err).WithReason(protocol.ReasonInvalidPayload)
+	}
 	reason := protocol.ReasonOther
 	switch {
+	case errors.Is(err, commissioner.ErrAttestationRejected):
+		reason = protocol.ReasonAttestationRejected
 	case errors.Is(err, controller.ErrNoDevice):
 		reason = protocol.ReasonNotDiscovered
 	case errors.Is(err, handshake.ErrPasscodeMismatch):

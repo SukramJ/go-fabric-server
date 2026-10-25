@@ -38,3 +38,4 @@ go.work.sum
 
 # Local storage of a development run
 /data/
+__pycache__/

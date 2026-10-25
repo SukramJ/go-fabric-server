@@ -1,0 +1,17 @@
+[
+  {
+    "instance_name": "4F2A1B3C5D6E7F80",
+    "host_name": "4C6E8B2A1D3F.local.",
+    "port": 5540,
+    "long_discriminator": 3840,
+    "vendor_id": 65521,
+    "product_id": 32768,
+    "commissioning_mode": 1,
+    "device_type": 257,
+    "device_name": "Light",
+    "pairing_hint": 33,
+    "mrp_retry_interval_idle": 500,
+    "mrp_retry_interval_active": 300,
+    "addresses": ["fe80::1", "192.168.1.20"]
+  }
+]

@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,12 +17,10 @@ import (
 	"strings"
 	"time"
 
-	// The pure-Go SQLite driver the controller's database runs on, as
-	// go-fabric's reference controller opens it (examples/reference-controller/cli/stack.go:20-21).
-	_ "modernc.org/sqlite"
-
+	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
+	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
 	"github.com/SukramJ/go-fabric/node"
 	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
@@ -61,6 +58,20 @@ type Config struct {
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
 	// shell or curl).
 	HealthCheck string
+	// EnableTestNetDCL trusts the CSA test roots as well (matterjs-server's
+	// --enable-test-net-dcl): --trust development.
+	EnableTestNetDCL bool
+	// BluetoothAdapter is the HCI id of the BLE adapter commission_with_code
+	// may commission over (matterjs-server's --bluetooth-adapter); empty
+	// is no BLE.
+	BluetoothAdapter string
+	// Web is the address of the node pages (go-fabric-ui); empty serves
+	// none. WebAdmin lets the pages write (token mode), WebAdminSource
+	// admits only requests from that address as an admin (an Ingress
+	// proxy); without either the pages are read-only.
+	Web            string
+	WebAdmin       bool
+	WebAdminSource string
 }
 
 // env returns the environment variable name of a flag.
@@ -94,6 +105,11 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.DurationVar(&c.BridgeResultTimeout, "bridge-result-timeout", 5*time.Second, "how long a write or command event waits for the bridge client's result")
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
+	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
+	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the HCI id of the BLE adapter (0 for hci0) commission_with_code may commission over; empty is no BLE (Linux, BlueZ)")
+	fs.StringVar(&c.Web, "web", "", "serve the bridge node's pages (go-fabric-ui) on this address, read-only unless --web-admin or --web-admin-source")
+	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the node pages write and show the pairing code (the page's token mode)")
+	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit node page requests from this IP address only as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
 	set := map[string]bool{}
 	if err := fs.Parse(args); err != nil {
 		return c, err
@@ -166,15 +182,17 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	var api *controllerapi.Server
 	var ctrl *controller.Controller
 	if c.Controller {
-		mode, err := attestation.ParseTrustMode(c.Trust)
-		if err != nil || mode == attestation.None {
-			return fmt.Errorf("--trust %q, want production or development", c.Trust)
+		trust, err := trustStore(c)
+		if err != nil {
+			return err
 		}
-		snap, err := snapshot.Embedded()
-		if snap == nil {
-			return fmt.Errorf("the embedded DCL snapshot: %w", err)
+		central, err := bleCentral(c.BluetoothAdapter)
+		if err != nil {
+			return err
 		}
-		db, err := sql.Open("sqlite", "file:"+filepath.Join(c.StoragePath, "fabric-server.db")+"?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
+		// The controller's database through go-fabric's opener (Q11
+		// closed in v0.12.1): no SQLite driver of our own.
+		db, err := controller.OpenDB(filepath.Join(c.StoragePath, "fabric-server.db"))
 		if err != nil {
 			return err
 		}
@@ -182,20 +200,18 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		api, err = controllerapi.New(controllerapi.Options{
 			Version: version.Version, GoFabricVersion: version.GoFabric(), StoragePath: c.StoragePath,
 			DisableAutoSubscription: c.DisableAutoSubscription, DefaultFabricLabel: c.DefaultFabricLabel,
-			Logger: log, LogLevel: lvl, Metrics: expvarmetrics.New("fabricserver."),
+			Logger: log, LogLevel: lvl, Metrics: expvarmetrics.New("fabricserver."), BLE: central,
 		})
 		if err != nil {
 			return err
 		}
 		cfg := controller.Config{
-			DB: db, Attestation: attestation.Trust(mode, snap, nil), Listen: c.MatterListen,
+			DB: db, Attestation: trust, Listen: c.MatterListen,
 			VendorID: uint16(c.VendorID), Label: api.FabricLabel(), Logger: log, //nolint:gosec // checked above
+			// One hook set per node (controller.Config.HooksFor, Q2
+			// closed in v0.12.1): node_event names its node.
+			HooksFor: api.Hooks,
 		}
-		// go-fabric's controller takes one set of hooks for every node
-		// (controller.Config.Node.Hooks); the per-node form is
-		// client.RegistryConfig.HooksFor, which controller.Config does not
-		// expose (report S1, Questions Q2).
-		cfg.Node.Hooks = api.Hooks("")
 		ctrl, err = controller.New(ctx, cfg)
 		if err != nil {
 			return fmt.Errorf("controller: %w", err)
@@ -207,13 +223,21 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	}
 
 	var br *bridgeapi.Server
+	var bridgeNode *node.Node
+	ev := fabricui.NewEvents()
 	if c.Bridge {
-		var n *node.Node
-		br, n, err = startBridge(ctx, c, log)
+		br, bridgeNode, err = startBridge(ctx, c, log, ev)
 		if err != nil {
 			return err
 		}
-		defer func() { _ = n.Stop(context.WithoutCancel(ctx)) }()
+		defer func() { _ = bridgeNode.Stop(context.WithoutCancel(ctx)) }()
+	}
+	if c.Web != "" {
+		stop, err := serveWeb(ctx, c, bridgeNode, ev, log)
+		if err != nil {
+			return err
+		}
+		defer stop()
 	}
 
 	ln, err := listen.Open(ctx)
@@ -278,7 +302,7 @@ func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
 
 // startBridge builds the bridge node with the bridge half's observers,
 // starts it and binds the half to it.
-func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
+func startBridge(ctx context.Context, c Config, log *slog.Logger, ev *fabricui.Events) (*bridgeapi.Server, *node.Node, error) {
 	cfg, err := bridgeConfig(c, log)
 	if err != nil {
 		return nil, nil, err
@@ -287,7 +311,8 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 		Version: version.Version, GoFabricVersion: version.GoFabric(), ResultTimeout: c.BridgeResultTimeout,
 		Logger: log, Metrics: expvarmetrics.New("fabricserver.bridge."),
 	})
-	cfg.Observers = br.Observers()
+	// The node pages' event stream rides on the half's observers.
+	cfg.Observers = ev.Observers(br.Observers())
 	n, err := node.New(cfg) //nolint:contextcheck // the node's constructor takes no context
 	if err != nil {
 		return nil, nil, fmt.Errorf("bridge node: %w", err)
@@ -300,9 +325,10 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 		_ = n.Stop(context.WithoutCancel(ctx))
 		return nil, nil, err
 	}
-	if qr, manual, err := n.PairingCodes(); err == nil {
-		log.Info("fabricserver.bridge.pairing", slog.String("qr", qr), slog.String("manual", manual))
-	}
+	// The pairing codes carry the passcode: never in the log (brief S3,
+	// hard rule 4). A client reads them with pairing_codes on /bridge, an
+	// admin on the node pages.
+	log.Info("fabricserver.bridge.ready")
 	return br, n, nil
 }
 
@@ -326,4 +352,40 @@ func probe(ctx context.Context, url, token string) error {
 		return fmt.Errorf("health: %s", resp.Status)
 	}
 	return nil
+}
+
+// trustStore is the attestation roots of --trust and --enable-test-net-dcl:
+// production is controller.ProductionTrust (Q10 closed in v0.12.1),
+// development adds the CSA test roots to the embedded DCL snapshot.
+func trustStore(c Config) (attestation.PAAStore, error) {
+	trust := c.Trust
+	if c.EnableTestNetDCL {
+		trust = "development"
+	}
+	mode, err := attestation.ParseTrustMode(trust)
+	if err != nil || mode == attestation.None {
+		return nil, fmt.Errorf("--trust %q, want production or development", c.Trust)
+	}
+	if mode == attestation.Production {
+		return controller.ProductionTrust()
+	}
+	snap, err := snapshot.Embedded()
+	if snap == nil {
+		return nil, fmt.Errorf("the embedded DCL snapshot: %w", err)
+	}
+	return attestation.Trust(mode, snap, nil), nil
+}
+
+// bleCentral is the BlueZ central of --bluetooth-adapter; nil without
+// the flag. go-fabric's BlueZ central (the module
+// github.com/SukramJ/go-fabric/ble/bluez) has no release on go-fabric
+// v0.12: v0.7.0's tests import controller/discovery, which v0.12.0 moved
+// to client/discovery, so a consumer's `go mod tidy` fails (report S3,
+// Questions Q22). Until it has one, the flag refuses to start, naming the
+// release it waits for; controllerapi.Options.BLE takes any ble.Central.
+func bleCentral(adapter string) (ble.Central, error) { //nolint:unparam // the central of the BlueZ release Q22 waits for
+	if adapter == "" {
+		return nil, nil //nolint:nilnil // no adapter is no central and no error
+	}
+	return nil, fmt.Errorf("--bluetooth-adapter %s: not available in go-fabric-server %s; needs a release of github.com/SukramJ/go-fabric/ble/bluez on go-fabric v0.12", adapter, version.Version)
 }

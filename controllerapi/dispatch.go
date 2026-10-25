@@ -26,7 +26,7 @@ func (c *call) args(dst any) *protocol.Error {
 
 type handler func(ctx context.Context, s *Server, c *call) (any, *protocol.Error)
 
-// handlers is the S1 command set — the dispatch of matterjs-server's
+// handlers is the command set — the dispatch of matterjs-server's
 // #handleWebSocketRequest (WebSocketControllerHandler.ts:947-1130, read
 // map §1.7) as far as S1 implements it. start_listening is answered by
 // the dispatcher itself (it must hold the server's lock while it answers).
@@ -71,24 +71,23 @@ func init() {
 		"set_acl_entry":                 cmdSetACLEntry,
 		"set_node_binding":              cmdSetNodeBinding,
 		"get_vendor_names":              cmdGetVendorNames,
+		"get_icd_state":                 cmdGetICDState,
+		"register_icd":                  cmdRegisterICD,
+		"unregister_icd":                cmdUnregisterICD,
+		"resync_icd":                    cmdResyncICD,
+		"get_network_topology":          cmdGetNetworkTopology,
+		"import_test_node":              cmdImportTestNode,
 	}
 }
 
-// planned names what brings a command of matterjs-server's dispatch the
-// server does not implement (concept v8 C.2): a bundle of this server, or
-// the go-fabric release whose controller facade the command waits for.
+// planned names why a command of matterjs-server's dispatch is not
+// answered (concept v8 C.2): the go-fabric work it waits for, or never.
 var planned = map[string]string{
-	"check_node_update":             otaBundle,
-	"update_node":                   otaBundle,
-	"initiate_ota_upload":           otaBundle,
-	"get_icd_state":                 icdBundle,
-	"register_icd":                  icdBundle,
-	"resync_icd":                    icdBundle,
-	"unregister_icd":                icdBundle,
-	"import_test_node":              "S3",
-	"get_thread_border_routers":     "S3",
-	"get_thread_diagnostics":        "S3",
-	"get_network_topology":          "S3",
+	"check_node_update":             otaRoute,
+	"update_node":                   otaRoute,
+	"initiate_ota_upload":           otaRoute,
+	"get_thread_border_routers":     threadRoute,
+	"get_thread_diagnostics":        threadRoute,
 	"camera_get_capabilities":       "never",
 	"camera_start_stream":           "never",
 	"camera_stop_stream":            "never",
@@ -99,40 +98,21 @@ var planned = map[string]string{
 	"send_webrtc_provider_command":  "never",
 }
 
-// The go-fabric work the stubs wait for (brief S2 §2).
+// The go-fabric routes the stubs wait for (brief S3 §3).
 const (
-	icdBundle = "go-fabric v0.12.0 (milestone 5, the ICD client)"
-	otaBundle = "go-fabric phase 25 (the OTA provider on the controller)"
+	otaRoute    = "the OTA provider on go-fabric's controller (milestone 5 phase 25: a software update route on client.Node)"
+	threadRoute = "a Thread border router route in go-fabric (milestone 6, ADR 0027: the OTBR client and ThreadNetworkDiagnostics)"
 )
 
 // gap is the answer of a command whose route go-fabric's controller
-// facade does not offer yet (report S1, Questions): InvalidCommand naming
-// what is missing. Such a command is not in capabilities.
+// facade does not offer: InvalidCommand naming what is missing. Such a
+// command is not in capabilities. None is left since go-fabric v0.12.1;
+// the hook stays for the next.
 type gap struct {
 	needs string
 }
 
-// gaps are the S1 commands without a facade route on a backend; filled
-// by availability checks at call time.
-func (s *Server) gapOf(command string) *gap {
-	switch command {
-	case "discover_commissionable_nodes", "discover", "commission_on_network":
-		if _, ok := s.b().(Discoverer); !ok {
-			return &gap{needs: "a DNS-SD discovery route on the controller (controller.Controller.Discover)"}
-		}
-	case "batched_device_commands":
-		return &gap{needs: "a multi-command invoke on client.Node (one InvokeRequest with several commands)"}
-	case "open_commissioning_window":
-		return &gap{needs: "an enhanced commissioning window route on client.Node (OpenCommissioningWindow with the PAKE verifier and the pairing codes)"}
-	case "parse_onboarding_payload":
-		return &gap{needs: "an exported onboarding payload decoder in the controller facade"}
-	case "enable_auto_subscription", "disable_auto_subscription":
-		if s.opts.DisableAutoSubscription {
-			return &gap{needs: "switching a node's own subscription at run time (client.Node.SetAutoSubscribe)"}
-		}
-	}
-	return nil
-}
+func (s *Server) gapOf(string) *gap { return nil }
 
 // Capabilities are the commands this server answers, sorted — the
 // capabilities list of server_info (concept v8 C.1, our extension).
@@ -182,13 +162,22 @@ func (s *Server) dispatch(ctx context.Context, c *call) (result any, err *protoc
 	}()
 	h, ok := handlers[c.req.Command]
 	if !ok {
-		if bundle, ok := planned[c.req.Command]; ok {
-			return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; planned for %s", s.opts.Version, bundle)
+		if why, ok := planned[c.req.Command]; ok {
+			if why == "never" {
+				return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; not planned (camera and WebRTC are out of scope)", s.opts.Version)
+			}
+			return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; needs %s", s.opts.Version, why)
 		}
 		return nil, protocol.Errorf(protocol.InvalidCommand, "Unknown command: %s", c.req.Command)
 	}
 	if g := s.gapOf(c.req.Command); g != nil {
 		return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; needs %s in go-fabric", s.opts.Version, g.needs)
+	}
+	if tn, ok, perr := s.testNodeFor(c); ok {
+		if perr != nil {
+			return nil, perr
+		}
+		return testCommands[c.req.Command](s, c, tn)
 	}
 	return h(ctx, s, c)
 }

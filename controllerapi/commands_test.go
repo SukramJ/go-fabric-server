@@ -4,10 +4,13 @@
 package controllerapi_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -144,12 +147,63 @@ func TestNodeCommands(t *testing.T) {
 		wantCode(t, err, protocol.InvalidArguments, "fabric_index")
 	})
 	t.Run("open_commissioning_window", func(t *testing.T) {
-		_, err := e.client.OpenCommissioningWindow(ctx, id, 300)
-		wantCode(t, err, protocol.InvalidCommand, "OpenCommissioningWindow")
+		w, err := e.client.OpenCommissioningWindow(ctx, id, 300)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range []string{"setup_pin_code", "setup_manual_code", "setup_qr_code", "discriminator", "vendor_id", "product_id", "commissioning_timeout"} {
+			if _, ok := w[k]; !ok {
+				t.Fatalf("the window lacks %s: %v", k, w)
+			}
+		}
+		if fmt.Sprint(w["commissioning_timeout"]) != "300" || !strings.HasPrefix(fmt.Sprint(w["setup_qr_code"]), "MT:") {
+			t.Fatalf("window %v", w)
+		}
+		// The window's QR code decodes to the passcode it names.
+		var p struct {
+			Payloads []struct {
+				SetupPinCode  uint32 `json:"setup_pin_code"`
+				Discriminator uint16 `json:"discriminator"`
+			} `json:"payloads"`
+		}
+		if err := e.client.Call(ctx, "parse_onboarding_payload", map[string]any{"code": w["setup_qr_code"]}, &p); err != nil || len(p.Payloads) != 1 ||
+			fmt.Sprint(p.Payloads[0].SetupPinCode) != fmt.Sprint(w["setup_pin_code"]) || fmt.Sprint(p.Payloads[0].Discriminator) != fmt.Sprint(w["discriminator"]) {
+			t.Fatalf("the window's QR code %+v %v", p, err)
+		}
+		err = e.client.Call(ctx, "open_commissioning_window", map[string]any{"node_id": id, "timeout": 0}, nil)
+		wantCode(t, err, protocol.InvalidArguments, "positive number of seconds")
+		_, err = e.client.OpenCommissioningWindow(ctx, 4242, 300)
+		wantCode(t, err, protocol.NodeNotExists, "")
 	})
 	t.Run("batched_device_commands", func(t *testing.T) {
-		err := e.client.Call(ctx, "batched_device_commands", map[string]any{"node_id": id, "commands": []any{}}, nil)
-		wantCode(t, err, protocol.InvalidCommand, "multi-command invoke")
+		var res []map[string]any
+		err := e.client.Call(ctx, "batched_device_commands", map[string]any{"node_id": id, "commands": []any{
+			map[string]any{"endpoint_id": ep, "cluster_id": 6, "command_name": "On", "payload": map[string]any{}},
+		}}, &res)
+		if err != nil || len(res) != 1 || fmt.Sprint(res[0]["status"]) != "0" {
+			t.Fatalf("%v %v", res, err)
+		}
+		e.waitEvent(e.client, "attribute_updated", func(raw json.RawMessage) bool { return strings.Contains(string(raw), fmt.Sprintf(`"%d/6/0",true`, ep)) })
+		many := make([]any, 300)
+		for i := range many {
+			many[i] = map[string]any{"endpoint_id": ep, "cluster_id": 6, "command_name": "Toggle"}
+		}
+		err = e.client.Call(ctx, "batched_device_commands", map[string]any{"node_id": id, "commands": many}, nil)
+		wantCode(t, err, protocol.InvalidArguments, "per invoke")
+		for _, bad := range []struct {
+			cmds any
+			want string
+		}{
+			{[]any{}, "non-empty commands list"},
+			{[]any{1}, "command 0 must be an object"},
+			{[]any{map[string]any{"cluster_id": 6, "command_name": "On"}}, "needs endpoint_id"},
+			{[]any{map[string]any{"endpoint_id": ep, "cluster_id": 6, "command_name": "Fly"}}, `Command "Fly" does not exist`},
+			{[]any{map[string]any{"endpoint_id": ep, "cluster_id": 0xFFF1FC01, "command_name": "On"}}, "unknown"},
+			{[]any{map[string]any{"endpoint_id": ep, "cluster_id": 8, "command_name": "MoveToLevel", "payload": map[string]any{"level": "x"}}}, "Invalid command fields"},
+		} {
+			err := e.client.Call(ctx, "batched_device_commands", map[string]any{"node_id": id, "commands": bad.cmds}, nil)
+			wantCode(t, err, protocol.InvalidArguments, bad.want)
+		}
 	})
 	t.Run("subscribe outside the mode", func(t *testing.T) {
 		_, err := e.client.Subscribe(ctx, id, []string{"1/6/0"}, 0, 10)
@@ -241,7 +295,31 @@ func TestServerCommands(t *testing.T) {
 		wantCode(t, err, protocol.InvalidArguments, "console_loglevel")
 	})
 	t.Run("parse_onboarding_payload", func(t *testing.T) {
-		wantCode(t, e.client.Call(ctx, "parse_onboarding_payload", map[string]any{"code": "MT:Y.K90AFN00KA0648G00"}, nil), protocol.InvalidCommand, "decoder")
+		// matterjs-server's documented examples (the compat fixtures).
+		for _, c := range []struct{ code, fixture string }{
+			{"MT:Y.K90AFN00KA0648G00", "parse_onboarding_payload.value.json"},
+			{"34970112332", "parse_onboarding_payload.value.2.json"},
+		} {
+			raw, err := e.client.CallRaw(ctx, "parse_onboarding_payload", map[string]any{"code": c.code})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := os.ReadFile("../protocol/testdata/compat/" + c.fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !sameJSON(t, want, raw) {
+				t.Fatalf("%s:\nwant %s\ngot  %s", c.code, want, raw)
+			}
+		}
+		for _, bad := range []string{"MT:invalid", "1234", "34970112333"} {
+			err := e.client.Call(ctx, "parse_onboarding_payload", map[string]any{"code": bad}, nil)
+			pe := wantCode(t, err, protocol.InvalidArguments, "Invalid pairing code")
+			if pe.Reason == nil || *pe.Reason != protocol.ReasonInvalidPayload {
+				t.Fatalf("%s: reason %v", bad, pe.Reason)
+			}
+		}
+		wantCode(t, e.client.Call(ctx, "parse_onboarding_payload", nil, nil), protocol.InvalidArguments, "code")
 	})
 	t.Run("discover", func(t *testing.T) {
 		found, err := e.client.Discover(ctx)
@@ -276,7 +354,17 @@ func TestCommissionFailures(t *testing.T) {
 	if pe.Reason == nil || *pe.Reason != protocol.ReasonInvalidPayload {
 		t.Fatalf("reason %v", pe.Reason)
 	}
-	_, err = e.client.CommissionWithCode(e.ctx, "12345678901", false)
+	_, err = e.client.CommissionWithCode(e.ctx, "34970112333", false)
+	pe = wantCode(t, err, protocol.InvalidArguments, "Invalid pairing code")
+	if pe.Reason == nil || *pe.Reason != protocol.ReasonInvalidPayload {
+		t.Fatalf("reason %v", pe.Reason)
+	}
+	// A valid code no device answers (the test code of discriminator
+	// 3840 short 15, which the site device does not use).
+	if e.dev.Discriminator()>>8 == 15 {
+		t.Skip("the site device takes discriminator 15")
+	}
+	err = e.client.Call(e.ctx, "commission_with_code", map[string]any{"code": "34970112332", "network_only": true, "discovery_timeout_s": 2}, nil)
 	pe = wantCode(t, err, protocol.NodeCommissionFailed, "")
 	if pe.Reason == nil || *pe.Reason != protocol.ReasonNotDiscovered {
 		t.Fatalf("reason %v", pe.Reason)
@@ -292,10 +380,14 @@ func TestErrors(t *testing.T) {
 	e := newEnv(t, envOptions{})
 	ctx := e.ctx
 	wantCode(t, e.client.Call(ctx, "no_such_command", nil, nil), protocol.InvalidCommand, "Unknown command: no_such_command")
-	wantCode(t, e.client.Call(ctx, "get_icd_state", nil, nil), protocol.InvalidCommand, "planned for go-fabric v0.12.0 (milestone 5")
-	wantCode(t, e.client.Call(ctx, "update_node", nil, nil), protocol.InvalidCommand, "planned for go-fabric phase 25")
-	wantCode(t, e.client.Call(ctx, "import_test_node", nil, nil), protocol.InvalidCommand, "planned for S3")
-	wantCode(t, e.client.Call(ctx, "camera_snapshot", nil, nil), protocol.InvalidCommand, "planned for never")
+	for _, cmd := range []string{"check_node_update", "update_node", "initiate_ota_upload"} {
+		wantCode(t, e.client.Call(ctx, cmd, nil, nil), protocol.InvalidCommand, "milestone 5 phase 25")
+	}
+	for _, cmd := range []string{"get_thread_border_routers", "get_thread_diagnostics"} {
+		wantCode(t, e.client.Call(ctx, cmd, nil, nil), protocol.InvalidCommand, "milestone 6, ADR 0027")
+	}
+	wantCode(t, e.client.Call(ctx, "camera_snapshot", nil, nil), protocol.InvalidCommand, "not planned")
+	wantCode(t, e.client.Call(ctx, "send_webrtc_provider_command", nil, nil), protocol.InvalidCommand, "not planned")
 	wantCode(t, e.client.Call(ctx, "get_node", nil, nil), protocol.InvalidArguments, "node_id is required")
 	wantCode(t, e.client.Call(ctx, "get_node", map[string]any{"node_id": 4242}, nil), protocol.NodeNotExists, "4242")
 	wantCode(t, e.client.Call(ctx, "get_node", map[string]any{"node_id": "x"}, nil), protocol.InvalidArguments, "")
@@ -365,7 +457,42 @@ func TestSubscribeMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantCode(t, e.client.Unsubscribe(e.ctx, n.NodeID, sub.SubscriptionID), protocol.InvalidArguments, "holds no subscription")
-	for _, cmd := range []string{"enable_auto_subscription", "disable_auto_subscription"} {
-		wantCode(t, e.client.Call(e.ctx, cmd, map[string]any{"node_id": n.NodeID}, nil), protocol.InvalidCommand, "SetAutoSubscribe")
+	// enable_auto_subscription: the server's own subscription; a client
+	// subscription is refused while it is on and ended by it.
+	sub2, err := e.client.Subscribe(e.ctx, n.NodeID, []string{key}, 0, 10)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if err := e.client.Call(e.ctx, "enable_auto_subscription", map[string]any{"node_id": n.NodeID}, nil); err != nil {
+		t.Fatal(err)
+	}
+	e.waitEvent(e.client, "subscription_ended", func(raw json.RawMessage) bool {
+		return strings.Contains(string(raw), fmt.Sprintf(`"subscription_id":%d`, sub2.SubscriptionID))
+	})
+	_, err = e.client.Subscribe(e.ctx, n.NodeID, []string{key}, 0, 10)
+	wantCode(t, err, protocol.InvalidArguments, "enable_auto_subscription")
+	if err := e.client.Call(e.ctx, "disable_auto_subscription", map[string]any{"node_id": n.NodeID}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.client.Subscribe(e.ctx, n.NodeID, []string{key}, 0, 10); err != nil {
+		t.Fatalf("subscribe after disable_auto_subscription: %v", err)
+	}
+	wantCode(t, e.client.Call(e.ctx, "enable_auto_subscription", map[string]any{"node_id": 4242}, nil), protocol.NodeNotExists, "")
+}
+
+// sameJSON compares two JSON documents as values, numbers by their text.
+func sameJSON(t *testing.T, a, b []byte) bool {
+	t.Helper()
+	var va, vb any
+	for _, x := range []struct {
+		b []byte
+		v *any
+	}{{a, &va}, {b, &vb}} {
+		dec := json.NewDecoder(bytes.NewReader(x.b))
+		dec.UseNumber()
+		if err := dec.Decode(x.v); err != nil {
+			t.Fatalf("%s: %v", x.b, err)
+		}
+	}
+	return reflect.DeepEqual(va, vb)
 }
