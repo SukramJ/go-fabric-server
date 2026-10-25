@@ -261,7 +261,11 @@ func buildTopology(srcs []topologySource, now time.Time) networkTopology {
 				pairs[key] = p
 				order = append(order, key)
 			}
-			lqi := int64(nb.lqi) //nolint:gosec // an LQI is one byte
+			// An LQI is one byte; a device's larger value is held to it.
+			lqi := int64(0xFF)
+			if nb.lqi <= 0xFF {
+				lqi = int64(nb.lqi)
+			}
 			d := &topologyDirection{Strength: lqiStrength(nb.lqi), LQI: &lqi, RSSI: nb.rssi}
 			if from == p.a && p.ab == nil {
 				p.ab = d
