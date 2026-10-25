@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
 Bundle S2 of go-fabric's concept v8, on go-fabric v0.11.0.
 
 ### Added
