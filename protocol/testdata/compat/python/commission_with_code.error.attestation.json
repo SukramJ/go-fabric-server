@@ -1,0 +1,6 @@
+{
+  "message_id": "3",
+  "error_code": 1,
+  "details": "Commissioning failed: commissioner: Device attestation produced 1 finding(s) and was rejected by policy",
+  "reason": "attestation-rejected"
+}
