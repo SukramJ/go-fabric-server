@@ -132,15 +132,16 @@ func TestBridgeEndToEnd(t *testing.T) {
 		t.Fatalf("second result: %v", err)
 	}
 
-	// The host refuses: the controller gets the failure.
+	// The host refuses with a status: the controller gets that status
+	// (contract.StatusError, go-fabric v0.12.1; Q15).
 	toggle()
 	cmd = e.bridgeEvent("command", "light-1")
-	status := 0x87
+	status := 0x87 // CONSTRAINT_ERROR
 	if err := e.host.Result(e.ctx, cmd.Correlation, nil, &fsclient.ResultError{Status: &status}); err != nil {
 		t.Fatal(err)
 	}
 	var perr *protocol.Error
-	if err := <-done; !errors.As(err, &perr) || perr.Status == nil || *perr.Status == 0 {
+	if err := <-done; !errors.As(err, &perr) || perr.Status == nil || *perr.Status != 0x87 {
 		t.Fatalf("refused Toggle: %v", err)
 	}
 
@@ -152,8 +153,8 @@ func TestBridgeEndToEnd(t *testing.T) {
 	if to.Correlation != cmd.Correlation || to.Command != "Toggle" {
 		t.Fatalf("result_timeout %+v for %d", to, cmd.Correlation)
 	}
-	if err := <-done; !errors.As(err, &perr) {
-		t.Fatalf("timed-out Toggle: %v", err)
+	if err := <-done; !errors.As(err, &perr) || perr.Status == nil || *perr.Status != 0x94 {
+		t.Fatalf("timed-out Toggle: %v, want TIMEOUT (0x94)", err)
 	}
 	if err := e.host.Result(e.ctx, cmd.Correlation, nil, nil); err == nil {
 		t.Fatal("a late result was accepted")
@@ -263,8 +264,8 @@ func TestBridgeWrites(t *testing.T) {
 	if err := e.host.Result(e.ctx, w.Correlation, nil, &fsclient.ResultError{}); err != nil {
 		t.Fatal(err)
 	}
-	if r := <-done; r.err != nil || len(r.r) != 1 || r.r[0].Status == 0 {
-		t.Fatalf("refused write %+v", r)
+	if r := <-done; r.err != nil || len(r.r) != 1 || r.r[0].Status != 0x01 {
+		t.Fatalf("refused write without a status %+v, want FAILURE", r)
 	}
 	write(8)
 	w = e.bridgeEvent("write", "w")
