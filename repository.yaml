@@ -1,0 +1,6 @@
+# Home Assistant add-on repository descriptor: add this GitHub repository under
+# Settings -> Add-ons -> Add-on Store -> Repositories; the Supervisor then finds
+# the add-on in addon/.
+name: go-fabric-server Add-ons
+url: https://github.com/SukramJ/go-fabric-server
+maintainer: SukramJ <sukramj@icloud.com>

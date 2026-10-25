@@ -13,6 +13,7 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/client"
 	"github.com/SukramJ/go-fabric/controller/dcl"
+	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
@@ -205,9 +206,13 @@ func cmdSetNodeBinding(ctx context.Context, s *Server, c *call) (any, *protocol.
 // records ([dcl.Client.Vendors]) unless Options.Vendors sets another.
 type VendorSource func(ctx context.Context) (map[uint16]string, error)
 
-// dclVendors is the default VendorSource: the production ledger's vendor
-// records (matterjs-server's vendor info service,
-// MatterController.ts:677-679), fetched once and kept for a day.
+// dclVendors is the default VendorSource — matterjs-server's vendor info
+// service (MatterController.ts:677-679, WebSocketControllerHandler.ts:1695-1728):
+// the vendors of go-fabric's embedded ledger snapshot
+// (controller/dcl/snapshot.Vendors, v0.12.1, itself over matter.js's
+// static vendors), with the production ledger's live records over them,
+// fetched once and kept for a day. Without the ledger the snapshot
+// answers alone.
 func dclVendors() VendorSource {
 	var (
 		mu      sync.Mutex
@@ -215,6 +220,12 @@ func dclVendors() VendorSource {
 		fetched time.Time
 	)
 	ledger := dcl.NewClient("")
+	base := map[uint16]string{}
+	if snap, err := snapshot.Embedded(); err == nil && snap != nil {
+		for _, v := range snap.Vendors() {
+			base[v.ID] = v.Name
+		}
+	}
 	return func(ctx context.Context) (map[uint16]string, error) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -226,9 +237,15 @@ func dclVendors() VendorSource {
 			if cache != nil {
 				return cache, nil
 			}
+			if len(base) > 0 {
+				return base, nil
+			}
 			return nil, err
 		}
-		cache = make(map[uint16]string, len(vendors))
+		cache = make(map[uint16]string, len(base)+len(vendors))
+		for id, name := range base {
+			cache[id] = name
+		}
 		for _, v := range vendors {
 			cache[v.VendorID] = v.VendorName
 		}
@@ -239,9 +256,9 @@ func dclVendors() VendorSource {
 
 // cmdGetVendorNames answers the vendor names by decimal vendor id, all of
 // them or those filter_vendors names (WebSocketControllerHandler.ts:1695-1728).
-// matterjs-server merges its own static vendor table under the DCL's;
-// this server has no table of its own (report S2, Questions Q18): without
-// the ledger the command fails.
+// The names are the embedded snapshot's with the ledger's over them
+// (dclVendors), as matterjs-server merges its static table under the
+// DCL's.
 func cmdGetVendorNames(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Filter []json.Number `json:"filter_vendors"`

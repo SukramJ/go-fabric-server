@@ -19,3 +19,7 @@ them: every request decodes through the protocol's decoder, and every
 result and event of the S1 set round-trips through the type the server
 encodes it with, equal modulo key order (and modulo the documented
 extensions of go-fabric-server, such as `capabilities` in `server_info`).
+
+`python/` holds the S3 shapes matterjs-server's documentation has no example
+of, recorded in the shape of its python client (`python/README.md`); they
+are checked the same way.

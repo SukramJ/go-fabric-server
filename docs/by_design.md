@@ -42,27 +42,73 @@ changes with the device's next report, not when the write is answered
 (clone `docs/websockets_api.md:604-606`): the device decides what it
 stored, and the report is its word.
 
-**B7 — `get_all_credentials`' Thread entries carry only `id`.** No network
-name and extended PAN id (map 1504): reading them needs a parser of the
-operational dataset that go-fabric's facade does not export (report S1,
-Q13).
+**B7 — retired in S3.** `get_all_credentials`' Thread entries carry
+`networkName` and `extPanId` again (go-fabric's `controller/thread`
+dataset codec).
 
-**B8 — `set_default_fabric_label` is stored, not pushed.** The label is
-kept in `server.json` and reaches the fabric on the controller's next first
-run (map 1523): go-fabric's facade has no route that relabels a running
-fabric on its nodes (report S1, Q8).
+**B8 — retired in S3.** `set_default_fabric_label` is pushed to the
+connected nodes (`client.Registry.SetFabricLabel`).
 
 **B9 — `get_matter_fabrics` carries no `vendor_name`.** The entries name
 the vendor id only (clone `packages/ws-client/src/models/model.ts:1844-1850`,
 `vendor_name` optional): a name needs the vendor table, which this server
 reads from the DCL on `get_vendor_names` only, not on every fabric listing.
 
-**B10 — `get_vendor_names` answers from the DCL only.** matterjs-server
-merges its own static vendor table under the ledger's
-(clone `packages/ws-controller/src/server/WebSocketControllerHandler.ts:1695-1728`,
-`packages/ws-controller/src/data/VendorIDs.ts`): a vendor table is Matter
-data the server does not keep of its own, so without the ledger the command
-fails with `UnknownError` instead of answering a partial list.
+**B10 — retired in S3.** `get_vendor_names` answers the vendors of
+go-fabric's embedded ledger snapshot with the live ledger's over them, as
+matterjs-server merges its static table under the DCL's.
+
+**B14 — `enable_auto_subscription` persists.** The choice is kept in the
+node's settings across a restart (go-fabric `controller/client/node.go`,
+`SetAutoSubscribe`); matterjs-server keeps it in memory only (clone
+`ControllerCommandHandler.ts:2488-2562`, "not kept across a restart"): the
+facade has one switch, and a server that forgets what a client switched
+off would resubscribe a node the client chose to read itself.
+
+**B15 — `set_thread_dataset` reads the dataset.** A dataset must be hex
+and MeshCoP TLVs (go-fabric `controller/thread.DecodeDatasetHex`, the port
+of matter.js `OperationalDataset.ts`); matterjs-server checks the hex only
+(clone `WebSocketControllerHandler.ts:2173-2200`): a dataset no device can
+join fails at commissioning time otherwise, far from its cause.
+
+**B16 — `commission_on_network`'s `ip_addr` selects, it does not dial.**
+The server searches DNS-SD for the device of the filter that announces the
+address; matterjs-server commissions at the address first and falls back
+to discovery (clone `ControllerCommandHandler.ts:2052-2095`): go-fabric's
+registry commissions a discovered device (`Registry.ForDevice`), and the
+facade has no commissioning by bare address.
+
+**B17 — `discover` answers what a device announced.** Absent TXT keys are
+absent; matterjs-server fills them with `""`, `0` or `-1` (clone
+`ControllerCommandHandler.ts:2135-2185`): a default of its own would read
+as an announced value, and every key of the python client's
+`CommissionableNodeData` has a default (models.py:256-277).
+
+**B18 — a 4-byte float is its shortest decimal.** A TLV float32 renders
+as the shortest decimal that reads back as that float (`0.1`,
+go-fabric `client.DecodeJSON`); matterjs-server prints the double
+expansion of the JavaScript number matter.js decodes it into
+(`0.10000000149011612`): the shorter form is the device's value, and a
+client parses both to the same float32.
+
+**B19 — `get_network_topology` adds `ip_addresses`.** A `matter` node
+carries the node's known addresses (brief S3 §3); matterjs-server's node
+has none (models.py:318-347): the topology page is where an operator looks
+for an address, and an old client ignores the key.
+
+**B20 — BLE commissioning needs a reason to use BLE.** With an adapter,
+`commission_with_code` takes BLE only when the code does not rule it out
+(a QR code without the BLE capability does) and a stored Wi-Fi or Thread
+credential can put the device on its network; matterjs-server takes BLE
+whenever it is enabled and `network_only` is false (clone
+`ControllerCommandHandler.ts:1965-2115`): go-fabric's BLE route requires a
+network to provision (`controller.PairOptions.BLE`), and a device already
+on the network is found over DNS-SD.
+
+**B21 — `open_commissioning_window`'s `timeout` is at most 65535.** Above
+it the command is `InvalidArguments`; matterjs-server sets no maximum and
+leaves the error to matter.js (clone `WebSocketControllerHandler.ts:2316-2330`):
+the command's field is 16 bits (go-fabric `client.Node.OpenCommissioningWindow`).
 
 ## Bridge half
 

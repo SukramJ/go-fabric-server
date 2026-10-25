@@ -141,6 +141,10 @@ jobs:
         run: make release
       - name: image
         run: docker build -f deploy/Dockerfile -t go-fabric-server:ci .
+      - name: version check (internal/version, addon/config.yaml, changelog.md)
+        run: make version-check
+      - name: add-on image
+        run: docker build --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest -f addon/Dockerfile -t go-fabric-server-addon:ci .
 
   compat-python:
     name: compat-python

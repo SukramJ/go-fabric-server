@@ -32,12 +32,27 @@ func webHandler(c Config, n *node.Node, ev *fabricui.Events, log *slog.Logger) (
 		return nil, err
 	}
 	o.Admin = admin
-	return fabricui.Handler(o), nil
+	h := fabricui.Handler(o)
+	if c.WebAdminSource == "" {
+		return h, nil
+	}
+	// Behind an Ingress the proxy is the only client: with host networking
+	// the listener is on the LAN too, and every other source is refused
+	// (the add-on's form, go-ha2fabric's WEB_ALLOW).
+	src, _ := netip.ParseAddr(c.WebAdminSource) // checked by webAdmin
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !fromAddr(r, src) {
+			http.Error(w, "the node pages answer the Ingress proxy only", http.StatusForbidden)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}), nil
 }
 
 // webAdmin is Options.Admin: with --web-admin-source an admin is a request
 // from that address (the Ingress proxy vouches for its user), with
-// --web-admin nil (the page's token mode), else nobody (read-only).
+// --web-admin nil (the page's token mode), else nobody (read-only). With
+// --web-admin-source the pages answer that address only (webHandler).
 func webAdmin(c Config) (func(*http.Request) bool, error) {
 	switch {
 	case c.WebAdminSource != "":

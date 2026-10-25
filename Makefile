@@ -87,6 +87,9 @@ fuzz-smoke: ## every fuzz target of the JSON decoders, the declaration and the p
 	$(GO) test -run '^$$' -fuzz '^FuzzDecodeDeclaration$$' -fuzztime $(FUZZTIME) ./bridgeapi/
 	$(GO) test -run '^$$' -fuzz '^FuzzDecodePatch$$' -fuzztime $(FUZZTIME) ./bridgeapi/
 
+compat-python: ## the python-client compatibility job (PYTHON: a venv with test/compat/requirements.txt; COMPAT_BRIDGE=1 commissions a reference bridge)
+	test/compat/run.sh
+
 vuln: ## govulncheck ./...
 	govulncheck ./...
 
@@ -104,10 +107,21 @@ licenses: ## fail on a forbidden, restricted or reciprocal dependency licence (g
 secrets: ## scan the tracked git history for committed secrets (gitleaks)
 	$(GO) run github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION) git --no-banner --redact .
 
+ADDON_BASE ?= ghcr.io/home-assistant/amd64-base:latest
+
+addon-image: ## build the add-on image for amd64 (addon/Dockerfile on ADDON_BASE)
+	$(DOCKER) build --build-arg BUILD_FROM=$(ADDON_BASE) --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) -f addon/Dockerfile -t $(DOCKER_IMAGE)-addon:$(VERSION) .
+
+version-check: ## fail when internal/version, addon/config.yaml and changelog.md disagree
+	@v=$(RELEASE_VERSION); a=$$(awk -F'"' '/^version:/{print $$2; exit}' addon/config.yaml); \
+	test "$$v" = "$$a" || { echo "internal/version $$v, addon/config.yaml $$a"; exit 1; }; \
+	grep -q "^## \[$$v\]" changelog.md || { echo "changelog.md has no ## [$$v] section"; exit 1; }; \
+	echo "version $$v: internal/version, addon/config.yaml and changelog.md agree"
+
 docker: ## build the container image (deploy/Dockerfile)
 	$(DOCKER) build -f deploy/Dockerfile --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) -t $(DOCKER_IMAGE):$(VERSION) .
 
-release: ## stage the cross-compiled release archives and notes into dist/ (no upload)
+release: version-check ## stage the cross-compiled release archives and notes into dist/ (no upload)
 	@rm -rf $(DIST_DIR) && mkdir -p $(DIST_DIR)
 	@echo "release version: $(RELEASE_VERSION)"
 	@version="$(RELEASE_VERSION)"; \
@@ -134,4 +148,4 @@ version: ## print the resolved build metadata
 	@echo "COMMIT     = $(COMMIT)"
 	@echo "BUILD_DATE = $(BUILD_DATE)"
 
-.PHONY: help setup build vet test race fmt fmt-check lint tidy-check generate cover cover-check fuzz-smoke vuln licenses secrets docker release ci clean version
+.PHONY: help setup build vet test race fmt fmt-check lint tidy-check generate cover cover-check fuzz-smoke compat-python vuln licenses secrets docker addon-image version-check release ci clean version

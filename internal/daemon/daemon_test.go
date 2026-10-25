@@ -221,4 +221,18 @@ func TestWebAdmin(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<") {
 		t.Fatalf("shell %d", rec.Code)
 	}
+	// Behind the Ingress only the proxy is answered.
+	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for addr, want := range map[string]int{"172.30.32.2:1234": http.StatusOK, "192.168.1.9:1234": http.StatusForbidden} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/node/status", nil)
+		req.RemoteAddr = addr
+		rec = httptest.NewRecorder()
+		ing.ServeHTTP(rec, req)
+		if rec.Code != want {
+			t.Fatalf("%s: %d, want %d", addr, rec.Code, want)
+		}
+	}
 }
