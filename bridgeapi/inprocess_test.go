@@ -20,10 +20,9 @@ import (
 
 // declaration is the brief's shape: one ElectricalSensor with a
 // PowerSource (go-fabric's embed-in-a-daemon cookbook, §3) and one
-// OnOffLight whose Toggle the host answers. The brief's Identify cannot be
-// the host's: the kit refuses an Identify declaration on a bridged device,
-// whose Identify the endpoint assembler mounts itself (report S2,
-// Questions Q16); TestBridgeErrors holds that refusal.
+// OnOffLight whose Toggle the host answers. Since go-fabric v0.12.1 a
+// bridged device's Identify takes the host's handlers (report S2, Q16);
+// TestBridgeErrors holds the declaration and the refusal of anything else.
 const declaration = `{"devices": [
  {"key": "zendure-1", "type": "ElectricalSensor", "name": "Zendure", "vendor": "Zendure", "device_address": "SN1",
   "clusters": {
@@ -319,8 +318,9 @@ func TestBridgeErrors(t *testing.T) {
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"OnOff":{"handle_commands":["Fly"]}}}]}`, `no command "Fly"`},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"Thermostat":{}}}]}`, "devices[0] (a):"},
 		// The kit's refusal, with its message: the assembler mounts a
-		// bridged device's Identify (Questions Q16).
-		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"Identify":{"handle_commands":["Identify"]}}}]}`, "mounts Identify (0x0003) itself"},
+		// bridged device's Identify and takes only its handlers (go-fabric
+		// v0.12.1 closed Q16 for HandleIdentify/HandleTriggerEffect).
+		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"Identify":{"initial":{"identifyTime":1}}}}]}`, "Identify"},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"OnOff":{"handle_commands":["Toggle","Nope"]}}}]}`, `no command "Nope"`},
 		{`{"devices":[{"key":"a","type":"OnOffLight"},{"key":"a","type":"OnOffLight"}]}`, "also the key of devices[0]"},
 	} {
@@ -329,6 +329,11 @@ func TestBridgeErrors(t *testing.T) {
 		if !errors.As(err, &perr) || perr.ErrorCode != protocol.InvalidArguments || !strings.Contains(perr.Details, c.want) {
 			t.Errorf("%s: %v, want %q", c.doc, err, c.want)
 		}
+	}
+	// The host's Identify handler on a bridged device (Q16, go-fabric
+	// v0.12.1): accepted.
+	if _, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"Identify":{"handle_commands":["Identify"]}}}]}`)); err != nil {
+		t.Fatalf("an Identify handler: %v", err)
 	}
 	if _, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"}]}`)); err != nil {
 		t.Fatal(err)

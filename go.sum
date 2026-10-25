@@ -1,7 +1,7 @@
 filippo.io/nistec v0.0.4 h1:F14ZHT5htWlMnQVPndX9ro9arf56cBhQxq4LnDI491s=
 filippo.io/nistec v0.0.4/go.mod h1:PK/lw8I1gQT4hUML4QGaqljwdDaFcMyFKSXN7kjrtKI=
-github.com/SukramJ/go-fabric v0.11.0 h1:mZ07HWHTkDEyxUkkzfq5ezELZqWLiK49UJ1o/Jbk7ik=
-github.com/SukramJ/go-fabric v0.11.0/go.mod h1:u05z8cUjXxgNjqaVn+kMb4S99/hjHdg8WH/8h+oq2rs=
+github.com/SukramJ/go-fabric v0.12.1 h1:rWdqlsa6TV31LIl2G0YDSr2wrIGsZgnNDyEgAjMY4FQ=
+github.com/SukramJ/go-fabric v0.12.1/go.mod h1:u05z8cUjXxgNjqaVn+kMb4S99/hjHdg8WH/8h+oq2rs=
 github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/coder/websocket v1.8.15 h1:6B2JPeOGlpff2Uz6vOEH1Vzpi0iUz20A+lPVhPHtNUA=
