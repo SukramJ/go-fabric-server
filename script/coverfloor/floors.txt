@@ -1,8 +1,9 @@
 # Statement coverage floors per package (script/coverfloor). A ratchet:
 # raise a floor with the change that raises the coverage.
-client           75
+bridgeapi        82
+client           78
 controllerapi    72
-internal/daemon  55
+internal/daemon  70
 internal/gen     88
 internal/version 60
 internal/wire    82

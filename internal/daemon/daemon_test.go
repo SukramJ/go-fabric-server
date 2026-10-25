@@ -10,7 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -112,8 +114,19 @@ func TestMuxRoutes(t *testing.T) {
 // and a Unix socket: a client declares a device and reads the pairing
 // codes; the daemon stops with its context.
 func TestRunBridge(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		// The bridge node opens real sockets and mDNS; the CI legs on
+		// macOS and Windows run the half in process (bridgeapi's tests).
+		t.Skip("the daemon's bridge node on the host network: linux only")
+	}
 	dir := t.TempDir()
-	sock := filepath.Join(dir, "fs.sock")
+	// A short socket path: sun_path holds about 100 bytes.
+	sockDir, err := os.MkdirTemp("", "fsb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(sockDir) })
+	sock := filepath.Join(sockDir, "fs.sock")
 	cfg := Config{
 		Listen: "unix:" + sock, LogLevel: "info", StoragePath: dir, Bridge: true,
 		BridgeListen: "[::1]:0", BridgePasscode: 20202021, BridgeDiscriminator: 3840,
