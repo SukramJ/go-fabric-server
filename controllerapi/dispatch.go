@@ -68,22 +68,23 @@ func init() {
 		"get_fabric_label":              cmdGetFabricLabel,
 		"get_matter_fabrics":            cmdGetMatterFabrics,
 		"remove_matter_fabric":          cmdRemoveMatterFabric,
+		"set_acl_entry":                 cmdSetACLEntry,
+		"set_node_binding":              cmdSetNodeBinding,
+		"get_vendor_names":              cmdGetVendorNames,
 	}
 }
 
-// planned names the bundle that brings a command of matterjs-server's
-// dispatch the server does not implement (concept v8 C.2).
+// planned names what brings a command of matterjs-server's dispatch the
+// server does not implement (concept v8 C.2): a bundle of this server, or
+// the go-fabric release whose controller facade the command waits for.
 var planned = map[string]string{
-	"set_acl_entry":                 "S2",
-	"set_node_binding":              "S2",
-	"check_node_update":             "S2",
-	"update_node":                   "S2",
-	"initiate_ota_upload":           "S2",
-	"get_vendor_names":              "S2",
-	"get_icd_state":                 "S2",
-	"register_icd":                  "S2",
-	"resync_icd":                    "S2",
-	"unregister_icd":                "S2",
+	"check_node_update":             otaBundle,
+	"update_node":                   otaBundle,
+	"initiate_ota_upload":           otaBundle,
+	"get_icd_state":                 icdBundle,
+	"register_icd":                  icdBundle,
+	"resync_icd":                    icdBundle,
+	"unregister_icd":                icdBundle,
 	"import_test_node":              "S3",
 	"get_thread_border_routers":     "S3",
 	"get_thread_diagnostics":        "S3",
@@ -97,6 +98,12 @@ var planned = map[string]string{
 	"camera_provide_ice_candidates": "never",
 	"send_webrtc_provider_command":  "never",
 }
+
+// The go-fabric work the stubs wait for (brief S2 §2).
+const (
+	icdBundle = "go-fabric v0.12.0 (milestone 5, the ICD client)"
+	otaBundle = "go-fabric phase 25 (the OTA provider on the controller)"
+)
 
 // gap is the answer of a command whose route go-fabric's controller
 // facade does not offer yet (report S1, Questions): InvalidCommand naming
