@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-25
+
+The release of 0.2.0: its tag pointed at the commit before the version bump, so the release workflow refused it; this version carries the same code with the constant and the changelog in step.
+
 ## [0.2.0] - 2026-10-25
 
 Bundle S2 of go-fabric's concept v8, on go-fabric v0.11.0.
