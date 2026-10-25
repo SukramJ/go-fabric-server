@@ -106,6 +106,7 @@ func cmdImportTestNode(_ context.Context, s *Server, c *call) (any, *protocol.Er
 		nodes = append(nodes, &n)
 	}
 	s.mu.Lock()
+	defer s.topologyUpdated() // after the unlock below
 	defer s.mu.Unlock()
 	next := testNodeStart
 	for id := range s.testNodes {
@@ -247,6 +248,7 @@ var testCommands = map[string]func(s *Server, c *call, n *testNode) (any, *proto
 	},
 	"remove_node": func(s *Server, _ *call, n *testNode) (any, *protocol.Error) {
 		s.mu.Lock()
+		defer s.topologyUpdated() // after the unlock below
 		defer s.mu.Unlock()
 		delete(s.testNodes, n.NodeID)
 		frame := protocol.MustEncode(protocol.Event{Event: "node_removed", Data: n.NodeID})
