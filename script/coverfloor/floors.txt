@@ -6,6 +6,5 @@ controllerapi    72
 internal/daemon  70
 internal/gen     88
 internal/version 60
-internal/wire    82
 protocol         86
 protocol/schema  55

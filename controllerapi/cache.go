@@ -4,9 +4,10 @@
 package controllerapi
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"maps"
-	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
@@ -27,7 +27,7 @@ import (
 type nodeState struct {
 	nodeID uint64
 	local  string
-	attrs  map[string]any
+	attrs  map[string]json.RawMessage
 	// clusters are the rendered attribute keys and the data version of
 	// each "endpoint/cluster", so a report re-renders only the clusters it
 	// changed.
@@ -70,7 +70,7 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 	}
 	st := &nodeState{
 		nodeID: addr.NodeID, local: n.ID(),
-		attrs: map[string]any{}, clusters: map[string]clusterState{},
+		attrs: map[string]json.RawMessage{}, clusters: map[string]clusterState{},
 		endpoints: map[uint16]bool{}, parents: map[uint16]uint16{},
 		available:    n.ConnectionState() == client.Connected,
 		commissioned: n.Record().CommissionedAt,
@@ -99,7 +99,7 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 			}
 		}
 		for _, c := range ep.Clusters() {
-			key := wire.ClusterKey(num, c.ID())
+			key := clusterKey(num, c.ID())
 			version, hasVersion := c.Version()
 			if prev != nil {
 				if pc, ok := prev.clusters[key]; ok && hasVersion && pc.hasVersion && pc.version == version {
@@ -118,8 +118,8 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 				if !ok {
 					continue
 				}
-				k := wire.Key(num, c.ID(), id)
-				st.attrs[k] = wire.Attribute(c.ID(), id, v)
+				k := attrKey(num, c.ID(), id)
+				st.attrs[k] = attributeJSON(c.ID(), id, v)
 				cs.keys = append(cs.keys, k)
 			}
 			st.clusters[key] = cs
@@ -130,16 +130,16 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 
 // nodeData is MatterNodeData (packages/ws-client/src/models/node.ts:9-33).
 type nodeData struct {
-	NodeID                 uint64            `json:"node_id"`
-	DateCommissioned       string            `json:"date_commissioned"`
-	LastInterview          string            `json:"last_interview"`
-	InterviewVersion       int               `json:"interview_version"`
-	Available              bool              `json:"available"`
-	IsBridge               bool              `json:"is_bridge"`
-	Attributes             map[string]any    `json:"attributes"`
-	AttributeSubscriptions []any             `json:"attribute_subscriptions"`
-	MatterVersion          *string           `json:"matter_version,omitempty"`
-	EndpointParents        map[string]uint16 `json:"endpoint_parents"`
+	NodeID                 uint64                     `json:"node_id"`
+	DateCommissioned       string                     `json:"date_commissioned"`
+	LastInterview          string                     `json:"last_interview"`
+	InterviewVersion       int                        `json:"interview_version"`
+	Available              bool                       `json:"available"`
+	IsBridge               bool                       `json:"is_bridge"`
+	Attributes             map[string]json.RawMessage `json:"attributes"`
+	AttributeSubscriptions []any                      `json:"attribute_subscriptions"`
+	MatterVersion          *string                    `json:"matter_version,omitempty"`
+	EndpointParents        map[string]uint16          `json:"endpoint_parents"`
 }
 
 // interviewVersion is matterjs-server's constant
@@ -195,7 +195,7 @@ func (st *nodeState) isBridge() bool {
 		if !strings.HasSuffix(k, suffix) || strings.Count(k, "/") != 2 {
 			continue
 		}
-		list, _ := v.([]any)
+		list, _ := decodeAny(v).([]any)
 		for _, e := range list {
 			if m, ok := e.(map[string]any); ok && numberIs(m["0"], uint64(aggregatorType.ID)) {
 				return true
@@ -205,32 +205,25 @@ func (st *nodeState) isBridge() bool {
 	return false
 }
 
-func numberIs(v any, want uint64) bool {
-	switch x := v.(type) {
-	case uint64:
-		return x == want
-	case int64:
-		return x >= 0 && uint64(x) == want
-	}
-	return false
-}
-
 // matterVersion is matterjs-server's determineMatterVersion
 // (ControllerCommandHandler.ts:193-215): the SpecificationVersion as
 // major.minor.patch (its top three bytes), else an estimate from
-// DataModelRevision.
+// DataModelRevision. The bytes are go-fabric's client.SpecVersionOf; the
+// string keeps matterjs-server's three components (the reserved byte is
+// not shown, as there).
 func (st *nodeState) matterVersion() *string {
 	if basicInformation == nil {
 		return nil
 	}
 	if attrSpecVersion != nil {
-		if v, ok := st.attrs[wire.Key(0, basicInformation.ID, attrSpecVersion.ID)].(uint64); ok && v > 0 {
-			s := fmt.Sprintf("%d.%d.%d", v>>24&0xFF, v>>16&0xFF, v>>8&0xFF)
+		if v, ok := uintOf(st.attrs[attrKey(0, basicInformation.ID, attrSpecVersion.ID)]); ok && v > 0 && v <= 0xFFFFFFFF {
+			sv := client.SpecVersionOf(uint32(v))
+			s := fmt.Sprintf("%d.%d.%d", sv.Major, sv.Minor, sv.Patch)
 			return &s
 		}
 	}
 	if attrDataModelRev != nil {
-		if v, ok := st.attrs[wire.Key(0, basicInformation.ID, attrDataModelRev.ID)].(uint64); ok {
+		if v, ok := uintOf(st.attrs[attrKey(0, basicInformation.ID, attrDataModelRev.ID)]); ok {
 			var s string
 			switch {
 			case v <= 16:
@@ -373,7 +366,7 @@ func (s *Server) refresh(id string) {
 	structural := old.available != st.available || !maps.Equal(old.endpoints, st.endpoints) || !sameKeys(old.attrs, st.attrs)
 	if old.primed {
 		for k, v := range st.attrs {
-			if ov, ok := old.attrs[k]; ok && !reflect.DeepEqual(ov, v) {
+			if ov, ok := old.attrs[k]; ok && !bytes.Equal(ov, v) {
 				s.attributeUpdatedLocked(st.nodeID, k, v)
 			}
 		}
@@ -405,7 +398,7 @@ func (s *Server) refresh(id string) {
 	}
 }
 
-func sameKeys(a, b map[string]any) bool {
+func sameKeys(a, b map[string]json.RawMessage) bool {
 	if len(a) != len(b) {
 		return false
 	}

@@ -11,7 +11,6 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
@@ -238,7 +237,7 @@ func cmdGetMatterFabrics(ctx context.Context, s *Server, c *call) (any, *protoco
 		if d.Path.Cluster != opCreds.ID || d.Path.Attribute != attrFabrics.ID {
 			continue
 		}
-		list, _ := wire.Value(attrFabrics.Type, d.Value, false).([]any)
+		list, _ := decodeAny(renderJSON(client.AttributeField(opCreds.ID, attrFabrics.ID), &attrFabrics.Type, d.Value, client.NameBased)).([]any)
 		for _, e := range list {
 			m, ok := e.(map[string]any)
 			if !ok {
@@ -271,7 +270,7 @@ func cmdRemoveMatterFabric(ctx context.Context, s *Server, c *call) (any, *proto
 	if a.FabricIndex == nil {
 		return nil, invalidArgs(c.req.Command, "fabric_index is required")
 	}
-	payload, err := wire.EncodeFields(cmdRemoveFabricC.Fields, []byte(`{"fabricIndex":`+strconv.Itoa(int(*a.FabricIndex))+`}`))
+	payload, err := encodeCommand(opCreds.ID, cmdRemoveFabricC.ID, []byte(`{"fabricIndex":`+strconv.Itoa(int(*a.FabricIndex))+`}`))
 	if err != nil {
 		return nil, invalidArgs(c.req.Command, "%v", err)
 	}

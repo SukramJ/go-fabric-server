@@ -82,8 +82,8 @@ cover-check: cover ## fail when a package is below its floor (script/coverfloor/
 fuzz-smoke: ## every fuzz target of the JSON decoders, the declaration and the paths, $(FUZZTIME) each
 	$(GO) test -run '^$$' -fuzz '^FuzzDecodeRequest$$' -fuzztime $(FUZZTIME) ./protocol/
 	$(GO) test -run '^$$' -fuzz '^FuzzParseUint64$$' -fuzztime $(FUZZTIME) ./protocol/
-	$(GO) test -run '^$$' -fuzz '^FuzzParsePath$$' -fuzztime $(FUZZTIME) ./internal/wire/
-	$(GO) test -run '^$$' -fuzz '^FuzzEncodeFields$$' -fuzztime $(FUZZTIME) ./internal/wire/
+	$(GO) test -run '^$$' -fuzz '^FuzzParsePath$$' -fuzztime $(FUZZTIME) ./controllerapi/
+	$(GO) test -run '^$$' -fuzz '^FuzzEncodeFields$$' -fuzztime $(FUZZTIME) ./controllerapi/
 	$(GO) test -run '^$$' -fuzz '^FuzzDecodeDeclaration$$' -fuzztime $(FUZZTIME) ./bridgeapi/
 	$(GO) test -run '^$$' -fuzz '^FuzzDecodePatch$$' -fuzztime $(FUZZTIME) ./bridgeapi/
 

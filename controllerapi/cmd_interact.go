@@ -11,7 +11,6 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
@@ -20,7 +19,7 @@ import (
 // (ControllerCommandHandler.ts:1283).
 const readBatch = 9
 
-func attributePath(p wire.Path) client.AttributePath {
+func attributePath(p wirePath) client.AttributePath {
 	var a client.AttributePath
 	if p.Endpoint != nil {
 		a.Endpoint, a.HasEndpoint = *p.Endpoint, true
@@ -34,7 +33,7 @@ func attributePath(p wire.Path) client.AttributePath {
 	return a
 }
 
-func eventPath(p wire.Path, urgent bool) client.EventPath {
+func eventPath(p wirePath, urgent bool) client.EventPath {
 	var e client.EventPath
 	if p.Endpoint != nil {
 		e.Endpoint, e.HasEndpoint = *p.Endpoint, true
@@ -84,13 +83,13 @@ func cmdReadAttribute(ctx context.Context, s *Server, c *call) (any, *protocol.E
 	}
 	parsed := make([]client.AttributePath, 0, len(paths))
 	for _, p := range paths {
-		wp, err := wire.ParsePath(p, 3, false)
+		wp, err := parsePath(p, 3, false)
 		if err != nil {
 			return nil, invalidArgs(c.req.Command, "%v", err)
 		}
 		parsed = append(parsed, attributePath(wp))
 	}
-	out := map[string]any{}
+	out := map[string]json.RawMessage{}
 	for i := 0; i < len(parsed); i += readBatch {
 		req := client.ReadRequest{IncludeKnownVersions: true}
 		req.Attributes = parsed[i:min(i+readBatch, len(parsed))]
@@ -101,7 +100,7 @@ func cmdReadAttribute(ctx context.Context, s *Server, c *call) (any, *protocol.E
 		}
 		for i := range rep.Attributes {
 			d := &rep.Attributes[i]
-			out[wire.Key(d.Path.Endpoint, d.Path.Cluster, d.Path.Attribute)] = wire.Attribute(d.Path.Cluster, d.Path.Attribute, d.Value)
+			out[attrKey(d.Path.Endpoint, d.Path.Cluster, d.Path.Attribute)] = attributeJSON(d.Path.Cluster, d.Path.Attribute, d.Value)
 		}
 	}
 	if len(out) == 0 {
@@ -134,14 +133,14 @@ type readArgs struct {
 func (a *readArgs) request(command string) (client.ReadPaths, *protocol.Error) {
 	var r client.ReadPaths
 	for _, p := range a.AttributePaths {
-		wp, err := wire.ParsePath(p, 3, true)
+		wp, err := parsePath(p, 3, true)
 		if err != nil {
 			return r, invalidArgs(command, "%v", err)
 		}
 		r.Attributes = append(r.Attributes, attributePath(wp))
 	}
 	for _, e := range a.EventPaths {
-		wp, err := wire.ParsePath(e.Path, 3, true)
+		wp, err := parsePath(e.Path, 3, true)
 		if err != nil {
 			return r, invalidArgs(command, "%v", err)
 		}
@@ -160,7 +159,7 @@ func (a *readArgs) request(command string) (client.ReadPaths, *protocol.Error) {
 		return r, invalidArgs(command, "data_version_filters need at least one attribute path")
 	}
 	for _, f := range a.DataVersionFilters {
-		wp, err := wire.ParsePath(f.Path, 2, true)
+		wp, err := parsePath(f.Path, 2, true)
 		if err != nil || wp.Endpoint == nil || wp.Cluster == nil {
 			return r, invalidArgs(command, "data version filter path %q must be endpoint/cluster, both numbers", f.Path)
 		}
@@ -175,11 +174,11 @@ func (a *readArgs) request(command string) (client.ReadPaths, *protocol.Error) {
 
 // reportData is InteractionReportData (model.ts:435-444).
 type reportData struct {
-	Attributes      map[string]any        `json:"attributes"`
-	Events          []nodeEventData       `json:"events"`
-	AttributeStatus map[string]pathStatus `json:"attribute_status,omitempty"`
-	EventStatus     map[string]pathStatus `json:"event_status,omitempty"`
-	DataVersions    map[string]uint32     `json:"data_versions,omitempty"`
+	Attributes      map[string]json.RawMessage `json:"attributes"`
+	Events          []nodeEventData            `json:"events"`
+	AttributeStatus map[string]pathStatus      `json:"attribute_status,omitempty"`
+	EventStatus     map[string]pathStatus      `json:"event_status,omitempty"`
+	DataVersions    map[string]uint32          `json:"data_versions,omitempty"`
 }
 
 type pathStatus struct {
@@ -188,25 +187,25 @@ type pathStatus struct {
 }
 
 func newReportData() reportData {
-	return reportData{Attributes: map[string]any{}, Events: []nodeEventData{}}
+	return reportData{Attributes: map[string]json.RawMessage{}, Events: []nodeEventData{}}
 }
 
 func (r *reportData) add(nodeID uint64, rep *client.Report) {
 	for i := range rep.Attributes {
 		d := &rep.Attributes[i]
-		r.Attributes[wire.Key(d.Path.Endpoint, d.Path.Cluster, d.Path.Attribute)] = wire.Attribute(d.Path.Cluster, d.Path.Attribute, d.Value)
+		r.Attributes[attrKey(d.Path.Endpoint, d.Path.Cluster, d.Path.Attribute)] = attributeJSON(d.Path.Cluster, d.Path.Attribute, d.Value)
 		if d.DataVersion != 0 {
 			if r.DataVersions == nil {
 				r.DataVersions = map[string]uint32{}
 			}
-			r.DataVersions[wire.ClusterKey(d.Path.Endpoint, d.Path.Cluster)] = d.DataVersion
+			r.DataVersions[clusterKey(d.Path.Endpoint, d.Path.Cluster)] = d.DataVersion
 		}
 	}
 	for _, st := range rep.Statuses {
 		if r.AttributeStatus == nil {
 			r.AttributeStatus = map[string]pathStatus{}
 		}
-		r.AttributeStatus[wire.Key(st.Path.Endpoint, st.Path.Cluster, st.Path.Attribute)] = statusEntry(int(st.Status), st.ClusterStatus)
+		r.AttributeStatus[attrKey(st.Path.Endpoint, st.Path.Cluster, st.Path.Attribute)] = statusEntry(int(st.Status), st.ClusterStatus)
 	}
 	for i := range rep.Events {
 		e := &rep.Events[i]
@@ -216,7 +215,7 @@ func (r *reportData) add(nodeID uint64, rep *client.Report) {
 		if r.EventStatus == nil {
 			r.EventStatus = map[string]pathStatus{}
 		}
-		r.EventStatus[wire.Key(st.Path.Endpoint, st.Path.Cluster, st.Path.Event)] = statusEntry(int(st.Status), st.ClusterStatus)
+		r.EventStatus[attrKey(st.Path.Endpoint, st.Path.Cluster, st.Path.Event)] = statusEntry(int(st.Status), st.ClusterStatus)
 	}
 }
 
@@ -299,7 +298,7 @@ func cmdWriteAttribute(ctx context.Context, s *Server, c *call) (any, *protocol.
 	if a.AttributePath == nil {
 		return nil, invalidArgs(c.req.Command, "attribute_path is required")
 	}
-	wp, err := wire.ParsePath(*a.AttributePath, 3, true)
+	wp, err := parsePath(*a.AttributePath, 3, true)
 	if err != nil {
 		return nil, invalidArgs(c.req.Command, `write_attribute needs attribute_path as endpoint/cluster/attribute, each a number or "*"`)
 	}
@@ -313,7 +312,7 @@ func cmdWriteAttribute(ctx context.Context, s *Server, c *call) (any, *protocol.
 	if perr != nil {
 		return nil, perr
 	}
-	value, attrTimed, err := wire.EncodeAttribute(*wp.Cluster, *wp.Element, a.Value)
+	value, attrTimed, err := encodeAttribute(*wp.Cluster, *wp.Element, a.Value)
 	if err != nil {
 		return nil, invalidArgs(c.req.Command, "%v", err)
 	}
@@ -383,7 +382,7 @@ func cmdDeviceCommand(ctx context.Context, s *Server, c *call) (any, *protocol.E
 	if cmd == nil {
 		return nil, invalidArgs(c.req.Command, "cluster %d has no command %q in the server's model", *a.ClusterID, *a.CommandName)
 	}
-	payload, err := wire.EncodeFields(cmd.Fields, a.Payload)
+	payload, err := encodeCommand(*a.ClusterID, cmd.ID, a.Payload)
 	if err != nil {
 		return nil, invalidArgs(c.req.Command, "%v", err)
 	}
@@ -395,10 +394,7 @@ func cmdDeviceCommand(ctx context.Context, s *Server, c *call) (any, *protocol.E
 	if !res.HasFields {
 		return nil, nil
 	}
-	if resp := cl.Response(res.Command); resp != nil {
-		return wire.Fields(resp.Fields, res.Fields), nil
-	}
-	return wire.Untyped(res.Fields), nil
+	return responseJSON(*a.ClusterID, res.Command, res.Fields), nil
 }
 
 // cmdBatchedDeviceCommands is answered by the dispatcher's gap check

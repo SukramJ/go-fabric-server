@@ -6,7 +6,6 @@ package controllerapi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -15,7 +14,6 @@ import (
 	"github.com/SukramJ/go-fabric/controller/client"
 	"github.com/SukramJ/go-fabric/controller/dcl"
 
-	"github.com/SukramJ/go-fabric-server/internal/wire"
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
@@ -46,7 +44,7 @@ func (s *Server) writeList(ctx context.Context, command string, n *client.Node, 
 	if err != nil {
 		return nil, invalidArgs(command, "%v", err)
 	}
-	value, timed, err := wire.EncodeAttribute(cl.ID, a.ID, raw)
+	value, timed, err := encodeAttribute(cl.ID, a.ID, raw)
 	if err != nil {
 		return nil, invalidArgs(command, "%v", err)
 	}
@@ -82,12 +80,8 @@ func (s *Server) fabricIndexOf(n *client.Node) (uint64, bool) {
 	if st == nil {
 		return 0, false
 	}
-	v, ok := st.attrs[wire.Key(0, cl.ID, a.ID)]
-	if !ok {
-		return 0, false
-	}
-	idx, err := strconv.ParseUint(fmt.Sprint(v), 10, 8)
-	return idx, err == nil
+	idx, ok := uintOf(st.attrs[attrKey(0, cl.ID, a.ID)])
+	return idx, ok && idx <= 0xFF
 }
 
 // cmdSetACLEntry replaces our fabric's ACL entries on the node
