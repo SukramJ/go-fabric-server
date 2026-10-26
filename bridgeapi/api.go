@@ -66,9 +66,6 @@ type Server struct {
 	mu      sync.Mutex
 	devices map[string]*bridged
 	order   []string // the device keys in declaration order
-	// kept are the keys remove dropped since the start whose endpoint
-	// number is still stored: forget accepts them as known.
-	kept    map[string]bool
 	conn    *bconn
 	pending map[uint64]*pending
 	closing bool
@@ -98,7 +95,7 @@ func New(opts Options) *Server {
 	}
 	return &Server{
 		opts: opts, log: log, meter: protocol.NewMeter(opts.Metrics),
-		devices: map[string]*bridged{}, kept: map[string]bool{}, pending: map[uint64]*pending{},
+		devices: map[string]*bridged{}, pending: map[uint64]*pending{},
 		stop: make(chan struct{}), done: make(chan struct{}),
 	}
 }

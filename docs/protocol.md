@@ -317,9 +317,11 @@ Names, not ids; every name is matched without regard to case:
   stored under the key, so a later `declare` of the key gets it back;
   `forget` drops the device if it is still declared and frees the number
   (`Aggregator.Forget`), as does `declare` for a key it no longer names, so
-  a later `declare` of the key gets a fresh one. `forget` accepts a declared
-  key and a key `remove` dropped since the daemon started; any other key is
-  the `InvalidArguments` `remove` answers.
+  a later `declare` of the key gets a fresh one. `forget` is idempotent and
+  may name a key the daemon has never seen in this run (one `remove`
+  dropped before a restart, or one already forgotten): it frees whatever is
+  stored under the key and answers the same whether a number was stored or
+  not; only an empty `device` is `InvalidArguments`.
 - Validation at the door: a malformed document is `InvalidArguments` naming
   the path (`devices[0].clusters.OnOff.initial.nope: the OnOff cluster has no
   attribute "nope"`); nothing is applied. The kit's own refusal of a device

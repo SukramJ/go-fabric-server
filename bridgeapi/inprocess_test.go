@@ -352,7 +352,6 @@ func TestBridgeErrors(t *testing.T) {
 		{"set", map[string]any{"device": "a", "cluster": "OnOff", "patch": map[string]any{"startUpOnOff": 9}}, "OnOff:"},
 		{"host", map[string]any{}, "device is required"},
 		{"remove", map[string]any{"device": "zz"}, `no device "zz"`},
-		{"forget", map[string]any{"device": "zz"}, `no device "zz"`},
 		{"forget", map[string]any{}, "device is required"},
 		{"result", map[string]any{}, "correlation is required"},
 		{"result", map[string]any{"correlation": 99}, "correlation 99 is not pending"},
@@ -384,7 +383,7 @@ func TestBridgeErrors(t *testing.T) {
 // TestForgetAndRemove: remove keeps the endpoint number stored under the
 // key, so a re-declared key gets it back; forget frees it, so a
 // re-declared key gets a fresh one, whether the key is still declared or
-// remove dropped it before.
+// remove dropped it before; forget is idempotent.
 func TestForgetAndRemove(t *testing.T) {
 	e := newEnv(t, bridgeapi.Options{})
 	const ab = `{"devices":[{"key":"a","type":"OnOffLight"},{"key":"b","type":"OnOffLight"}]}`
@@ -411,8 +410,8 @@ func TestForgetAndRemove(t *testing.T) {
 	if err := e.host.Call(e.ctx, "forget", map[string]any{"device": "a"}, &res); err != nil || res["device"] != "a" {
 		t.Fatalf("forget %v %v", res, err)
 	}
-	if err := e.host.Forget(e.ctx, "a"); err == nil {
-		t.Fatal("a second forget")
+	if err := e.host.Forget(e.ctx, "a"); err != nil {
+		t.Fatalf("a second forget: %v", err)
 	}
 	second := declare()
 	if second["a"] == first["a"] || second["b"] != first["b"] {
@@ -426,8 +425,12 @@ func TestForgetAndRemove(t *testing.T) {
 	if err := e.host.Forget(e.ctx, "b"); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.host.Forget(e.ctx, "b"); err == nil {
-		t.Fatal("a forget of a forgotten key")
+	if err := e.host.Forget(e.ctx, "b"); err != nil {
+		t.Fatalf("a forget of a forgotten key: %v", err)
+	}
+	// A key the daemon never saw is forgotten too.
+	if err := e.host.Forget(e.ctx, "never-declared"); err != nil {
+		t.Fatalf("a forget of an unseen key: %v", err)
 	}
 	third := declare()
 	if third["b"] == first["b"] || third["a"] != second["a"] {

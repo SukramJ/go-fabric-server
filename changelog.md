@@ -10,7 +10,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `/bridge` `forget` (`{"device": "<key>"}`, answering `{"device": "<key>"}`): removes the device if it is still declared and frees the endpoint number stored under its key (`Aggregator.Forget`), so a later `declare` of the key gets a fresh number. `remove` keeps the number, so a later `declare` of the key gets it back; `declare` is unchanged and still forgets a key the document no longer names. `forget` accepts a declared key and a key `remove` dropped since the daemon started; any other key is the `InvalidArguments` `remove` answers. The client package gains `Bridge.Forget`.
+- `/bridge` `forget` (`{"device": "<key>"}`, answering `{"device": "<key>"}`): removes the device if it is still declared and frees the endpoint number stored under its key (`Aggregator.Forget`), so a later `declare` of the key gets a fresh number. `remove` keeps the number, so a later `declare` of the key gets it back; `declare` is unchanged and still forgets a key the document no longer names. `forget` is idempotent and may name a key the daemon has never seen in this run (one `remove` dropped before a restart); only an empty key is `InvalidArguments`. The client package gains `Bridge.Forget`.
 
 ## [0.3.1] - 2026-10-26
 
