@@ -3,8 +3,9 @@ module github.com/SukramJ/go-fabric-server
 go 1.27.3
 
 require (
-	github.com/SukramJ/go-fabric v0.12.1
-	github.com/SukramJ/go-fabric-ui v0.1.1
+	github.com/SukramJ/go-fabric v0.13.3
+	github.com/SukramJ/go-fabric-ui v0.1.2
+	github.com/SukramJ/go-fabric/ble/bluez v0.12.1
 	github.com/coder/websocket v1.8.15
 )
 
@@ -12,6 +13,7 @@ require (
 	filippo.io/nistec v0.0.4 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

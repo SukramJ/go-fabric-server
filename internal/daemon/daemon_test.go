@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,6 +42,7 @@ func TestParseFlagsAndEnvironment(t *testing.T) {
 
 func TestRunRefuses(t *testing.T) {
 	ctx := context.Background()
+	stubCentral(t, nil, errors.New("bluez: no such adapter"))
 	for _, c := range []struct {
 		cfg  Config
 		want string
@@ -51,7 +53,7 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeVendorID: 70000, StoragePath: t.TempDir()}, "wider than its field"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "none", StoragePath: t.TempDir()}, "--trust"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", VendorID: 70000, StoragePath: t.TempDir()}, "--vendor-id"},
-		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "production", BluetoothAdapter: "0", StoragePath: t.TempDir()}, "ble/bluez on go-fabric v0.12"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "production", BluetoothAdapter: "0", StoragePath: t.TempDir()}, "--bluetooth-adapter 0: bluez: no such adapter"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Web: "127.0.0.1:0", WebAdminSource: "nope", StoragePath: t.TempDir()}, "--web-admin-source"},
 	} {
 		err := Run(ctx, c.cfg, io.Discard)

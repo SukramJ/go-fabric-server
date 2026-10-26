@@ -12,7 +12,7 @@ import "runtime/debug"
 // the release's changelog entry.
 var (
 	// Version is the release (e.g. "0.1.0").
-	Version = "0.3.0"
+	Version = "0.3.1"
 	// Commit is the short Git SHA the binary was built from.
 	Commit = "none"
 	// BuildDate is the UTC RFC 3339 build time.

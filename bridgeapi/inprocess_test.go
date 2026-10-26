@@ -308,7 +308,7 @@ func TestBridgeErrors(t *testing.T) {
 		{`{"devices":[], "extra": 1}`, `unknown field "extra"`},
 		{`{"devices":[{"type":"OnOffLight"}]}`, "devices[0].key"},
 		{`{"devices":[{"key":"a","type":"Toaster"}]}`, `no device type "Toaster"`},
-		{`{"devices":[{"key":"a","type":"Camera"}]}`, "does not build Camera"},
+		{`{"devices":[{"key":"a","type":"VideoDoorbell"}]}`, "does not build VideoDoorbell"},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"Nope":{}}}]}`, `devices[0].clusters.Nope: no cluster "Nope"`},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"AccessControl":{}}}]}`, "no typed package"},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"OnOff":{"initial":{"nope":1}}}}]}`, `devices[0].clusters.OnOff.initial.nope`},

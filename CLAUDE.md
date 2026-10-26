@@ -41,6 +41,6 @@ make vuln licenses secrets   # the security job
 - A user-visible change gets a `changelog.md` entry; a release bumps
   `internal/version.Version` and adds its changelog section in one commit.
 
-Go 1.27.3, `CGO_ENABLED=0`. Dependencies: go-fabric, coder/websocket,
+Go 1.27.3, `CGO_ENABLED=0`. Dependencies: go-fabric (and its ble/bluez), coder/websocket,
 go-fabric-ui — every further one is a decision recorded in
 `THIRD-PARTY-NOTICES.md`.

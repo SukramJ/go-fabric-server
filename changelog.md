@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-26
+
+On go-fabric v0.13.3, go-fabric-ui v0.1.2 and go-fabric's BlueZ central
+`github.com/SukramJ/go-fabric/ble/bluez` v0.12.1 (brief F1 §2).
+
+### Added
+
+- `--bluetooth-adapter` works: the daemon opens go-fabric's BlueZ central on the adapter (`0` is `hci0`) and `commission_with_code` commissions over BLE with a stored Wi-Fi or Thread credential. The start fails when the adapter cannot be opened (no BlueZ, no system-bus rights to `org.bluez`).
+
+### Changed
+
+- `/bridge` `declare`: a key the document no longer names is forgotten (`Batch.Forget`), so its endpoint number is freed at once; go-fabric v0.13.0 removed `Batch.MarkComplete`, which freed it before. `remove` keeps the number stored under the key, so a later `declare` of the key gets it back (until v0.3.0 the next `declare` freed it).
+- The node pages (go-fabric-ui v0.1.2) observe the bridge node themselves; the daemon no longer wires `Events.Observers` into the node's config. `GET /node/status` gains `window_kind` and `window_deadline`, `GET /node/endpoints` the clusters' names and revisions.
+- `GET /schema/declaration` and `protocol/schema` regenerated from go-fabric v0.13.3's snapshot: the device kit builds Camera, SnapshotCamera, AudioDoorbell, Intercom, Chime, CameraController, ThreadBorderRouter, NetworkInfrastructureManager and JointFabricAdministrator, so `declare` no longer refuses them as types the kit does not build; the camera, WebRTC, push AV, zone, Thread border router and directory, Thread network diagnostics, Joint Fabric and TLS clusters have typed packages and are declarable (AccessControl, OperationalCredentials and GroupKeyManagement stay the only ones that are not).
+
 ## [0.3.0] - 2026-10-25
 
 On go-fabric v0.12.1 (the controller facade routes of its bundle CJ).

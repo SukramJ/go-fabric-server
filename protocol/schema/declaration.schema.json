@@ -955,6 +955,309 @@
    "title": "ThreadMetricsStruct",
    "type": "object"
   },
+  "0035_NeighborTableStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "age": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "Age",
+     "type": "integer"
+    },
+    "averageRssi": {
+     "anyOf": [
+      {
+       "maximum": 127,
+       "minimum": -128,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "AverageRssi"
+    },
+    "extAddress": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "ExtAddress",
+     "type": "integer"
+    },
+    "frameErrorRate": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FrameErrorRate",
+     "type": "integer"
+    },
+    "fullNetworkData": {
+     "title": "FullNetworkData",
+     "type": "boolean"
+    },
+    "fullThreadDevice": {
+     "title": "FullThreadDevice",
+     "type": "boolean"
+    },
+    "isChild": {
+     "title": "IsChild",
+     "type": "boolean"
+    },
+    "lastRssi": {
+     "anyOf": [
+      {
+       "maximum": 127,
+       "minimum": -128,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "LastRssi"
+    },
+    "linkFrameCounter": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "LinkFrameCounter",
+     "type": "integer"
+    },
+    "lqi": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Lqi",
+     "type": "integer"
+    },
+    "messageErrorRate": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MessageErrorRate",
+     "type": "integer"
+    },
+    "mleFrameCounter": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MleFrameCounter",
+     "type": "integer"
+    },
+    "rloc16": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Rloc16",
+     "type": "integer"
+    },
+    "rxOnWhenIdle": {
+     "title": "RxOnWhenIdle",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "extAddress",
+    "age",
+    "rloc16",
+    "linkFrameCounter",
+    "mleFrameCounter",
+    "lqi",
+    "averageRssi",
+    "lastRssi",
+    "frameErrorRate",
+    "messageErrorRate",
+    "rxOnWhenIdle",
+    "fullThreadDevice",
+    "fullNetworkData",
+    "isChild"
+   ],
+   "title": "NeighborTableStruct",
+   "type": "object"
+  },
+  "0035_NetworkFaultEnum": {
+   "title": "NetworkFaultEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Unspecified",
+    "1": "LinkDown",
+    "2": "HardwareFailure",
+    "3": "NetworkJammed"
+   }
+  },
+  "0035_OperationalDatasetComponents": {
+   "additionalProperties": false,
+   "properties": {
+    "activeTimestampPresent": {
+     "title": "ActiveTimestampPresent",
+     "type": "boolean"
+    },
+    "channelMaskPresent": {
+     "title": "ChannelMaskPresent",
+     "type": "boolean"
+    },
+    "channelPresent": {
+     "title": "ChannelPresent",
+     "type": "boolean"
+    },
+    "delayPresent": {
+     "title": "DelayPresent",
+     "type": "boolean"
+    },
+    "extendedPanIdPresent": {
+     "title": "ExtendedPanIdPresent",
+     "type": "boolean"
+    },
+    "masterKeyPresent": {
+     "title": "MasterKeyPresent",
+     "type": "boolean"
+    },
+    "meshLocalPrefixPresent": {
+     "title": "MeshLocalPrefixPresent",
+     "type": "boolean"
+    },
+    "networkNamePresent": {
+     "title": "NetworkNamePresent",
+     "type": "boolean"
+    },
+    "panIdPresent": {
+     "title": "PanIdPresent",
+     "type": "boolean"
+    },
+    "pendingTimestampPresent": {
+     "title": "PendingTimestampPresent",
+     "type": "boolean"
+    },
+    "pskcPresent": {
+     "title": "PskcPresent",
+     "type": "boolean"
+    },
+    "securityPolicyPresent": {
+     "title": "SecurityPolicyPresent",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "activeTimestampPresent",
+    "pendingTimestampPresent",
+    "masterKeyPresent",
+    "networkNamePresent",
+    "extendedPanIdPresent",
+    "meshLocalPrefixPresent",
+    "delayPresent",
+    "panIdPresent",
+    "channelPresent",
+    "pskcPresent",
+    "securityPolicyPresent",
+    "channelMaskPresent"
+   ],
+   "title": "OperationalDatasetComponents",
+   "type": "object"
+  },
+  "0035_RouteTableStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "age": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Age",
+     "type": "integer"
+    },
+    "allocated": {
+     "title": "Allocated",
+     "type": "boolean"
+    },
+    "extAddress": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "ExtAddress",
+     "type": "integer"
+    },
+    "linkEstablished": {
+     "title": "LinkEstablished",
+     "type": "boolean"
+    },
+    "lqiIn": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "LqiIn",
+     "type": "integer"
+    },
+    "lqiOut": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "LqiOut",
+     "type": "integer"
+    },
+    "nextHop": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "NextHop",
+     "type": "integer"
+    },
+    "pathCost": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "PathCost",
+     "type": "integer"
+    },
+    "rloc16": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Rloc16",
+     "type": "integer"
+    },
+    "routerId": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "RouterId",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "extAddress",
+    "rloc16",
+    "routerId",
+    "nextHop",
+    "pathCost",
+    "lqiIn",
+    "lqiOut",
+    "age",
+    "allocated",
+    "linkEstablished"
+   ],
+   "title": "RouteTableStruct",
+   "type": "object"
+  },
+  "0035_RoutingRoleEnum": {
+   "title": "RoutingRoleEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Unspecified",
+    "1": "Unassigned",
+    "2": "SleepyEndDevice",
+    "3": "EndDevice",
+    "4": "Reed",
+    "5": "Router",
+    "6": "Leader"
+   }
+  },
+  "0035_SecurityPolicy": {
+   "additionalProperties": false,
+   "properties": {
+    "flags": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Flags",
+     "type": "integer"
+    },
+    "rotationTime": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "RotationTime",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "rotationTime",
+    "flags"
+   ],
+   "title": "SecurityPolicy",
+   "type": "object"
+  },
   "0036_SecurityTypeEnum": {
    "title": "SecurityTypeEnum",
    "type": "integer",
@@ -5538,6 +5841,40 @@
    "title": "PredictedActivityStruct",
    "type": "object"
   },
+  "0453_ThreadNetworkStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "activeTimestamp": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "ActiveTimestamp",
+     "type": "integer"
+    },
+    "channel": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Channel",
+     "type": "integer"
+    },
+    "extendedPanId": {
+     "contentEncoding": "base64",
+     "title": "ExtendedPanId",
+     "type": "string"
+    },
+    "networkName": {
+     "title": "NetworkName",
+     "type": "string"
+    }
+   },
+   "required": [
+    "extendedPanId",
+    "networkName",
+    "channel",
+    "activeTimestamp"
+   ],
+   "title": "ThreadNetworkStruct",
+   "type": "object"
+  },
   "0504_ChannelInfoStruct": {
    "additionalProperties": false,
    "properties": {
@@ -6100,6 +6437,1065 @@
     "timePeriod"
    ],
    "title": "TimeWindowStruct",
+   "type": "object"
+  },
+  "0550_TwoDCartesianVertexStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "x": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "X",
+     "type": "integer"
+    },
+    "y": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Y",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "x",
+    "y"
+   ],
+   "title": "TwoDCartesianVertexStruct",
+   "type": "object"
+  },
+  "0550_TwoDCartesianZoneStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "color": {
+     "title": "Color",
+     "type": "string"
+    },
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "use": {
+     "$ref": "#/$defs/0550_ZoneUseEnum",
+     "title": "Use"
+    },
+    "vertices": {
+     "items": {
+      "$ref": "#/$defs/0550_TwoDCartesianVertexStruct"
+     },
+     "title": "Vertices",
+     "type": "array"
+    }
+   },
+   "required": [
+    "name",
+    "use",
+    "vertices"
+   ],
+   "title": "TwoDCartesianZoneStruct",
+   "type": "object"
+  },
+  "0550_ZoneInformationStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "twoDCartesianZone": {
+     "$ref": "#/$defs/0550_TwoDCartesianZoneStruct",
+     "title": "TwoDCartesianZone"
+    },
+    "zoneId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ZoneId",
+     "type": "integer"
+    },
+    "zoneSource": {
+     "$ref": "#/$defs/0550_ZoneSourceEnum",
+     "title": "ZoneSource"
+    },
+    "zoneType": {
+     "$ref": "#/$defs/0550_ZoneTypeEnum",
+     "title": "ZoneType"
+    }
+   },
+   "required": [
+    "zoneId",
+    "zoneType",
+    "zoneSource"
+   ],
+   "title": "ZoneInformationStruct",
+   "type": "object"
+  },
+  "0550_ZoneSourceEnum": {
+   "title": "ZoneSourceEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Mfg",
+    "1": "User"
+   }
+  },
+  "0550_ZoneTriggerControlStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "augmentationDuration": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "AugmentationDuration",
+     "type": "integer"
+    },
+    "blindDuration": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "BlindDuration",
+     "type": "integer"
+    },
+    "initialDuration": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "InitialDuration",
+     "type": "integer"
+    },
+    "maxDuration": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MaxDuration",
+     "type": "integer"
+    },
+    "sensitivity": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Sensitivity",
+     "type": "integer"
+    },
+    "zoneId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ZoneId",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "zoneId",
+    "initialDuration",
+    "augmentationDuration",
+    "maxDuration",
+    "blindDuration"
+   ],
+   "title": "ZoneTriggerControlStruct",
+   "type": "object"
+  },
+  "0550_ZoneTypeEnum": {
+   "title": "ZoneTypeEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "TwoDcartZone"
+   }
+  },
+  "0550_ZoneUseEnum": {
+   "title": "ZoneUseEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Motion",
+    "1": "Privacy",
+    "2": "Focus"
+   }
+  },
+  "0551_AudioCapabilitiesStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "maxNumberOfChannels": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxNumberOfChannels",
+     "type": "integer"
+    },
+    "supportedBitDepths": {
+     "items": {
+      "maximum": 255,
+      "minimum": 0,
+      "type": "integer"
+     },
+     "title": "SupportedBitDepths",
+     "type": "array"
+    },
+    "supportedCodecs": {
+     "items": {
+      "$ref": "#/$defs/0551_AudioCodecEnum"
+     },
+     "title": "SupportedCodecs",
+     "type": "array"
+    },
+    "supportedSampleRates": {
+     "items": {
+      "maximum": 4294967295,
+      "minimum": 0,
+      "type": "integer"
+     },
+     "title": "SupportedSampleRates",
+     "type": "array"
+    }
+   },
+   "required": [
+    "maxNumberOfChannels",
+    "supportedCodecs",
+    "supportedSampleRates",
+    "supportedBitDepths"
+   ],
+   "title": "AudioCapabilitiesStruct",
+   "type": "object"
+  },
+  "0551_AudioCodecEnum": {
+   "title": "AudioCodecEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Opus",
+    "1": "AacLc"
+   }
+  },
+  "0551_AudioStreamStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "audioCodec": {
+     "$ref": "#/$defs/0551_AudioCodecEnum",
+     "title": "AudioCodec"
+    },
+    "audioStreamId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "AudioStreamId",
+     "type": "integer"
+    },
+    "bitDepth": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "BitDepth",
+     "type": "integer"
+    },
+    "bitRate": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "BitRate",
+     "type": "integer"
+    },
+    "channelCount": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ChannelCount",
+     "type": "integer"
+    },
+    "referenceCount": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ReferenceCount",
+     "type": "integer"
+    },
+    "sampleRate": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "SampleRate",
+     "type": "integer"
+    },
+    "streamUsage": {
+     "$ref": "#/$defs/Global_StreamUsageEnum",
+     "title": "StreamUsage"
+    }
+   },
+   "required": [
+    "audioStreamId",
+    "streamUsage",
+    "audioCodec",
+    "channelCount",
+    "sampleRate",
+    "bitRate",
+    "bitDepth",
+    "referenceCount"
+   ],
+   "title": "AudioStreamStruct",
+   "type": "object"
+  },
+  "0551_ImageCodecEnum": {
+   "title": "ImageCodecEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Jpeg",
+    "1": "Heic"
+   }
+  },
+  "0551_RateDistortionTradeOffPointsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "codec": {
+     "$ref": "#/$defs/0551_VideoCodecEnum",
+     "title": "Codec"
+    },
+    "minBitRate": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MinBitRate",
+     "type": "integer"
+    },
+    "resolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "Resolution"
+    }
+   },
+   "required": [
+    "codec",
+    "resolution",
+    "minBitRate"
+   ],
+   "title": "RateDistortionTradeOffPointsStruct",
+   "type": "object"
+  },
+  "0551_SnapshotCapabilitiesStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "imageCodec": {
+     "$ref": "#/$defs/0551_ImageCodecEnum",
+     "title": "ImageCodec"
+    },
+    "maxFrameRate": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "MaxFrameRate",
+     "type": "integer"
+    },
+    "requiresEncodedPixels": {
+     "title": "RequiresEncodedPixels",
+     "type": "boolean"
+    },
+    "requiresHardwareEncoder": {
+     "title": "RequiresHardwareEncoder",
+     "type": "boolean"
+    },
+    "resolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "Resolution"
+    }
+   },
+   "required": [
+    "resolution",
+    "maxFrameRate",
+    "imageCodec",
+    "requiresEncodedPixels"
+   ],
+   "title": "SnapshotCapabilitiesStruct",
+   "type": "object"
+  },
+  "0551_SnapshotStreamStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "encodedPixels": {
+     "title": "EncodedPixels",
+     "type": "boolean"
+    },
+    "frameRate": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "FrameRate",
+     "type": "integer"
+    },
+    "hardwareEncoder": {
+     "title": "HardwareEncoder",
+     "type": "boolean"
+    },
+    "imageCodec": {
+     "$ref": "#/$defs/0551_ImageCodecEnum",
+     "title": "ImageCodec"
+    },
+    "maxResolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "MaxResolution"
+    },
+    "minResolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "MinResolution"
+    },
+    "osdEnabled": {
+     "title": "OsdEnabled",
+     "type": "boolean"
+    },
+    "quality": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Quality",
+     "type": "integer"
+    },
+    "referenceCount": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ReferenceCount",
+     "type": "integer"
+    },
+    "snapshotStreamId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "SnapshotStreamId",
+     "type": "integer"
+    },
+    "watermarkEnabled": {
+     "title": "WatermarkEnabled",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "snapshotStreamId",
+    "imageCodec",
+    "frameRate",
+    "minResolution",
+    "maxResolution",
+    "quality",
+    "referenceCount",
+    "encodedPixels",
+    "hardwareEncoder"
+   ],
+   "title": "SnapshotStreamStruct",
+   "type": "object"
+  },
+  "0551_TriStateAutoEnum": {
+   "title": "TriStateAutoEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Off",
+    "1": "On",
+    "2": "Auto"
+   }
+  },
+  "0551_TwoWayTalkSupportTypeEnum": {
+   "title": "TwoWayTalkSupportTypeEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "NotSupported",
+    "1": "HalfDuplex",
+    "2": "FullDuplex"
+   }
+  },
+  "0551_VideoCodecEnum": {
+   "title": "VideoCodecEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "H264",
+    "1": "Hevc",
+    "2": "Vvc",
+    "3": "Av1"
+   }
+  },
+  "0551_VideoResolutionStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "height": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Height",
+     "type": "integer"
+    },
+    "width": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Width",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "width",
+    "height"
+   ],
+   "title": "VideoResolutionStruct",
+   "type": "object"
+  },
+  "0551_VideoSensorParamsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "maxFps": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "MaxFps",
+     "type": "integer"
+    },
+    "maxHdrfps": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "MaxHdrfps",
+     "type": "integer"
+    },
+    "sensorHeight": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "SensorHeight",
+     "type": "integer"
+    },
+    "sensorWidth": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "SensorWidth",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "sensorWidth",
+    "sensorHeight",
+    "maxFps"
+   ],
+   "title": "VideoSensorParamsStruct",
+   "type": "object"
+  },
+  "0551_VideoStreamStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "keyFrameInterval": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "KeyFrameInterval",
+     "type": "integer"
+    },
+    "maxBitRate": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MaxBitRate",
+     "type": "integer"
+    },
+    "maxFrameRate": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "MaxFrameRate",
+     "type": "integer"
+    },
+    "maxResolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "MaxResolution"
+    },
+    "minBitRate": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MinBitRate",
+     "type": "integer"
+    },
+    "minFrameRate": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "MinFrameRate",
+     "type": "integer"
+    },
+    "minResolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "MinResolution"
+    },
+    "osdEnabled": {
+     "title": "OsdEnabled",
+     "type": "boolean"
+    },
+    "referenceCount": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ReferenceCount",
+     "type": "integer"
+    },
+    "streamUsage": {
+     "$ref": "#/$defs/Global_StreamUsageEnum",
+     "title": "StreamUsage"
+    },
+    "videoCodec": {
+     "$ref": "#/$defs/0551_VideoCodecEnum",
+     "title": "VideoCodec"
+    },
+    "videoStreamId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "VideoStreamId",
+     "type": "integer"
+    },
+    "watermarkEnabled": {
+     "title": "WatermarkEnabled",
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "videoStreamId",
+    "streamUsage",
+    "videoCodec",
+    "minFrameRate",
+    "maxFrameRate",
+    "minResolution",
+    "maxResolution",
+    "minBitRate",
+    "maxBitRate",
+    "keyFrameInterval",
+    "referenceCount"
+   ],
+   "title": "VideoStreamStruct",
+   "type": "object"
+  },
+  "0552_DPTZStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "videoStreamId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "VideoStreamId",
+     "type": "integer"
+    },
+    "viewport": {
+     "$ref": "#/$defs/Global_ViewportStruct",
+     "title": "Viewport"
+    }
+   },
+   "required": [
+    "videoStreamId",
+    "viewport"
+   ],
+   "title": "DPTZStruct",
+   "type": "object"
+  },
+  "0552_MPTZPresetStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "name": {
+     "title": "Name",
+     "type": "string"
+    },
+    "presetId": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "PresetId",
+     "type": "integer"
+    },
+    "settings": {
+     "$ref": "#/$defs/0552_MPTZStruct",
+     "title": "Settings"
+    }
+   },
+   "required": [
+    "presetId",
+    "name",
+    "settings"
+   ],
+   "title": "MPTZPresetStruct",
+   "type": "object"
+  },
+  "0552_MPTZStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "pan": {
+     "maximum": 32767,
+     "minimum": -32768,
+     "title": "Pan",
+     "type": "integer"
+    },
+    "tilt": {
+     "maximum": 32767,
+     "minimum": -32768,
+     "title": "Tilt",
+     "type": "integer"
+    },
+    "zoom": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Zoom",
+     "type": "integer"
+    }
+   },
+   "title": "MPTZStruct",
+   "type": "object"
+  },
+  "0552_PhysicalMovementEnum": {
+   "title": "PhysicalMovementEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Idle",
+    "1": "Moving"
+   }
+  },
+  "0555_AudioStreamStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "audioStreamId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "AudioStreamId",
+     "type": "integer"
+    },
+    "audioStreamName": {
+     "title": "AudioStreamName",
+     "type": "string"
+    }
+   },
+   "required": [
+    "audioStreamName",
+    "audioStreamId"
+   ],
+   "title": "AudioStreamStruct",
+   "type": "object"
+  },
+  "0555_CMAFContainerOptionsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "chunkDuration": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ChunkDuration",
+     "type": "integer"
+    },
+    "cmafInterface": {
+     "$ref": "#/$defs/0555_CMAFInterfaceEnum",
+     "title": "CmafInterface"
+    },
+    "metadataEnabled": {
+     "title": "MetadataEnabled",
+     "type": "boolean"
+    },
+    "segmentDuration": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "SegmentDuration",
+     "type": "integer"
+    },
+    "sessionGroup": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "SessionGroup",
+     "type": "integer"
+    },
+    "trackName": {
+     "title": "TrackName",
+     "type": "string"
+    }
+   },
+   "required": [
+    "cmafInterface",
+    "segmentDuration",
+    "chunkDuration"
+   ],
+   "title": "CMAFContainerOptionsStruct",
+   "type": "object"
+  },
+  "0555_CMAFInterfaceEnum": {
+   "title": "CMAFInterfaceEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Interface1",
+    "1": "Interface2Dash",
+    "2": "Interface2Hls"
+   }
+  },
+  "0555_ContainerFormatEnum": {
+   "title": "ContainerFormatEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Cmaf"
+   }
+  },
+  "0555_ContainerOptionsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "cmafContainerOptions": {
+     "$ref": "#/$defs/0555_CMAFContainerOptionsStruct",
+     "title": "CmafContainerOptions"
+    },
+    "containerType": {
+     "$ref": "#/$defs/0555_ContainerFormatEnum",
+     "title": "ContainerType"
+    }
+   },
+   "required": [
+    "containerType"
+   ],
+   "title": "ContainerOptionsStruct",
+   "type": "object"
+  },
+  "0555_IngestMethodsEnum": {
+   "title": "IngestMethodsEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "CmafIngest"
+   }
+  },
+  "0555_SupportedFormatStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "containerFormat": {
+     "$ref": "#/$defs/0555_ContainerFormatEnum",
+     "title": "ContainerFormat"
+    },
+    "ingestMethod": {
+     "$ref": "#/$defs/0555_IngestMethodsEnum",
+     "title": "IngestMethod"
+    }
+   },
+   "required": [
+    "containerFormat",
+    "ingestMethod"
+   ],
+   "title": "SupportedFormatStruct",
+   "type": "object"
+  },
+  "0555_TransportConfigurationStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "connectionId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ConnectionId",
+     "type": "integer"
+    },
+    "fabricIndex": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FabricIndex",
+     "type": "integer"
+    },
+    "transportOptions": {
+     "$ref": "#/$defs/0555_TransportOptionsStruct",
+     "title": "TransportOptions"
+    },
+    "transportStatus": {
+     "$ref": "#/$defs/0555_TransportStatusEnum",
+     "title": "TransportStatus"
+    }
+   },
+   "required": [
+    "connectionId",
+    "transportStatus",
+    "fabricIndex"
+   ],
+   "title": "TransportConfigurationStruct",
+   "type": "object"
+  },
+  "0555_TransportMotionTriggerTimeControlStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "augmentationDuration": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "AugmentationDuration",
+     "type": "integer"
+    },
+    "blindDuration": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "BlindDuration",
+     "type": "integer"
+    },
+    "initialDuration": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "InitialDuration",
+     "type": "integer"
+    },
+    "maxDuration": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MaxDuration",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "initialDuration",
+    "augmentationDuration",
+    "maxDuration",
+    "blindDuration"
+   ],
+   "title": "TransportMotionTriggerTimeControlStruct",
+   "type": "object"
+  },
+  "0555_TransportOptionsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "audioStreamId": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "AudioStreamId"
+    },
+    "audioStreams": {
+     "items": {
+      "$ref": "#/$defs/0555_AudioStreamStruct"
+     },
+     "title": "AudioStreams",
+     "type": "array"
+    },
+    "containerOptions": {
+     "$ref": "#/$defs/0555_ContainerOptionsStruct",
+     "title": "ContainerOptions"
+    },
+    "expiryTime": {
+     "description": "epoch-s, sent as Unix time",
+     "title": "ExpiryTime",
+     "type": "integer"
+    },
+    "ingestMethod": {
+     "$ref": "#/$defs/0555_IngestMethodsEnum",
+     "title": "IngestMethod"
+    },
+    "streamUsage": {
+     "$ref": "#/$defs/Global_StreamUsageEnum",
+     "title": "StreamUsage"
+    },
+    "tlsEndpointId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "TlsEndpointId",
+     "type": "integer"
+    },
+    "triggerOptions": {
+     "$ref": "#/$defs/0555_TransportTriggerOptionsStruct",
+     "title": "TriggerOptions"
+    },
+    "url": {
+     "title": "Url",
+     "type": "string"
+    },
+    "videoStreamId": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "VideoStreamId"
+    },
+    "videoStreams": {
+     "items": {
+      "$ref": "#/$defs/0555_VideoStreamStruct"
+     },
+     "title": "VideoStreams",
+     "type": "array"
+    }
+   },
+   "required": [
+    "streamUsage",
+    "tlsEndpointId",
+    "url",
+    "triggerOptions",
+    "ingestMethod",
+    "containerOptions"
+   ],
+   "title": "TransportOptionsStruct",
+   "type": "object"
+  },
+  "0555_TransportStatusEnum": {
+   "title": "TransportStatusEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Active",
+    "1": "Inactive"
+   }
+  },
+  "0555_TransportTriggerOptionsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "maxPreRollLen": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "MaxPreRollLen",
+     "type": "integer"
+    },
+    "motionSensitivity": {
+     "anyOf": [
+      {
+       "maximum": 255,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "MotionSensitivity"
+    },
+    "motionTimeControl": {
+     "$ref": "#/$defs/0555_TransportMotionTriggerTimeControlStruct",
+     "title": "MotionTimeControl"
+    },
+    "motionZones": {
+     "anyOf": [
+      {
+       "items": {
+        "$ref": "#/$defs/0555_TransportZoneOptionsStruct"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "MotionZones"
+    },
+    "triggerType": {
+     "$ref": "#/$defs/0555_TransportTriggerTypeEnum",
+     "title": "TriggerType"
+    }
+   },
+   "required": [
+    "triggerType"
+   ],
+   "title": "TransportTriggerOptionsStruct",
+   "type": "object"
+  },
+  "0555_TransportTriggerTypeEnum": {
+   "title": "TransportTriggerTypeEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Command",
+    "1": "Motion",
+    "2": "Continuous"
+   }
+  },
+  "0555_TransportZoneOptionsStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "sensitivity": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Sensitivity",
+     "type": "integer"
+    },
+    "zone": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Zone"
+    }
+   },
+   "required": [
+    "zone"
+   ],
+   "title": "TransportZoneOptionsStruct",
+   "type": "object"
+  },
+  "0555_VideoStreamStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "videoStreamId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "VideoStreamId",
+     "type": "integer"
+    },
+    "videoStreamName": {
+     "title": "VideoStreamName",
+     "type": "string"
+    }
+   },
+   "required": [
+    "videoStreamName",
+    "videoStreamId"
+   ],
+   "title": "VideoStreamStruct",
    "type": "object"
   },
   "0556_ChimeSoundStruct": {
@@ -6677,6 +8073,738 @@
     "FabricSynchronization": 0
    }
   },
+  "0752_DatastoreACLEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "aclEntry": {
+     "$ref": "#/$defs/0752_DatastoreAccessControlEntryStruct",
+     "title": "AclEntry"
+    },
+    "listId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ListId",
+     "type": "integer"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    },
+    "statusEntry": {
+     "$ref": "#/$defs/0752_DatastoreStatusEntryStruct",
+     "title": "StatusEntry"
+    }
+   },
+   "required": [
+    "nodeId",
+    "listId",
+    "aclEntry",
+    "statusEntry"
+   ],
+   "title": "DatastoreACLEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreAccessControlEntryAuthModeEnum": {
+   "title": "DatastoreAccessControlEntryAuthModeEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "1": "Pase",
+    "2": "Case",
+    "3": "Group"
+   }
+  },
+  "0752_DatastoreAccessControlEntryPrivilegeEnum": {
+   "title": "DatastoreAccessControlEntryPrivilegeEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "1": "View",
+    "3": "Operate",
+    "4": "Manage",
+    "5": "Administer"
+   }
+  },
+  "0752_DatastoreAccessControlEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "authMode": {
+     "$ref": "#/$defs/0752_DatastoreAccessControlEntryAuthModeEnum",
+     "title": "AuthMode"
+    },
+    "privilege": {
+     "$ref": "#/$defs/0752_DatastoreAccessControlEntryPrivilegeEnum",
+     "title": "Privilege"
+    },
+    "subjects": {
+     "anyOf": [
+      {
+       "items": {
+        "maximum": 18446744073709551615,
+        "minimum": 0,
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Subjects"
+    },
+    "targets": {
+     "anyOf": [
+      {
+       "items": {
+        "$ref": "#/$defs/0752_DatastoreAccessControlTargetStruct"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Targets"
+    }
+   },
+   "required": [
+    "privilege",
+    "authMode",
+    "subjects",
+    "targets"
+   ],
+   "title": "DatastoreAccessControlEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreAccessControlTargetStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "cluster": {
+     "anyOf": [
+      {
+       "maximum": 4294967295,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Cluster"
+    },
+    "deviceType": {
+     "anyOf": [
+      {
+       "maximum": 4294967295,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "DeviceType"
+    },
+    "endpoint": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Endpoint"
+    }
+   },
+   "required": [
+    "cluster",
+    "endpoint",
+    "deviceType"
+   ],
+   "title": "DatastoreAccessControlTargetStruct",
+   "type": "object"
+  },
+  "0752_DatastoreAdministratorInformationEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "friendlyName": {
+     "title": "FriendlyName",
+     "type": "string"
+    },
+    "icac": {
+     "contentEncoding": "base64",
+     "title": "Icac",
+     "type": "string"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    },
+    "vendorId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "VendorId",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "nodeId",
+    "friendlyName",
+    "vendorId",
+    "icac"
+   ],
+   "title": "DatastoreAdministratorInformationEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreBindingTargetStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "cluster": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "Cluster",
+     "type": "integer"
+    },
+    "endpoint": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Endpoint",
+     "type": "integer"
+    },
+    "group": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Group",
+     "type": "integer"
+    },
+    "node": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "Node",
+     "type": "integer"
+    }
+   },
+   "title": "DatastoreBindingTargetStruct",
+   "type": "object"
+  },
+  "0752_DatastoreEndpointBindingEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "binding": {
+     "$ref": "#/$defs/0752_DatastoreBindingTargetStruct",
+     "title": "Binding"
+    },
+    "endpointId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "EndpointId",
+     "type": "integer"
+    },
+    "listId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ListId",
+     "type": "integer"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    },
+    "statusEntry": {
+     "$ref": "#/$defs/0752_DatastoreStatusEntryStruct",
+     "title": "StatusEntry"
+    }
+   },
+   "required": [
+    "nodeId",
+    "endpointId",
+    "listId",
+    "binding",
+    "statusEntry"
+   ],
+   "title": "DatastoreEndpointBindingEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreEndpointEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "endpointId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "EndpointId",
+     "type": "integer"
+    },
+    "friendlyName": {
+     "title": "FriendlyName",
+     "type": "string"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "endpointId",
+    "nodeId",
+    "friendlyName"
+   ],
+   "title": "DatastoreEndpointEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreEndpointGroupIDEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "endpointId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "EndpointId",
+     "type": "integer"
+    },
+    "groupId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "GroupId",
+     "type": "integer"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    },
+    "statusEntry": {
+     "$ref": "#/$defs/0752_DatastoreStatusEntryStruct",
+     "title": "StatusEntry"
+    }
+   },
+   "required": [
+    "nodeId",
+    "endpointId",
+    "groupId",
+    "statusEntry"
+   ],
+   "title": "DatastoreEndpointGroupIDEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreGroupInformationEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "friendlyName": {
+     "title": "FriendlyName",
+     "type": "string"
+    },
+    "groupCat": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "GroupCat"
+    },
+    "groupCatVersion": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "GroupCatVersion"
+    },
+    "groupId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "GroupId",
+     "type": "integer"
+    },
+    "groupKeySetId": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "GroupKeySetId"
+    },
+    "groupPermission": {
+     "$ref": "#/$defs/0752_DatastoreAccessControlEntryPrivilegeEnum",
+     "title": "GroupPermission"
+    }
+   },
+   "required": [
+    "groupId",
+    "friendlyName",
+    "groupKeySetId",
+    "groupCat",
+    "groupCatVersion",
+    "groupPermission"
+   ],
+   "title": "DatastoreGroupInformationEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreGroupKeyMulticastPolicyEnum": {
+   "title": "DatastoreGroupKeyMulticastPolicyEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "PerGroupId",
+    "1": "AllNodes"
+   }
+  },
+  "0752_DatastoreGroupKeySecurityPolicyEnum": {
+   "title": "DatastoreGroupKeySecurityPolicyEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "TrustFirst"
+   }
+  },
+  "0752_DatastoreGroupKeySetStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "epochKey0": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "EpochKey0"
+    },
+    "epochKey1": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "EpochKey1"
+    },
+    "epochKey2": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "EpochKey2"
+    },
+    "epochStartTime0": {
+     "anyOf": [
+      {
+       "description": "epoch-us, sent as Unix time",
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "EpochStartTime0"
+    },
+    "epochStartTime1": {
+     "anyOf": [
+      {
+       "description": "epoch-us, sent as Unix time",
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "EpochStartTime1"
+    },
+    "epochStartTime2": {
+     "anyOf": [
+      {
+       "description": "epoch-us, sent as Unix time",
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "EpochStartTime2"
+    },
+    "groupKeyMulticastPolicy": {
+     "$ref": "#/$defs/0752_DatastoreGroupKeyMulticastPolicyEnum",
+     "title": "GroupKeyMulticastPolicy"
+    },
+    "groupKeySecurityPolicy": {
+     "$ref": "#/$defs/0752_DatastoreGroupKeySecurityPolicyEnum",
+     "title": "GroupKeySecurityPolicy"
+    },
+    "groupKeySetId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "GroupKeySetId",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "groupKeySetId",
+    "groupKeySecurityPolicy",
+    "epochKey0",
+    "epochStartTime0",
+    "epochKey1",
+    "epochStartTime1",
+    "epochKey2",
+    "epochStartTime2"
+   ],
+   "title": "DatastoreGroupKeySetStruct",
+   "type": "object"
+  },
+  "0752_DatastoreNodeInformationEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "commissioningStatusEntry": {
+     "$ref": "#/$defs/0752_DatastoreStatusEntryStruct",
+     "title": "CommissioningStatusEntry"
+    },
+    "friendlyName": {
+     "title": "FriendlyName",
+     "type": "string"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "nodeId",
+    "friendlyName",
+    "commissioningStatusEntry"
+   ],
+   "title": "DatastoreNodeInformationEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreNodeKeySetEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "groupKeySetId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "GroupKeySetId",
+     "type": "integer"
+    },
+    "nodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "NodeId",
+     "type": "integer"
+    },
+    "statusEntry": {
+     "$ref": "#/$defs/0752_DatastoreStatusEntryStruct",
+     "title": "StatusEntry"
+    }
+   },
+   "required": [
+    "nodeId",
+    "groupKeySetId",
+    "statusEntry"
+   ],
+   "title": "DatastoreNodeKeySetEntryStruct",
+   "type": "object"
+  },
+  "0752_DatastoreStateEnum": {
+   "title": "DatastoreStateEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Pending",
+    "1": "Committed",
+    "2": "DeletePending",
+    "3": "CommitFailed"
+   }
+  },
+  "0752_DatastoreStatusEntryStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "failureCode": {
+     "$ref": "#/$defs/Global_status",
+     "title": "FailureCode"
+    },
+    "state": {
+     "$ref": "#/$defs/0752_DatastoreStateEnum",
+     "title": "State"
+    },
+    "updateTimestamp": {
+     "description": "epoch-s, sent as Unix time",
+     "title": "UpdateTimestamp",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "state",
+    "updateTimestamp",
+    "failureCode"
+   ],
+   "title": "DatastoreStatusEntryStruct",
+   "type": "object"
+  },
+  "0801_TLSCertStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "caid": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Caid",
+     "type": "integer"
+    },
+    "certificate": {
+     "contentEncoding": "base64",
+     "title": "Certificate",
+     "type": "string"
+    },
+    "fabricIndex": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FabricIndex",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "caid",
+    "fabricIndex"
+   ],
+   "title": "TLSCertStruct",
+   "type": "object"
+  },
+  "0801_TLSClientCertificateDetailStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "ccdid": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Ccdid",
+     "type": "integer"
+    },
+    "clientCertificate": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "ClientCertificate"
+    },
+    "fabricIndex": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FabricIndex",
+     "type": "integer"
+    },
+    "intermediateCertificates": {
+     "items": {
+      "contentEncoding": "base64",
+      "type": "string"
+     },
+     "title": "IntermediateCertificates",
+     "type": "array"
+    }
+   },
+   "required": [
+    "ccdid",
+    "fabricIndex"
+   ],
+   "title": "TLSClientCertificateDetailStruct",
+   "type": "object"
+  },
+  "0802_TLSEndpointStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "caid": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Caid",
+     "type": "integer"
+    },
+    "ccdid": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Ccdid"
+    },
+    "endpointId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "EndpointId",
+     "type": "integer"
+    },
+    "fabricIndex": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FabricIndex",
+     "type": "integer"
+    },
+    "hostname": {
+     "contentEncoding": "base64",
+     "title": "Hostname",
+     "type": "string"
+    },
+    "port": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Port",
+     "type": "integer"
+    },
+    "referenceCount": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ReferenceCount",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "endpointId",
+    "hostname",
+    "port",
+    "caid",
+    "ccdid",
+    "referenceCount",
+    "fabricIndex"
+   ],
+   "title": "TLSEndpointStruct",
+   "type": "object"
+  },
   "0B06_MeterTypeEnum": {
    "title": "MeterTypeEnum",
    "type": "integer",
@@ -6878,6 +9006,16 @@
    "title": "PowerThresholdStruct",
    "type": "object"
   },
+  "Global_StreamUsageEnum": {
+   "title": "StreamUsageEnum",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Internal",
+    "1": "Recording",
+    "2": "Analysis",
+    "3": "LiveView"
+   }
+  },
   "Global_TariffPriceTypeEnum": {
    "title": "TariffPriceTypeEnum",
    "type": "integer",
@@ -6906,6 +9044,43 @@
     "2": "Medium",
     "3": "High"
    }
+  },
+  "Global_ViewportStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "x1": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "X1",
+     "type": "integer"
+    },
+    "x2": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "X2",
+     "type": "integer"
+    },
+    "y1": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Y1",
+     "type": "integer"
+    },
+    "y2": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Y2",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "x1",
+    "y1",
+    "x2",
+    "y2"
+   ],
+   "title": "ViewportStruct",
+   "type": "object"
   },
   "Global_currency": {
    "additionalProperties": false,
@@ -7051,6 +9226,45 @@
    ],
    "title": "semtag",
    "type": "object"
+  },
+  "Global_status": {
+   "title": "status",
+   "type": "integer",
+   "x-enum-names": {
+    "0": "Success",
+    "1": "Failure",
+    "125": "InvalidSubscription",
+    "126": "UnsupportedAccess",
+    "127": "UnsupportedEndpoint",
+    "128": "InvalidAction",
+    "129": "UnsupportedCommand",
+    "133": "InvalidCommand",
+    "134": "UnsupportedAttribute",
+    "135": "ConstraintError",
+    "136": "UnsupportedWrite",
+    "137": "ResourceExhausted",
+    "139": "NotFound",
+    "141": "InvalidDataType",
+    "143": "UnsupportedRead",
+    "146": "DataVersionMismatch",
+    "148": "Timeout",
+    "155": "UnsupportedNode",
+    "156": "Busy",
+    "157": "AccessRestricted",
+    "195": "UnsupportedCluster",
+    "198": "NeedsTimedInteraction",
+    "199": "UnsupportedEvent",
+    "200": "PathsExhausted",
+    "201": "TimedRequestMismatch",
+    "202": "FailsafeRequired",
+    "203": "InvalidInState",
+    "204": "NoCommandResponse",
+    "205": "TermsAndConditionsChanged",
+    "206": "MaintenanceRequired",
+    "207": "DynamicConstraintError",
+    "208": "AlreadyExists",
+    "209": "InvalidTransportType"
+   }
   },
   "cluster.AccountLogin": {
    "additionalProperties": false,
@@ -7453,6 +9667,115 @@
     }
    },
    "title": "BridgedDeviceBasicInformation",
+   "type": "object"
+  },
+  "cluster.CameraAvSettingsUserLevelManagement": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "DigitalPtz",
+       "DPTZ",
+       "MechanicalPan",
+       "MPAN",
+       "MechanicalTilt",
+       "MTILT",
+       "MechanicalZoom",
+       "MZOOM",
+       "MechanicalPresets",
+       "MPRESETS"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "MptzSetPosition",
+       "MptzRelativeMove",
+       "MptzMoveToPreset",
+       "MptzSavePreset",
+       "MptzRemovePreset",
+       "DptzSetViewport",
+       "DptzRelativeMove"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.CameraAvSettingsUserLevelManagement"
+    }
+   },
+   "title": "CameraAvSettingsUserLevelManagement",
+   "type": "object"
+  },
+  "cluster.CameraAvStreamManagement": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "Audio",
+       "ADO",
+       "Video",
+       "VDO",
+       "Snapshot",
+       "SNP",
+       "Privacy",
+       "PRIV",
+       "Speaker",
+       "SPKR",
+       "ImageControl",
+       "ICTL",
+       "Watermark",
+       "WMARK",
+       "OnScreenDisplay",
+       "OSD",
+       "LocalStorage",
+       "STOR",
+       "HighDynamicRange",
+       "HDR",
+       "NightVision",
+       "NV"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "AudioStreamAllocate",
+       "AudioStreamDeallocate",
+       "VideoStreamAllocate",
+       "VideoStreamModify",
+       "VideoStreamDeallocate",
+       "SnapshotStreamAllocate",
+       "SnapshotStreamModify",
+       "SnapshotStreamDeallocate",
+       "SetStreamPriorities",
+       "CaptureSnapshot"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.CameraAvStreamManagement"
+    }
+   },
+   "title": "CameraAvStreamManagement",
    "type": "object"
   },
   "cluster.CarbonDioxideConcentrationMeasurement": {
@@ -8886,6 +11209,76 @@
    "title": "IlluminanceMeasurement",
    "type": "object"
   },
+  "cluster.JointFabricAdministrator": {
+   "additionalProperties": false,
+   "properties": {
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "IcaccsrRequest",
+       "AddIcac",
+       "OpenJointCommissioningWindow",
+       "TransferAnchorRequest",
+       "TransferAnchorComplete",
+       "AnnounceJointFabricAdministrator"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.JointFabricAdministrator"
+    }
+   },
+   "title": "JointFabricAdministrator",
+   "type": "object"
+  },
+  "cluster.JointFabricDatastore": {
+   "additionalProperties": false,
+   "properties": {
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "AddKeySet",
+       "UpdateKeySet",
+       "RemoveKeySet",
+       "AddGroup",
+       "UpdateGroup",
+       "RemoveGroup",
+       "AddAdmin",
+       "UpdateAdmin",
+       "RemoveAdmin",
+       "AddPendingNode",
+       "RefreshNode",
+       "UpdateNode",
+       "RemoveNode",
+       "UpdateEndpointForNode",
+       "AddGroupIdToEndpointForNode",
+       "RemoveGroupIdFromEndpointForNode",
+       "AddBindingToEndpointForNode",
+       "RemoveBindingFromEndpointForNode",
+       "AddAclToNode",
+       "RemoveAclFromNode"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.JointFabricDatastore"
+    }
+   },
+   "title": "JointFabricDatastore",
+   "type": "object"
+  },
   "cluster.KeypadInput": {
    "additionalProperties": false,
    "properties": {
@@ -9888,6 +12281,46 @@
    "title": "PumpConfigurationAndControl",
    "type": "object"
   },
+  "cluster.PushAvStreamTransport": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "PerZoneSensitivity",
+       "PERZONESENS",
+       "Metadata",
+       "METADATA"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "AllocatePushTransport",
+       "DeallocatePushTransport",
+       "ModifyPushTransport",
+       "SetTransportStatus",
+       "ManuallyTriggerTransport",
+       "FindTransport"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.PushAvStreamTransport"
+    }
+   },
+   "title": "PushAvStreamTransport",
+   "type": "object"
+  },
   "cluster.RadonConcentrationMeasurement": {
    "additionalProperties": false,
    "properties": {
@@ -10492,6 +12925,106 @@
    "title": "ThermostatUserInterfaceConfiguration",
    "type": "object"
   },
+  "cluster.ThreadBorderRouterManagement": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "PanChange",
+       "PC"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "GetActiveDatasetRequest",
+       "GetPendingDatasetRequest",
+       "SetActiveDatasetRequest",
+       "SetPendingDatasetRequest"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.ThreadBorderRouterManagement"
+    }
+   },
+   "title": "ThreadBorderRouterManagement",
+   "type": "object"
+  },
+  "cluster.ThreadNetworkDiagnostics": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "PacketCounts",
+       "PKTCNT",
+       "ErrorCounts",
+       "ERRCNT",
+       "MleCounts",
+       "MLECNT",
+       "MacCounts",
+       "MACCNT"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "ResetCounts"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.ThreadNetworkDiagnostics"
+    }
+   },
+   "title": "ThreadNetworkDiagnostics",
+   "type": "object"
+  },
+  "cluster.ThreadNetworkDirectory": {
+   "additionalProperties": false,
+   "properties": {
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "AddNetwork",
+       "RemoveNetwork",
+       "GetOperationalDataset"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.ThreadNetworkDirectory"
+    }
+   },
+   "title": "ThreadNetworkDirectory",
+   "type": "object"
+  },
   "cluster.TimeFormatLocalization": {
    "additionalProperties": false,
    "properties": {
@@ -10557,6 +13090,62 @@
     }
    },
    "title": "TimeSynchronization",
+   "type": "object"
+  },
+  "cluster.TlsCertificateManagement": {
+   "additionalProperties": false,
+   "properties": {
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "ProvisionRootCertificate",
+       "FindRootCertificate",
+       "LookupRootCertificate",
+       "RemoveRootCertificate",
+       "ClientCsr",
+       "ProvisionClientCertificate",
+       "FindClientCertificate",
+       "LookupClientCertificate",
+       "RemoveClientCertificate"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.TlsCertificateManagement"
+    }
+   },
+   "title": "TlsCertificateManagement",
+   "type": "object"
+  },
+  "cluster.TlsClientManagement": {
+   "additionalProperties": false,
+   "properties": {
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "ProvisionEndpoint",
+       "FindEndpoint",
+       "RemoveEndpoint"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.TlsClientManagement"
+    }
+   },
+   "title": "TlsClientManagement",
    "type": "object"
   },
   "cluster.TotalVolatileOrganicCompoundsConcentrationMeasurement": {
@@ -10787,6 +13376,69 @@
    "title": "WaterTankLevelMonitoring",
    "type": "object"
   },
+  "cluster.WebRtcTransportProvider": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "Metadata",
+       "METADATA"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "SolicitOffer",
+       "ProvideOffer",
+       "ProvideAnswer",
+       "ProvideIceCandidates",
+       "EndSession"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.WebRtcTransportProvider"
+    }
+   },
+   "title": "WebRtcTransportProvider",
+   "type": "object"
+  },
+  "cluster.WebRtcTransportRequestor": {
+   "additionalProperties": false,
+   "properties": {
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "Offer",
+       "Answer",
+       "IceCandidates",
+       "End"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.WebRtcTransportRequestor"
+    }
+   },
+   "title": "WebRtcTransportRequestor",
+   "type": "object"
+  },
   "cluster.WiFiNetworkDiagnostics": {
    "additionalProperties": false,
    "properties": {
@@ -10888,6 +13540,49 @@
    "title": "WindowCovering",
    "type": "object"
   },
+  "cluster.ZoneManagement": {
+   "additionalProperties": false,
+   "properties": {
+    "features": {
+     "items": {
+      "enum": [
+       "TwoDimensionalCartesianZone",
+       "TWODCART",
+       "PerZoneSensitivity",
+       "PERZONESENS",
+       "UserDefined",
+       "USERDEFINED",
+       "FocusZones",
+       "FOCUSZONES"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_commands": {
+     "items": {
+      "enum": [
+       "CreateTwoDCartesianZone",
+       "UpdateTwoDCartesianZone",
+       "RemoveZone",
+       "CreateOrUpdateTrigger",
+       "RemoveTrigger"
+      ]
+     },
+     "type": "array",
+     "uniqueItems": true
+    },
+    "handle_writes": {
+     "description": "the host answers each controller write of this cluster (the write event)",
+     "type": "boolean"
+    },
+    "initial": {
+     "$ref": "#/$defs/patch.ZoneManagement"
+    }
+   },
+   "title": "ZoneManagement",
+   "type": "object"
+  },
   "device": {
    "additionalProperties": false,
    "properties": {
@@ -10938,6 +13633,12 @@
       },
       "BridgedDeviceBasicInformation": {
        "$ref": "#/$defs/cluster.BridgedDeviceBasicInformation"
+      },
+      "CameraAvSettingsUserLevelManagement": {
+       "$ref": "#/$defs/cluster.CameraAvSettingsUserLevelManagement"
+      },
+      "CameraAvStreamManagement": {
+       "$ref": "#/$defs/cluster.CameraAvStreamManagement"
       },
       "CarbonDioxideConcentrationMeasurement": {
        "$ref": "#/$defs/cluster.CarbonDioxideConcentrationMeasurement"
@@ -11062,6 +13763,12 @@
       "IlluminanceMeasurement": {
        "$ref": "#/$defs/cluster.IlluminanceMeasurement"
       },
+      "JointFabricAdministrator": {
+       "$ref": "#/$defs/cluster.JointFabricAdministrator"
+      },
+      "JointFabricDatastore": {
+       "$ref": "#/$defs/cluster.JointFabricDatastore"
+      },
       "KeypadInput": {
        "$ref": "#/$defs/cluster.KeypadInput"
       },
@@ -11158,6 +13865,9 @@
       "PumpConfigurationAndControl": {
        "$ref": "#/$defs/cluster.PumpConfigurationAndControl"
       },
+      "PushAvStreamTransport": {
+       "$ref": "#/$defs/cluster.PushAvStreamTransport"
+      },
       "RadonConcentrationMeasurement": {
        "$ref": "#/$defs/cluster.RadonConcentrationMeasurement"
       },
@@ -11215,11 +13925,26 @@
       "ThermostatUserInterfaceConfiguration": {
        "$ref": "#/$defs/cluster.ThermostatUserInterfaceConfiguration"
       },
+      "ThreadBorderRouterManagement": {
+       "$ref": "#/$defs/cluster.ThreadBorderRouterManagement"
+      },
+      "ThreadNetworkDiagnostics": {
+       "$ref": "#/$defs/cluster.ThreadNetworkDiagnostics"
+      },
+      "ThreadNetworkDirectory": {
+       "$ref": "#/$defs/cluster.ThreadNetworkDirectory"
+      },
       "TimeFormatLocalization": {
        "$ref": "#/$defs/cluster.TimeFormatLocalization"
       },
       "TimeSynchronization": {
        "$ref": "#/$defs/cluster.TimeSynchronization"
+      },
+      "TlsCertificateManagement": {
+       "$ref": "#/$defs/cluster.TlsCertificateManagement"
+      },
+      "TlsClientManagement": {
+       "$ref": "#/$defs/cluster.TlsClientManagement"
       },
       "TotalVolatileOrganicCompoundsConcentrationMeasurement": {
        "$ref": "#/$defs/cluster.TotalVolatileOrganicCompoundsConcentrationMeasurement"
@@ -11245,6 +13970,12 @@
       "WaterTankLevelMonitoring": {
        "$ref": "#/$defs/cluster.WaterTankLevelMonitoring"
       },
+      "WebRtcTransportProvider": {
+       "$ref": "#/$defs/cluster.WebRtcTransportProvider"
+      },
+      "WebRtcTransportRequestor": {
+       "$ref": "#/$defs/cluster.WebRtcTransportRequestor"
+      },
       "WiFiNetworkDiagnostics": {
        "$ref": "#/$defs/cluster.WiFiNetworkDiagnostics"
       },
@@ -11253,6 +13984,9 @@
       },
       "WindowCovering": {
        "$ref": "#/$defs/cluster.WindowCovering"
+      },
+      "ZoneManagement": {
+       "$ref": "#/$defs/cluster.ZoneManagement"
       }
      },
      "type": "object"
@@ -11986,6 +14720,295 @@
     }
    },
    "title": "BridgedDeviceBasicInformation patch",
+   "type": "object"
+  },
+  "patch.CameraAvSettingsUserLevelManagement": {
+   "additionalProperties": false,
+   "description": "A change to the CameraAvSettingsUserLevelManagement cluster (0x0552, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "dptzStreams": {
+     "items": {
+      "$ref": "#/$defs/0552_DPTZStruct"
+     },
+     "title": "DptzStreams",
+     "type": "array"
+    },
+    "maxPresets": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxPresets",
+     "type": "integer"
+    },
+    "movementState": {
+     "$ref": "#/$defs/0552_PhysicalMovementEnum",
+     "title": "MovementState"
+    },
+    "mptzPosition": {
+     "$ref": "#/$defs/0552_MPTZStruct",
+     "title": "MptzPosition"
+    },
+    "mptzPresets": {
+     "items": {
+      "$ref": "#/$defs/0552_MPTZPresetStruct"
+     },
+     "title": "MptzPresets",
+     "type": "array"
+    },
+    "panMax": {
+     "maximum": 32767,
+     "minimum": -32768,
+     "title": "PanMax",
+     "type": "integer"
+    },
+    "panMin": {
+     "maximum": 32767,
+     "minimum": -32768,
+     "title": "PanMin",
+     "type": "integer"
+    },
+    "tiltMax": {
+     "maximum": 32767,
+     "minimum": -32768,
+     "title": "TiltMax",
+     "type": "integer"
+    },
+    "tiltMin": {
+     "maximum": 32767,
+     "minimum": -32768,
+     "title": "TiltMin",
+     "type": "integer"
+    },
+    "zoomMax": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ZoomMax",
+     "type": "integer"
+    }
+   },
+   "title": "CameraAvSettingsUserLevelManagement patch",
+   "type": "object"
+  },
+  "patch.CameraAvStreamManagement": {
+   "additionalProperties": false,
+   "description": "A change to the CameraAvStreamManagement cluster (0x0551, revision 2): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "allocatedAudioStreams": {
+     "items": {
+      "$ref": "#/$defs/0551_AudioStreamStruct"
+     },
+     "title": "AllocatedAudioStreams",
+     "type": "array"
+    },
+    "allocatedSnapshotStreams": {
+     "items": {
+      "$ref": "#/$defs/0551_SnapshotStreamStruct"
+     },
+     "title": "AllocatedSnapshotStreams",
+     "type": "array"
+    },
+    "allocatedVideoStreams": {
+     "items": {
+      "$ref": "#/$defs/0551_VideoStreamStruct"
+     },
+     "title": "AllocatedVideoStreams",
+     "type": "array"
+    },
+    "currentFrameRate": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "CurrentFrameRate",
+     "type": "integer"
+    },
+    "hardPrivacyModeOn": {
+     "title": "HardPrivacyModeOn",
+     "type": "boolean"
+    },
+    "hdrModeEnabled": {
+     "title": "HdrModeEnabled",
+     "type": "boolean"
+    },
+    "imageFlipHorizontal": {
+     "title": "ImageFlipHorizontal",
+     "type": "boolean"
+    },
+    "imageFlipVertical": {
+     "title": "ImageFlipVertical",
+     "type": "boolean"
+    },
+    "imageRotation": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ImageRotation",
+     "type": "integer"
+    },
+    "imageRotationDiscreteAngles": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ImageRotationDiscreteAngles",
+     "type": "integer"
+    },
+    "localSnapshotRecordingEnabled": {
+     "title": "LocalSnapshotRecordingEnabled",
+     "type": "boolean"
+    },
+    "localVideoRecordingEnabled": {
+     "title": "LocalVideoRecordingEnabled",
+     "type": "boolean"
+    },
+    "maxConcurrentEncoders": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxConcurrentEncoders",
+     "type": "integer"
+    },
+    "maxContentBufferSize": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MaxContentBufferSize",
+     "type": "integer"
+    },
+    "maxEncodedPixelRate": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MaxEncodedPixelRate",
+     "type": "integer"
+    },
+    "maxNetworkBandwidth": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "MaxNetworkBandwidth",
+     "type": "integer"
+    },
+    "microphoneAgcEnabled": {
+     "title": "MicrophoneAgcEnabled",
+     "type": "boolean"
+    },
+    "microphoneCapabilities": {
+     "$ref": "#/$defs/0551_AudioCapabilitiesStruct",
+     "title": "MicrophoneCapabilities"
+    },
+    "microphoneMaxLevel": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MicrophoneMaxLevel",
+     "type": "integer"
+    },
+    "microphoneMinLevel": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MicrophoneMinLevel",
+     "type": "integer"
+    },
+    "microphoneMuted": {
+     "title": "MicrophoneMuted",
+     "type": "boolean"
+    },
+    "microphoneVolumeLevel": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MicrophoneVolumeLevel",
+     "type": "integer"
+    },
+    "minViewportResolution": {
+     "$ref": "#/$defs/0551_VideoResolutionStruct",
+     "title": "MinViewportResolution"
+    },
+    "nightVision": {
+     "$ref": "#/$defs/0551_TriStateAutoEnum",
+     "title": "NightVision"
+    },
+    "nightVisionIllum": {
+     "$ref": "#/$defs/0551_TriStateAutoEnum",
+     "title": "NightVisionIllum"
+    },
+    "nightVisionUsesInfrared": {
+     "title": "NightVisionUsesInfrared",
+     "type": "boolean"
+    },
+    "rateDistortionTradeOffPoints": {
+     "items": {
+      "$ref": "#/$defs/0551_RateDistortionTradeOffPointsStruct"
+     },
+     "title": "RateDistortionTradeOffPoints",
+     "type": "array"
+    },
+    "snapshotCapabilities": {
+     "items": {
+      "$ref": "#/$defs/0551_SnapshotCapabilitiesStruct"
+     },
+     "title": "SnapshotCapabilities",
+     "type": "array"
+    },
+    "softLivestreamPrivacyModeEnabled": {
+     "title": "SoftLivestreamPrivacyModeEnabled",
+     "type": "boolean"
+    },
+    "softRecordingPrivacyModeEnabled": {
+     "title": "SoftRecordingPrivacyModeEnabled",
+     "type": "boolean"
+    },
+    "speakerCapabilities": {
+     "$ref": "#/$defs/0551_AudioCapabilitiesStruct",
+     "title": "SpeakerCapabilities"
+    },
+    "speakerMaxLevel": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "SpeakerMaxLevel",
+     "type": "integer"
+    },
+    "speakerMinLevel": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "SpeakerMinLevel",
+     "type": "integer"
+    },
+    "speakerMuted": {
+     "title": "SpeakerMuted",
+     "type": "boolean"
+    },
+    "speakerVolumeLevel": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "SpeakerVolumeLevel",
+     "type": "integer"
+    },
+    "statusLightBrightness": {
+     "$ref": "#/$defs/Global_ThreeLevelAutoEnum",
+     "title": "StatusLightBrightness"
+    },
+    "statusLightEnabled": {
+     "title": "StatusLightEnabled",
+     "type": "boolean"
+    },
+    "streamUsagePriorities": {
+     "items": {
+      "$ref": "#/$defs/Global_StreamUsageEnum"
+     },
+     "title": "StreamUsagePriorities",
+     "type": "array"
+    },
+    "supportedStreamUsages": {
+     "items": {
+      "$ref": "#/$defs/Global_StreamUsageEnum"
+     },
+     "title": "SupportedStreamUsages",
+     "type": "array"
+    },
+    "twoWayTalkSupport": {
+     "$ref": "#/$defs/0551_TwoWayTalkSupportTypeEnum",
+     "title": "TwoWayTalkSupport"
+    },
+    "videoSensorParams": {
+     "$ref": "#/$defs/0551_VideoSensorParamsStruct",
+     "title": "VideoSensorParams"
+    },
+    "viewport": {
+     "$ref": "#/$defs/Global_ViewportStruct",
+     "title": "Viewport"
+    }
+   },
+   "title": "CameraAvStreamManagement patch",
    "type": "object"
   },
   "patch.CarbonDioxideConcentrationMeasurement": {
@@ -15113,6 +18136,123 @@
    "title": "IlluminanceMeasurement patch",
    "type": "object"
   },
+  "patch.JointFabricAdministrator": {
+   "additionalProperties": false,
+   "description": "A change to the JointFabricAdministrator cluster (0x0753, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "administratorFabricIndex": {
+     "anyOf": [
+      {
+       "maximum": 255,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "AdministratorFabricIndex"
+    }
+   },
+   "title": "JointFabricAdministrator patch",
+   "type": "object"
+  },
+  "patch.JointFabricDatastore": {
+   "additionalProperties": false,
+   "description": "A change to the JointFabricDatastore cluster (0x0752, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "adminList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreAdministratorInformationEntryStruct"
+     },
+     "title": "AdminList",
+     "type": "array"
+    },
+    "anchorNodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "AnchorNodeId",
+     "type": "integer"
+    },
+    "anchorRootCa": {
+     "contentEncoding": "base64",
+     "title": "AnchorRootCa",
+     "type": "string"
+    },
+    "anchorVendorId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "AnchorVendorId",
+     "type": "integer"
+    },
+    "endpointBindingList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreEndpointBindingEntryStruct"
+     },
+     "title": "EndpointBindingList",
+     "type": "array"
+    },
+    "endpointGroupIdList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreEndpointGroupIDEntryStruct"
+     },
+     "title": "EndpointGroupIdList",
+     "type": "array"
+    },
+    "friendlyName": {
+     "title": "FriendlyName",
+     "type": "string"
+    },
+    "groupKeySetList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreGroupKeySetStruct"
+     },
+     "title": "GroupKeySetList",
+     "type": "array"
+    },
+    "groupList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreGroupInformationEntryStruct"
+     },
+     "title": "GroupList",
+     "type": "array"
+    },
+    "nodeAclList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreACLEntryStruct"
+     },
+     "title": "NodeAclList",
+     "type": "array"
+    },
+    "nodeEndpointList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreEndpointEntryStruct"
+     },
+     "title": "NodeEndpointList",
+     "type": "array"
+    },
+    "nodeKeySetList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreNodeKeySetEntryStruct"
+     },
+     "title": "NodeKeySetList",
+     "type": "array"
+    },
+    "nodeList": {
+     "items": {
+      "$ref": "#/$defs/0752_DatastoreNodeInformationEntryStruct"
+     },
+     "title": "NodeList",
+     "type": "array"
+    },
+    "status": {
+     "$ref": "#/$defs/0752_DatastoreStatusEntryStruct",
+     "title": "Status"
+    }
+   },
+   "title": "JointFabricDatastore patch",
+   "type": "object"
+  },
   "patch.KeypadInput": {
    "additionalProperties": false,
    "description": "A change to the KeypadInput cluster (0x0509, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
@@ -17330,6 +20470,28 @@
    "title": "PumpConfigurationAndControl patch",
    "type": "object"
   },
+  "patch.PushAvStreamTransport": {
+   "additionalProperties": false,
+   "description": "A change to the PushAvStreamTransport cluster (0x0555, revision 2): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "currentConnections": {
+     "items": {
+      "$ref": "#/$defs/0555_TransportConfigurationStruct"
+     },
+     "title": "CurrentConnections",
+     "type": "array"
+    },
+    "supportedFormats": {
+     "items": {
+      "$ref": "#/$defs/0555_SupportedFormatStruct"
+     },
+     "title": "SupportedFormats",
+     "type": "array"
+    }
+   },
+   "title": "PushAvStreamTransport patch",
+   "type": "object"
+  },
   "patch.RadonConcentrationMeasurement": {
    "additionalProperties": false,
    "description": "A change to the RadonConcentrationMeasurement cluster (0x042F, revision 5): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
@@ -18595,6 +21757,616 @@
    "title": "ThermostatUserInterfaceConfiguration patch",
    "type": "object"
   },
+  "patch.ThreadBorderRouterManagement": {
+   "additionalProperties": false,
+   "description": "A change to the ThreadBorderRouterManagement cluster (0x0452, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "activeDatasetTimestamp": {
+     "anyOf": [
+      {
+       "maximum": 18446744073709551615,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "ActiveDatasetTimestamp"
+    },
+    "borderAgentId": {
+     "contentEncoding": "base64",
+     "title": "BorderAgentId",
+     "type": "string"
+    },
+    "borderRouterName": {
+     "title": "BorderRouterName",
+     "type": "string"
+    },
+    "interfaceEnabled": {
+     "title": "InterfaceEnabled",
+     "type": "boolean"
+    },
+    "pendingDatasetTimestamp": {
+     "anyOf": [
+      {
+       "maximum": 18446744073709551615,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "PendingDatasetTimestamp"
+    },
+    "threadVersion": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ThreadVersion",
+     "type": "integer"
+    }
+   },
+   "title": "ThreadBorderRouterManagement patch",
+   "type": "object"
+  },
+  "patch.ThreadNetworkDiagnostics": {
+   "additionalProperties": false,
+   "description": "A change to the ThreadNetworkDiagnostics cluster (0x0035, revision 3): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "activeNetworkFaultsList": {
+     "items": {
+      "$ref": "#/$defs/0035_NetworkFaultEnum"
+     },
+     "title": "ActiveNetworkFaultsList",
+     "type": "array"
+    },
+    "activeTimestamp": {
+     "anyOf": [
+      {
+       "maximum": 18446744073709551615,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "ActiveTimestamp"
+    },
+    "attachAttemptCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "AttachAttemptCount",
+     "type": "integer"
+    },
+    "betterPartitionAttachAttemptCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "BetterPartitionAttachAttemptCount",
+     "type": "integer"
+    },
+    "channel": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Channel"
+    },
+    "channelPage0Mask": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "ChannelPage0Mask"
+    },
+    "childRoleCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ChildRoleCount",
+     "type": "integer"
+    },
+    "dataVersion": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "DataVersion"
+    },
+    "delay": {
+     "anyOf": [
+      {
+       "maximum": 4294967295,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Delay"
+    },
+    "detachedRoleCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "DetachedRoleCount",
+     "type": "integer"
+    },
+    "extAddress": {
+     "anyOf": [
+      {
+       "maximum": 18446744073709551615,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "ExtAddress"
+    },
+    "extendedPanId": {
+     "anyOf": [
+      {
+       "maximum": 18446744073709551615,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "ExtendedPanId"
+    },
+    "leaderRoleCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "LeaderRoleCount",
+     "type": "integer"
+    },
+    "leaderRouterId": {
+     "anyOf": [
+      {
+       "maximum": 255,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "LeaderRouterId"
+    },
+    "meshLocalPrefix": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "MeshLocalPrefix"
+    },
+    "neighborTable": {
+     "items": {
+      "$ref": "#/$defs/0035_NeighborTableStruct"
+     },
+     "title": "NeighborTable",
+     "type": "array"
+    },
+    "networkName": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "NetworkName"
+    },
+    "operationalDatasetComponents": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/0035_OperationalDatasetComponents"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "OperationalDatasetComponents"
+    },
+    "overrunCount": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "OverrunCount",
+     "type": "integer"
+    },
+    "panId": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "PanId"
+    },
+    "parentChangeCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "ParentChangeCount",
+     "type": "integer"
+    },
+    "partitionId": {
+     "anyOf": [
+      {
+       "maximum": 4294967295,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "PartitionId"
+    },
+    "partitionIdChangeCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "PartitionIdChangeCount",
+     "type": "integer"
+    },
+    "pendingTimestamp": {
+     "anyOf": [
+      {
+       "maximum": 18446744073709551615,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "PendingTimestamp"
+    },
+    "rloc16": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Rloc16"
+    },
+    "routeTable": {
+     "items": {
+      "$ref": "#/$defs/0035_RouteTableStruct"
+     },
+     "title": "RouteTable",
+     "type": "array"
+    },
+    "routerRoleCount": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "RouterRoleCount",
+     "type": "integer"
+    },
+    "routingRole": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/0035_RoutingRoleEnum"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "RoutingRole"
+    },
+    "rxAddressFilteredCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxAddressFilteredCount",
+     "type": "integer"
+    },
+    "rxBeaconCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxBeaconCount",
+     "type": "integer"
+    },
+    "rxBeaconRequestCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxBeaconRequestCount",
+     "type": "integer"
+    },
+    "rxBroadcastCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxBroadcastCount",
+     "type": "integer"
+    },
+    "rxDataCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxDataCount",
+     "type": "integer"
+    },
+    "rxDataPollCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxDataPollCount",
+     "type": "integer"
+    },
+    "rxDestAddrFilteredCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxDestAddrFilteredCount",
+     "type": "integer"
+    },
+    "rxDuplicatedCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxDuplicatedCount",
+     "type": "integer"
+    },
+    "rxErrFcsCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxErrFcsCount",
+     "type": "integer"
+    },
+    "rxErrInvalidSrcAddrCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxErrInvalidSrcAddrCount",
+     "type": "integer"
+    },
+    "rxErrNoFrameCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxErrNoFrameCount",
+     "type": "integer"
+    },
+    "rxErrOtherCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxErrOtherCount",
+     "type": "integer"
+    },
+    "rxErrSecCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxErrSecCount",
+     "type": "integer"
+    },
+    "rxErrUnknownNeighborCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxErrUnknownNeighborCount",
+     "type": "integer"
+    },
+    "rxOtherCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxOtherCount",
+     "type": "integer"
+    },
+    "rxTotalCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxTotalCount",
+     "type": "integer"
+    },
+    "rxUnicastCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "RxUnicastCount",
+     "type": "integer"
+    },
+    "securityPolicy": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/0035_SecurityPolicy"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "SecurityPolicy"
+    },
+    "stableDataVersion": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "StableDataVersion"
+    },
+    "txAckRequestedCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxAckRequestedCount",
+     "type": "integer"
+    },
+    "txAckedCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxAckedCount",
+     "type": "integer"
+    },
+    "txBeaconCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxBeaconCount",
+     "type": "integer"
+    },
+    "txBeaconRequestCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxBeaconRequestCount",
+     "type": "integer"
+    },
+    "txBroadcastCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxBroadcastCount",
+     "type": "integer"
+    },
+    "txDataCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxDataCount",
+     "type": "integer"
+    },
+    "txDataPollCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxDataPollCount",
+     "type": "integer"
+    },
+    "txDirectMaxRetryExpiryCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxDirectMaxRetryExpiryCount",
+     "type": "integer"
+    },
+    "txErrAbortCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxErrAbortCount",
+     "type": "integer"
+    },
+    "txErrBusyChannelCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxErrBusyChannelCount",
+     "type": "integer"
+    },
+    "txErrCcaCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxErrCcaCount",
+     "type": "integer"
+    },
+    "txIndirectMaxRetryExpiryCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxIndirectMaxRetryExpiryCount",
+     "type": "integer"
+    },
+    "txNoAckRequestedCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxNoAckRequestedCount",
+     "type": "integer"
+    },
+    "txOtherCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxOtherCount",
+     "type": "integer"
+    },
+    "txRetryCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxRetryCount",
+     "type": "integer"
+    },
+    "txTotalCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxTotalCount",
+     "type": "integer"
+    },
+    "txUnicastCount": {
+     "maximum": 4294967295,
+     "minimum": 0,
+     "title": "TxUnicastCount",
+     "type": "integer"
+    },
+    "weighting": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "Weighting"
+    }
+   },
+   "title": "ThreadNetworkDiagnostics patch",
+   "type": "object"
+  },
+  "patch.ThreadNetworkDirectory": {
+   "additionalProperties": false,
+   "description": "A change to the ThreadNetworkDirectory cluster (0x0453, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "preferredExtendedPanId": {
+     "anyOf": [
+      {
+       "contentEncoding": "base64",
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "PreferredExtendedPanId"
+    },
+    "threadNetworkTableSize": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "ThreadNetworkTableSize",
+     "type": "integer"
+    },
+    "threadNetworks": {
+     "items": {
+      "$ref": "#/$defs/0453_ThreadNetworkStruct"
+     },
+     "title": "ThreadNetworks",
+     "type": "array"
+    }
+   },
+   "title": "ThreadNetworkDirectory patch",
+   "type": "object"
+  },
   "patch.TimeFormatLocalization": {
    "additionalProperties": false,
    "description": "A change to the TimeFormatLocalization cluster (0x002C, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
@@ -18716,6 +22488,61 @@
     }
    },
    "title": "TimeSynchronization patch",
+   "type": "object"
+  },
+  "patch.TlsCertificateManagement": {
+   "additionalProperties": false,
+   "description": "A change to the TlsCertificateManagement cluster (0x0801, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "maxClientCertificates": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxClientCertificates",
+     "type": "integer"
+    },
+    "maxRootCertificates": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxRootCertificates",
+     "type": "integer"
+    },
+    "provisionedClientCertificates": {
+     "items": {
+      "$ref": "#/$defs/0801_TLSClientCertificateDetailStruct"
+     },
+     "title": "ProvisionedClientCertificates",
+     "type": "array"
+    },
+    "provisionedRootCertificates": {
+     "items": {
+      "$ref": "#/$defs/0801_TLSCertStruct"
+     },
+     "title": "ProvisionedRootCertificates",
+     "type": "array"
+    }
+   },
+   "title": "TlsCertificateManagement patch",
+   "type": "object"
+  },
+  "patch.TlsClientManagement": {
+   "additionalProperties": false,
+   "description": "A change to the TlsClientManagement cluster (0x0802, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "maxProvisioned": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxProvisioned",
+     "type": "integer"
+    },
+    "provisionedEndpoints": {
+     "items": {
+      "$ref": "#/$defs/0802_TLSEndpointStruct"
+     },
+     "title": "ProvisionedEndpoints",
+     "type": "array"
+    }
+   },
+   "title": "TlsClientManagement patch",
    "type": "object"
   },
   "patch.TotalVolatileOrganicCompoundsConcentrationMeasurement": {
@@ -19113,6 +22940,36 @@
    "title": "WaterTankLevelMonitoring patch",
    "type": "object"
   },
+  "patch.WebRtcTransportProvider": {
+   "additionalProperties": false,
+   "description": "A change to the WebRtcTransportProvider cluster (0x0553, revision 2): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "currentSessions": {
+     "items": {
+      "type": "object"
+     },
+     "title": "CurrentSessions",
+     "type": "array"
+    }
+   },
+   "title": "WebRtcTransportProvider patch",
+   "type": "object"
+  },
+  "patch.WebRtcTransportRequestor": {
+   "additionalProperties": false,
+   "description": "A change to the WebRtcTransportRequestor cluster (0x0554, revision 2): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "currentSessions": {
+     "items": {
+      "type": "object"
+     },
+     "title": "CurrentSessions",
+     "type": "array"
+    }
+   },
+   "title": "WebRtcTransportRequestor patch",
+   "type": "object"
+  },
   "patch.WiFiNetworkDiagnostics": {
    "additionalProperties": false,
    "description": "A change to the WiFiNetworkDiagnostics cluster (0x0036, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
@@ -19439,6 +23296,56 @@
    },
    "title": "WindowCovering patch",
    "type": "object"
+  },
+  "patch.ZoneManagement": {
+   "additionalProperties": false,
+   "description": "A change to the ZoneManagement cluster (0x0550, revision 1): attributes by property name, matched without regard to case; null sets a nullable attribute to null.",
+   "properties": {
+    "maxUserDefinedZones": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxUserDefinedZones",
+     "type": "integer"
+    },
+    "maxZones": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "MaxZones",
+     "type": "integer"
+    },
+    "sensitivity": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "Sensitivity",
+     "type": "integer"
+    },
+    "sensitivityMax": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "SensitivityMax",
+     "type": "integer"
+    },
+    "triggers": {
+     "items": {
+      "$ref": "#/$defs/0550_ZoneTriggerControlStruct"
+     },
+     "title": "Triggers",
+     "type": "array"
+    },
+    "twoDCartesianMax": {
+     "$ref": "#/$defs/0550_TwoDCartesianVertexStruct",
+     "title": "TwoDCartesianMax"
+    },
+    "zones": {
+     "items": {
+      "$ref": "#/$defs/0550_ZoneInformationStruct"
+     },
+     "title": "Zones",
+     "type": "array"
+    }
+   },
+   "title": "ZoneManagement patch",
+   "type": "object"
   }
  },
  "$id": "https://github.com/SukramJ/go-fabric-server/protocol/schema/declaration.schema.json",
@@ -19458,7 +23365,7 @@
  ],
  "title": "go-fabric-server bridge declaration",
  "type": "object",
- "x-go-fabric-version": "v0.12.1",
+ "x-go-fabric-version": "v0.13.3",
  "x-matter-revision": "1.6.1",
  "x-matter-source-commit": "862ad75f4d3c7ab528b8a3954168146082cad8a6"
 }

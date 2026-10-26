@@ -10,7 +10,7 @@ wire-compatible with the API Home Assistant's Matter integration speaks (the
 python-matter-server / matterjs-server contract, schema 14), and a
 **bridge door** (`/bridge`) for hosts that are not written in Go.
 
-> **Status: S3 (v0.3.0).** The controller half (`/ws`) answers every
+> **Status: S3 (v0.3.1).** The controller half (`/ws`) answers every
 > command of matterjs-server's dispatch Home Assistant's Matter integration
 > uses, the ICD commands, the network topology and test nodes; the OTA
 > commands, the two Thread border router commands and camera/WebRTC answer
@@ -26,7 +26,7 @@ python-matter-server / matterjs-server contract, schema 14), and a
 | --- | --- | --- |
 | Server | `server_info`, `start_listening`, `diagnostics`, `get_loglevel`, `set_loglevel` | implemented |
 | Nodes | `get_nodes`, `get_node`, `remove_node`, `interview_node`, `ping_node`, `get_node_ip_addresses`, `import_test_node` | implemented |
-| Commissioning | `commission_with_code`, `commission_on_network`, `parse_onboarding_payload`, `discover`, `discover_commissionable_nodes`, `open_commissioning_window` | implemented (BLE waits for go-fabric's BlueZ release) |
+| Commissioning | `commission_with_code`, `commission_on_network`, `parse_onboarding_payload`, `discover`, `discover_commissionable_nodes`, `open_commissioning_window` | implemented (BLE with `--bluetooth-adapter`, Linux/BlueZ) |
 | Interaction | `read_attribute`, `read`, `write_attribute`, `device_command`, `batched_device_commands`, `subscribe`, `unsubscribe`, `enable_auto_subscription`, `disable_auto_subscription` | implemented |
 | Credentials, fabric | `set_/remove_wifi_credentials`, `set_/remove_thread_dataset`, `get_all_credentials`, `set_default_fabric_label`, `get_fabric_label`, `get_matter_fabrics`, `remove_matter_fabric`, `set_acl_entry`, `set_node_binding`, `get_vendor_names` | implemented |
 | ICD, topology | `get_icd_state`, `register_icd`, `resync_icd`, `unregister_icd`, `get_network_topology` | implemented |

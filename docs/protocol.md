@@ -80,7 +80,7 @@ reported as `other` until go-fabric names an attestation rejection.
 | `server_info` | implemented | plus `capabilities` |
 | `start_listening` | implemented | the dump (test nodes after the real ones), then events |
 | `get_nodes`, `get_node` | implemented | |
-| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` and a stored Wi-Fi or Thread credential (the flag waits for a go-fabric BlueZ release, see operations); an attestation the policy rejects: 1, reason `attestation-rejected` |
+| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` and a stored Wi-Fi or Thread credential (go-fabric's BlueZ central, see operations); an attestation the policy rejects: 1, reason `attestation-rejected` |
 | `commission_on_network` | implemented | `Controller.Discover` in 2-second rounds until the device of the filter (and `ip_addr`) answers, then the registry's commissioning |
 | `parse_onboarding_payload` | implemented | `{type: "qr", payloads: […]}` or `{type: "manual", …}`; `vendor_id`/`product_id` left out where the code says 0 |
 | `discover_commissionable_nodes`, `discover` | implemented | `Controller.Discover`, 3 seconds |
@@ -309,9 +309,9 @@ Names, not ids; every name is matched without regard to case:
 - The document is the whole topology and is applied as one
   `Aggregator.Batch`: a new key is added, a changed device replaced, an
   unchanged one (the same declaration) left as it is, a key the document no
-  longer names removed (`{"devices": []}` removes every device); the batch
-  marks the topology complete, so the node forgets the endpoint numbers of
-  removed keys.
+  longer names removed (`{"devices": []}` removes every device) and its
+  endpoint number forgotten (`Batch.Forget`): a later declaration of the key
+  gets a fresh number. `remove` keeps the number stored under the key.
 - Validation at the door: a malformed document is `InvalidArguments` naming
   the path (`devices[0].clusters.OnOff.initial.nope: the OnOff cluster has no
   attribute "nope"`); nothing is applied. The kit's own refusal of a device
