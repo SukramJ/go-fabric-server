@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"errors"
-	"io"
 	"log/slog"
 	"testing"
 
@@ -57,7 +56,7 @@ func TestBluetoothAdapterWired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opts := controllerOptions(Config{StoragePath: t.TempDir()}, slog.New(slog.NewTextHandler(io.Discard, nil)), new(slog.LevelVar), c)
+	opts := controllerOptions(Config{StoragePath: t.TempDir()}, slog.New(slog.DiscardHandler), new(slog.LevelVar), c)
 	if opts.BLE != fake {
 		t.Fatalf("Options.BLE = %v, want the adapter's central", opts.BLE)
 	}
