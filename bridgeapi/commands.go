@@ -94,8 +94,8 @@ type declared struct {
 
 // cmdDeclare applies the declaration document as one Aggregator.Batch: a
 // new key is added, a changed device replaced, an unchanged one left as it
-// is, a key the document no longer names removed; the batch marks the
-// topology complete.
+// is, a key the document no longer names removed and its endpoint number
+// forgotten (Batch.Forget).
 func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	n := s.node.Load()
 	devs, err := s.decodeDeclaration(ctx, c.req.Args)
@@ -134,11 +134,15 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 			if named[key] {
 				continue
 			}
-			if err := bt.Remove(device.StringKey(key)); err == nil {
+			// Forget, not Remove: a key the document no longer names is gone
+			// for good, so its endpoint number is freed (go-fabric v0.13.0
+			// removed Batch.MarkComplete; a stored number is kept until
+			// Forget erases it, as matter.js keeps it until its store is
+			// erased, ServerEndpointInitializer.ts:59-65 eraseDescendant).
+			if err := bt.Forget(device.StringKey(key)); err == nil {
 				removed = append(removed, key)
 			}
 		}
-		bt.MarkComplete()
 		return nil
 	})
 	s.mu.Lock()
@@ -272,7 +276,8 @@ func cmdHost(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 }
 
 // cmdRemove removes one device (Aggregator.Remove); its endpoint number
-// is forgotten once the topology is complete.
+// stays stored under its key, so a later declare of the key gets it back
+// (go-fabric v0.13.0: a stored number is kept until Forget).
 func cmdRemove(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Device string `json:"device"`

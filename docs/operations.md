@@ -34,7 +34,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel |
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
-| `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag); refused at start until go-fabric releases its BlueZ central on v0.12 |
+| `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened |
 | `--web` | — | serve the bridge node's pages (go-fabric-ui) on this address; read-only unless `--web-admin` or `--web-admin-source` |
 | `--web-admin` | `false` | the pages may write and show the pairing code (the page's token mode) |
 | `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |

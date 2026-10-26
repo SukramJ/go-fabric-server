@@ -14,10 +14,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"github.com/SukramJ/go-fabric/ble/bluez"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
@@ -190,6 +192,9 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if cl, ok := central.(io.Closer); ok {
+			defer func() { _ = cl.Close() }()
+		}
 		// The controller's database through go-fabric's opener (Q11
 		// closed in v0.12.1): no SQLite driver of our own.
 		db, err := controller.OpenDB(filepath.Join(c.StoragePath, "fabric-server.db"))
@@ -197,11 +202,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			return err
 		}
 		defer func() { _ = db.Close() }()
-		api, err = controllerapi.New(controllerapi.Options{
-			Version: version.Version, GoFabricVersion: version.GoFabric(), StoragePath: c.StoragePath,
-			DisableAutoSubscription: c.DisableAutoSubscription, DefaultFabricLabel: c.DefaultFabricLabel,
-			Logger: log, LogLevel: lvl, Metrics: expvarmetrics.New("fabricserver."), BLE: central,
-		})
+		api, err = controllerapi.New(controllerOptions(c, log, lvl, central))
 		if err != nil {
 			return err
 		}
@@ -226,7 +227,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	var bridgeNode *node.Node
 	ev := fabricui.NewEvents()
 	if c.Bridge {
-		br, bridgeNode, err = startBridge(ctx, c, log, ev)
+		br, bridgeNode, err = startBridge(ctx, c, log)
 		if err != nil {
 			return err
 		}
@@ -302,7 +303,7 @@ func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
 
 // startBridge builds the bridge node with the bridge half's observers,
 // starts it and binds the half to it.
-func startBridge(ctx context.Context, c Config, log *slog.Logger, ev *fabricui.Events) (*bridgeapi.Server, *node.Node, error) {
+func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
 	cfg, err := bridgeConfig(c, log)
 	if err != nil {
 		return nil, nil, err
@@ -311,8 +312,10 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger, ev *fabricui.E
 		Version: version.Version, GoFabricVersion: version.GoFabric(), ResultTimeout: c.BridgeResultTimeout,
 		Logger: log, Metrics: expvarmetrics.New("fabricserver.bridge."),
 	})
-	// The node pages' event stream rides on the half's observers.
-	cfg.Observers = ev.Observers(br.Observers())
+	// The node pages' event stream observes the node itself (go-fabric-ui
+	// v0.1.2: the handler's Node.Observe), so only the half's observers go
+	// into the config.
+	cfg.Observers = br.Observers()
 	n, err := node.New(cfg) //nolint:contextcheck // the node's constructor takes no context
 	if err != nil {
 		return nil, nil, fmt.Errorf("bridge node: %w", err)
@@ -376,16 +379,36 @@ func trustStore(c Config) (attestation.PAAStore, error) {
 	return attestation.Trust(mode, snap, nil), nil
 }
 
-// bleCentral is the BlueZ central of --bluetooth-adapter; nil without
-// the flag. go-fabric's BlueZ central (the module
-// github.com/SukramJ/go-fabric/ble/bluez) has no release on go-fabric
-// v0.12: v0.7.0's tests import controller/discovery, which v0.12.0 moved
-// to client/discovery, so a consumer's `go mod tidy` fails (report S3,
-// Questions Q22). Until it has one, the flag refuses to start, naming the
-// release it waits for; controllerapi.Options.BLE takes any ble.Central.
-func bleCentral(adapter string) (ble.Central, error) { //nolint:unparam // the central of the BlueZ release Q22 waits for
+// newCentral opens a BlueZ central; a variable so a test can stand in
+// for the system bus (no BLE in CI).
+var newCentral = bluez.NewCentral
+
+// bleCentral is the BlueZ central of --bluetooth-adapter
+// (github.com/SukramJ/go-fabric/ble/bluez); nil without the flag. The flag
+// takes matterjs-server's HCI id ("0" is hci0); an adapter name (hci1) is
+// passed as it is. Opening fails without system-bus rights to org.bluez or
+// on a platform without BlueZ.
+func bleCentral(adapter string) (ble.Central, error) {
 	if adapter == "" {
 		return nil, nil //nolint:nilnil // no adapter is no central and no error
 	}
-	return nil, fmt.Errorf("--bluetooth-adapter %s: not available in go-fabric-server %s; needs a release of github.com/SukramJ/go-fabric/ble/bluez on go-fabric v0.12", adapter, version.Version)
+	name := adapter
+	if _, err := strconv.ParseUint(adapter, 10, 8); err == nil {
+		name = "hci" + adapter
+	}
+	central, err := newCentral(name)
+	if err != nil {
+		return nil, fmt.Errorf("--bluetooth-adapter %s: %w", adapter, err)
+	}
+	return central, nil
+}
+
+// controllerOptions are the controller half's options; BLE is the central
+// of --bluetooth-adapter, which commission_with_code commissions over.
+func controllerOptions(c Config, log *slog.Logger, lvl *slog.LevelVar, central ble.Central) controllerapi.Options {
+	return controllerapi.Options{
+		Version: version.Version, GoFabricVersion: version.GoFabric(), StoragePath: c.StoragePath,
+		DisableAutoSubscription: c.DisableAutoSubscription, DefaultFabricLabel: c.DefaultFabricLabel,
+		Logger: log, LogLevel: lvl, Metrics: expvarmetrics.New("fabricserver."), BLE: central,
+	}
 }

@@ -48,7 +48,9 @@ these is answered ([protocol.md](protocol.md#commands)); the CI job
 `compat-python` runs them with the pinned client against the daemon and a
 commissioned device ([compat.md](compat.md)).
 
-Devices on BLE need `--bluetooth-adapter`, which waits for go-fabric's BlueZ
-central on v0.12; until then devices are commissioned on the network
-(Wi-Fi or Ethernet devices already joined, or a code shared from another
-ecosystem through `open_commissioning_window`).
+Devices on BLE need `--bluetooth-adapter` (go-fabric's BlueZ central, a
+daemon with system-bus rights to `org.bluez`) and a stored Wi-Fi or Thread
+credential; without it devices are commissioned on the network (Wi-Fi or
+Ethernet devices already joined, or a code shared from another ecosystem
+through `open_commissioning_window`). The add-on does not pass the flag
+yet.

@@ -17,6 +17,8 @@ import (
 	booleanstatedef "github.com/SukramJ/go-fabric/cluster/spec/booleanstate"
 	booleanstateconfigurationdef "github.com/SukramJ/go-fabric/cluster/spec/booleanstateconfiguration"
 	bridgeddevicebasicinformationdef "github.com/SukramJ/go-fabric/cluster/spec/bridgeddevicebasicinformation"
+	cameraavsettingsuserlevelmanagementdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavsettingsuserlevelmanagement"
+	cameraavstreammanagementdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
 	carbondioxideconcentrationmeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/carbondioxideconcentrationmeasurement"
 	carbonmonoxideconcentrationmeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/carbonmonoxideconcentrationmeasurement"
 	channeldef "github.com/SukramJ/go-fabric/cluster/spec/channel"
@@ -58,6 +60,8 @@ import (
 	icdmanagementdef "github.com/SukramJ/go-fabric/cluster/spec/icdmanagement"
 	identifydef "github.com/SukramJ/go-fabric/cluster/spec/identify"
 	illuminancemeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/illuminancemeasurement"
+	jointfabricadministratordef "github.com/SukramJ/go-fabric/cluster/spec/jointfabricadministrator"
+	jointfabricdatastoredef "github.com/SukramJ/go-fabric/cluster/spec/jointfabricdatastore"
 	keypadinputdef "github.com/SukramJ/go-fabric/cluster/spec/keypadinput"
 	laundrydryercontrolsdef "github.com/SukramJ/go-fabric/cluster/spec/laundrydryercontrols"
 	laundrywashercontrolsdef "github.com/SukramJ/go-fabric/cluster/spec/laundrywashercontrols"
@@ -90,6 +94,7 @@ import (
 	powertopologydef "github.com/SukramJ/go-fabric/cluster/spec/powertopology"
 	pressuremeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/pressuremeasurement"
 	pumpconfigurationandcontroldef "github.com/SukramJ/go-fabric/cluster/spec/pumpconfigurationandcontrol"
+	pushavstreamtransportdef "github.com/SukramJ/go-fabric/cluster/spec/pushavstreamtransport"
 	radonconcentrationmeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/radonconcentrationmeasurement"
 	refrigeratoralarmdef "github.com/SukramJ/go-fabric/cluster/spec/refrigeratoralarm"
 	refrigeratorandtemperaturecontrolledcabinetmodedef "github.com/SukramJ/go-fabric/cluster/spec/refrigeratorandtemperaturecontrolledcabinetmode"
@@ -109,8 +114,13 @@ import (
 	temperaturemeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/temperaturemeasurement"
 	thermostatdef "github.com/SukramJ/go-fabric/cluster/spec/thermostat"
 	thermostatuserinterfaceconfigurationdef "github.com/SukramJ/go-fabric/cluster/spec/thermostatuserinterfaceconfiguration"
+	threadborderroutermanagementdef "github.com/SukramJ/go-fabric/cluster/spec/threadborderroutermanagement"
+	threadnetworkdiagnosticsdef "github.com/SukramJ/go-fabric/cluster/spec/threadnetworkdiagnostics"
+	threadnetworkdirectorydef "github.com/SukramJ/go-fabric/cluster/spec/threadnetworkdirectory"
 	timeformatlocalizationdef "github.com/SukramJ/go-fabric/cluster/spec/timeformatlocalization"
 	timesynchronizationdef "github.com/SukramJ/go-fabric/cluster/spec/timesynchronization"
+	tlscertificatemanagementdef "github.com/SukramJ/go-fabric/cluster/spec/tlscertificatemanagement"
+	tlsclientmanagementdef "github.com/SukramJ/go-fabric/cluster/spec/tlsclientmanagement"
 	totalvolatileorganiccompoundsconcentrationmeasurementdef "github.com/SukramJ/go-fabric/cluster/spec/totalvolatileorganiccompoundsconcentrationmeasurement"
 	unitlocalizationdef "github.com/SukramJ/go-fabric/cluster/spec/unitlocalization"
 	userlabeldef "github.com/SukramJ/go-fabric/cluster/spec/userlabel"
@@ -119,14 +129,17 @@ import (
 	waterheatermanagementdef "github.com/SukramJ/go-fabric/cluster/spec/waterheatermanagement"
 	waterheatermodedef "github.com/SukramJ/go-fabric/cluster/spec/waterheatermode"
 	watertanklevelmonitoringdef "github.com/SukramJ/go-fabric/cluster/spec/watertanklevelmonitoring"
+	webrtctransportproviderdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
+	webrtctransportrequestordef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportrequestor"
 	wifinetworkdiagnosticsdef "github.com/SukramJ/go-fabric/cluster/spec/wifinetworkdiagnostics"
 	wifinetworkmanagementdef "github.com/SukramJ/go-fabric/cluster/spec/wifinetworkmanagement"
 	windowcoveringdef "github.com/SukramJ/go-fabric/cluster/spec/windowcovering"
+	zonemanagementdef "github.com/SukramJ/go-fabric/cluster/spec/zonemanagement"
 )
 
 // kits are the clusters a declaration may name: every cluster of the
 // snapshot go-fabric generates a typed package for, by cluster id.
-// Without a typed package, and so not declarable: AccessControl, ThreadNetworkDiagnostics, OperationalCredentials, GroupKeyManagement, ThreadBorderRouterManagement, ThreadNetworkDirectory, ZoneManagement, CameraAvStreamManagement, CameraAvSettingsUserLevelManagement, WebRtcTransportProvider, WebRtcTransportRequestor, PushAvStreamTransport, JointFabricDatastore, JointFabricAdministrator, TlsCertificateManagement, TlsClientManagement.
+// Without a typed package, and so not declarable: AccessControl, OperationalCredentials, GroupKeyManagement.
 var kits = map[uint32]clusterKit{
 	identifydef.ClusterID:                                              newKit[identifydef.Patch, identifydef.State, identifydef.Declare](identifydef.Name, identifydef.Wrap),
 	groupsdef.ClusterID:                                                newKit[groupsdef.Patch, groupsdef.State, groupsdef.Declare](groupsdef.Name, groupsdef.Wrap),
@@ -148,6 +161,7 @@ var kits = map[uint32]clusterKit{
 	diagnosticlogsdef.ClusterID:                                        newKit[diagnosticlogsdef.Patch, diagnosticlogsdef.State, diagnosticlogsdef.Declare](diagnosticlogsdef.Name, diagnosticlogsdef.Wrap),
 	generaldiagnosticsdef.ClusterID:                                    newKit[generaldiagnosticsdef.Patch, generaldiagnosticsdef.State, generaldiagnosticsdef.Declare](generaldiagnosticsdef.Name, generaldiagnosticsdef.Wrap),
 	softwarediagnosticsdef.ClusterID:                                   newKit[softwarediagnosticsdef.Patch, softwarediagnosticsdef.State, softwarediagnosticsdef.Declare](softwarediagnosticsdef.Name, softwarediagnosticsdef.Wrap),
+	threadnetworkdiagnosticsdef.ClusterID:                              newKit[threadnetworkdiagnosticsdef.Patch, threadnetworkdiagnosticsdef.State, threadnetworkdiagnosticsdef.Declare](threadnetworkdiagnosticsdef.Name, threadnetworkdiagnosticsdef.Wrap),
 	wifinetworkdiagnosticsdef.ClusterID:                                newKit[wifinetworkdiagnosticsdef.Patch, wifinetworkdiagnosticsdef.State, wifinetworkdiagnosticsdef.Declare](wifinetworkdiagnosticsdef.Name, wifinetworkdiagnosticsdef.Wrap),
 	ethernetnetworkdiagnosticsdef.ClusterID:                            newKit[ethernetnetworkdiagnosticsdef.Patch, ethernetnetworkdiagnosticsdef.State, ethernetnetworkdiagnosticsdef.Declare](ethernetnetworkdiagnosticsdef.Name, ethernetnetworkdiagnosticsdef.Wrap),
 	timesynchronizationdef.ClusterID:                                   newKit[timesynchronizationdef.Patch, timesynchronizationdef.State, timesynchronizationdef.Declare](timesynchronizationdef.Name, timesynchronizationdef.Wrap),
@@ -227,6 +241,8 @@ var kits = map[uint32]clusterKit{
 	soilmeasurementdef.ClusterID:                                       newKit[soilmeasurementdef.Patch, soilmeasurementdef.State, soilmeasurementdef.Declare](soilmeasurementdef.Name, soilmeasurementdef.Wrap),
 	ambientcontextsensingdef.ClusterID:                                 newKit[ambientcontextsensingdef.Patch, ambientcontextsensingdef.State, ambientcontextsensingdef.Declare](ambientcontextsensingdef.Name, ambientcontextsensingdef.Wrap),
 	wifinetworkmanagementdef.ClusterID:                                 newKit[wifinetworkmanagementdef.Patch, wifinetworkmanagementdef.State, wifinetworkmanagementdef.Declare](wifinetworkmanagementdef.Name, wifinetworkmanagementdef.Wrap),
+	threadborderroutermanagementdef.ClusterID:                          newKit[threadborderroutermanagementdef.Patch, threadborderroutermanagementdef.State, threadborderroutermanagementdef.Declare](threadborderroutermanagementdef.Name, threadborderroutermanagementdef.Wrap),
+	threadnetworkdirectorydef.ClusterID:                                newKit[threadnetworkdirectorydef.Patch, threadnetworkdirectorydef.State, threadnetworkdirectorydef.Declare](threadnetworkdirectorydef.Name, threadnetworkdirectorydef.Wrap),
 	wakeonlandef.ClusterID:                                             newKit[wakeonlandef.Patch, wakeonlandef.State, wakeonlandef.Declare](wakeonlandef.Name, wakeonlandef.Wrap),
 	channeldef.ClusterID:                                               newKit[channeldef.Patch, channeldef.State, channeldef.Declare](channeldef.Name, channeldef.Wrap),
 	targetnavigatordef.ClusterID:                                       newKit[targetnavigatordef.Patch, targetnavigatordef.State, targetnavigatordef.Declare](targetnavigatordef.Name, targetnavigatordef.Wrap),
@@ -241,10 +257,20 @@ var kits = map[uint32]clusterKit{
 	accountlogindef.ClusterID:                                          newKit[accountlogindef.Patch, accountlogindef.State, accountlogindef.Declare](accountlogindef.Name, accountlogindef.Wrap),
 	contentcontroldef.ClusterID:                                        newKit[contentcontroldef.Patch, contentcontroldef.State, contentcontroldef.Declare](contentcontroldef.Name, contentcontroldef.Wrap),
 	contentappobserverdef.ClusterID:                                    newKit[contentappobserverdef.Patch, contentappobserverdef.State, contentappobserverdef.Declare](contentappobserverdef.Name, contentappobserverdef.Wrap),
+	zonemanagementdef.ClusterID:                                        newKit[zonemanagementdef.Patch, zonemanagementdef.State, zonemanagementdef.Declare](zonemanagementdef.Name, zonemanagementdef.Wrap),
+	cameraavstreammanagementdef.ClusterID:                              newKit[cameraavstreammanagementdef.Patch, cameraavstreammanagementdef.State, cameraavstreammanagementdef.Declare](cameraavstreammanagementdef.Name, cameraavstreammanagementdef.Wrap),
+	cameraavsettingsuserlevelmanagementdef.ClusterID:                   newKit[cameraavsettingsuserlevelmanagementdef.Patch, cameraavsettingsuserlevelmanagementdef.State, cameraavsettingsuserlevelmanagementdef.Declare](cameraavsettingsuserlevelmanagementdef.Name, cameraavsettingsuserlevelmanagementdef.Wrap),
+	webrtctransportproviderdef.ClusterID:                               newKit[webrtctransportproviderdef.Patch, webrtctransportproviderdef.State, webrtctransportproviderdef.Declare](webrtctransportproviderdef.Name, webrtctransportproviderdef.Wrap),
+	webrtctransportrequestordef.ClusterID:                              newKit[webrtctransportrequestordef.Patch, webrtctransportrequestordef.State, webrtctransportrequestordef.Declare](webrtctransportrequestordef.Name, webrtctransportrequestordef.Wrap),
+	pushavstreamtransportdef.ClusterID:                                 newKit[pushavstreamtransportdef.Patch, pushavstreamtransportdef.State, pushavstreamtransportdef.Declare](pushavstreamtransportdef.Name, pushavstreamtransportdef.Wrap),
 	chimedef.ClusterID:                                                 newKit[chimedef.Patch, chimedef.State, chimedef.Declare](chimedef.Name, chimedef.Wrap),
 	commoditytariffdef.ClusterID:                                       newKit[commoditytariffdef.Patch, commoditytariffdef.State, commoditytariffdef.Declare](commoditytariffdef.Name, commoditytariffdef.Wrap),
 	ecosysteminformationdef.ClusterID:                                  newKit[ecosysteminformationdef.Patch, ecosysteminformationdef.State, ecosysteminformationdef.Declare](ecosysteminformationdef.Name, ecosysteminformationdef.Wrap),
 	commissionercontroldef.ClusterID:                                   newKit[commissionercontroldef.Patch, commissionercontroldef.State, commissionercontroldef.Declare](commissionercontroldef.Name, commissionercontroldef.Wrap),
+	jointfabricdatastoredef.ClusterID:                                  newKit[jointfabricdatastoredef.Patch, jointfabricdatastoredef.State, jointfabricdatastoredef.Declare](jointfabricdatastoredef.Name, jointfabricdatastoredef.Wrap),
+	jointfabricadministratordef.ClusterID:                              newKit[jointfabricadministratordef.Patch, jointfabricadministratordef.State, jointfabricadministratordef.Declare](jointfabricadministratordef.Name, jointfabricadministratordef.Wrap),
+	tlscertificatemanagementdef.ClusterID:                              newKit[tlscertificatemanagementdef.Patch, tlscertificatemanagementdef.State, tlscertificatemanagementdef.Declare](tlscertificatemanagementdef.Name, tlscertificatemanagementdef.Wrap),
+	tlsclientmanagementdef.ClusterID:                                   newKit[tlsclientmanagementdef.Patch, tlsclientmanagementdef.State, tlsclientmanagementdef.Declare](tlsclientmanagementdef.Name, tlsclientmanagementdef.Wrap),
 	meteridentificationdef.ClusterID:                                   newKit[meteridentificationdef.Patch, meteridentificationdef.State, meteridentificationdef.Declare](meteridentificationdef.Name, meteridentificationdef.Wrap),
 	commoditymeteringdef.ClusterID:                                     newKit[commoditymeteringdef.Patch, commoditymeteringdef.State, commoditymeteringdef.Declare](commoditymeteringdef.Name, commoditymeteringdef.Wrap),
 }
