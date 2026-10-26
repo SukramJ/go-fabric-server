@@ -278,6 +278,7 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
 | `set` | `{device, cluster, patch}` | `{}` |
 | `host` | `{device, name?, device_address?, channel_address?, reachable?, label?}` | `{}` |
 | `remove` | `{device}` | `{}` |
+| `forget` | `{device}` | `{device}` |
 | `result` | `{correlation, ok? \| error: {status?, cluster_status?}, response?}` | `{}` |
 | `pairing_codes` | — | `{qr_code, manual_code}` |
 | `node_info` | — | `{aggregator_endpoint, devices: [{key, endpoint, device_type, name, reachable}], fabrics: [...], commissioning_window: {open, own}, subscriptions}` |
@@ -310,8 +311,15 @@ Names, not ids; every name is matched without regard to case:
   `Aggregator.Batch`: a new key is added, a changed device replaced, an
   unchanged one (the same declaration) left as it is, a key the document no
   longer names removed (`{"devices": []}` removes every device) and its
-  endpoint number forgotten (`Batch.Forget`): a later declaration of the key
-  gets a fresh number. `remove` keeps the number stored under the key.
+  endpoint number forgotten (`Batch.Forget`).
+- The endpoint number's lifetime: `declare` assigns a key its number and
+  keeps it across restarts; `remove` drops the device and keeps the number
+  stored under the key, so a later `declare` of the key gets it back;
+  `forget` drops the device if it is still declared and frees the number
+  (`Aggregator.Forget`), as does `declare` for a key it no longer names, so
+  a later `declare` of the key gets a fresh one. `forget` accepts a declared
+  key and a key `remove` dropped since the daemon started; any other key is
+  the `InvalidArguments` `remove` answers.
 - Validation at the door: a malformed document is `InvalidArguments` naming
   the path (`devices[0].clusters.OnOff.initial.nope: the OnOff cluster has no
   attribute "nope"`); nothing is applied. The kit's own refusal of a device

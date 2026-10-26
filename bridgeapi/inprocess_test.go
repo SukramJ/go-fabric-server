@@ -352,6 +352,8 @@ func TestBridgeErrors(t *testing.T) {
 		{"set", map[string]any{"device": "a", "cluster": "OnOff", "patch": map[string]any{"startUpOnOff": 9}}, "OnOff:"},
 		{"host", map[string]any{}, "device is required"},
 		{"remove", map[string]any{"device": "zz"}, `no device "zz"`},
+		{"forget", map[string]any{"device": "zz"}, `no device "zz"`},
+		{"forget", map[string]any{}, "device is required"},
 		{"result", map[string]any{}, "correlation is required"},
 		{"result", map[string]any{"correlation": 99}, "correlation 99 is not pending"},
 		{"result", map[string]any{"correlation": "x"}, "not an unsigned integer literal"},
@@ -376,5 +378,59 @@ func TestBridgeErrors(t *testing.T) {
 	var si map[string]any
 	if err := e.host.Call(e.ctx, "server_info", nil, &si); err != nil || si["bridge_schema_version"] == nil {
 		t.Fatalf("server_info %v %v", si, err)
+	}
+}
+
+// TestForgetAndRemove: remove keeps the endpoint number stored under the
+// key, so a re-declared key gets it back; forget frees it, so a
+// re-declared key gets a fresh one, whether the key is still declared or
+// remove dropped it before.
+func TestForgetAndRemove(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{})
+	const ab = `{"devices":[{"key":"a","type":"OnOffLight"},{"key":"b","type":"OnOffLight"}]}`
+	declare := func() map[string]uint16 {
+		t.Helper()
+		res, err := e.host.Declare(e.ctx, doc(ab))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return endpoints(t, res)
+	}
+	first := declare()
+
+	// remove keeps the number.
+	if err := e.host.Remove(e.ctx, "a"); err != nil {
+		t.Fatal(err)
+	}
+	if got := declare(); got["a"] != first["a"] || got["b"] != first["b"] {
+		t.Fatalf("after remove %v, want %v", got, first)
+	}
+
+	// forget of a declared key frees its number.
+	var res map[string]any
+	if err := e.host.Call(e.ctx, "forget", map[string]any{"device": "a"}, &res); err != nil || res["device"] != "a" {
+		t.Fatalf("forget %v %v", res, err)
+	}
+	if err := e.host.Forget(e.ctx, "a"); err == nil {
+		t.Fatal("a second forget")
+	}
+	second := declare()
+	if second["a"] == first["a"] || second["b"] != first["b"] {
+		t.Fatalf("after forget %v, first %v", second, first)
+	}
+
+	// forget of a key remove dropped frees its number too.
+	if err := e.host.Remove(e.ctx, "b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.host.Forget(e.ctx, "b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.host.Forget(e.ctx, "b"); err == nil {
+		t.Fatal("a forget of a forgotten key")
+	}
+	third := declare()
+	if third["b"] == first["b"] || third["a"] != second["a"] {
+		t.Fatalf("after remove and forget %v, before %v", third, second)
 	}
 }

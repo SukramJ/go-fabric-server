@@ -105,9 +105,16 @@ func (b *Bridge) Host(ctx context.Context, st HostStatement) error {
 	return b.Call(ctx, "host", st, nil)
 }
 
-// Remove removes a device.
+// Remove removes a device; its endpoint number stays stored under its
+// key, so a later Declare of the key gets it back.
 func (b *Bridge) Remove(ctx context.Context, device string) error {
 	return b.Call(ctx, "remove", map[string]any{"device": device}, nil)
+}
+
+// Forget removes a device if it is still declared and frees its endpoint
+// number: a later Declare of the key gets a fresh one.
+func (b *Bridge) Forget(ctx context.Context, device string) error {
+	return b.Call(ctx, "forget", map[string]any{"device": device}, nil)
 }
 
 // ResultError is the error of a result: the status to answer with.

@@ -126,9 +126,9 @@ state would otherwise have to answer every controller request in time, and
 a host that is slow or away would make every command fail.
 
 **B13 — a declaration is the whole topology.** `declare` replaces the
-topology: a key the document no longer names is removed and the topology
-is marked complete (go-fabric `node/aggregator.go`, `Batch`,
-`MarkComplete`): a host that restarts declares what it has, and the node
+topology: a key the document no longer names is removed and its endpoint
+number forgotten (go-fabric `node/reserve.go`, `Batch.Forget`): a host
+that restarts declares what it has, and the node
 forgets the endpoint numbers of what it no longer has without a second
 command; an unchanged device is left as it is, so its subscriptions and
 endpoint stay.

@@ -163,6 +163,7 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 			old[b.key].release()
 		}
 		s.devices[b.key] = b
+		delete(s.kept, b.key)
 		order = append(order, b.key)
 		if ep, ok := b.dev.EndpointNumber(); ok {
 			r.Endpoint = &ep
@@ -296,16 +297,62 @@ func cmdRemove(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 		return nil, protocol.Errorf(protocol.UnknownError, "remove: %v", err)
 	}
 	s.mu.Lock()
-	delete(s.devices, a.Device)
-	for i, key := range s.order {
-		if key == a.Device {
+	s.drop(a.Device)
+	s.kept[a.Device] = true
+	s.mu.Unlock()
+	b.release()
+	return struct{}{}, nil
+}
+
+// cmdForget removes one device if it is still declared and frees the
+// endpoint number stored under its key (Aggregator.Forget): a later
+// declare of the key gets a fresh number, as a new device would. A key
+// remove dropped since the start is known too; any other key is the
+// InvalidArguments remove answers. It mirrors go-fabric's Forget beside
+// Remove (node/reserve.go, matter.js Endpoint.delete beside close,
+// endpoint/Endpoint.ts:987-992, :1024-1032 at 862ad75f).
+func cmdForget(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	var a struct {
+		Device string `json:"device"`
+	}
+	if err := c.args(&a); err != nil {
+		return nil, err
+	}
+	s.declMu.Lock()
+	defer s.declMu.Unlock()
+	s.mu.Lock()
+	kept := s.kept[a.Device]
+	s.mu.Unlock()
+	var b *bridged
+	if !kept {
+		var perr *protocol.Error
+		if b, perr = s.device(c.req.Command, a.Device); perr != nil {
+			return nil, perr
+		}
+	}
+	if err := s.node.Load().Aggregator().Forget(ctx, device.StringKey(a.Device)); err != nil {
+		return nil, protocol.Errorf(protocol.UnknownError, "forget: %v", err)
+	}
+	s.mu.Lock()
+	s.drop(a.Device)
+	delete(s.kept, a.Device)
+	s.mu.Unlock()
+	if b != nil {
+		b.release()
+	}
+	return map[string]any{"device": a.Device}, nil
+}
+
+// drop deletes key from the declared devices and their order; s.mu is
+// held.
+func (s *Server) drop(key string) {
+	delete(s.devices, key)
+	for i, k := range s.order {
+		if k == key {
 			s.order = append(s.order[:i:i], s.order[i+1:]...)
 			break
 		}
 	}
-	s.mu.Unlock()
-	b.release()
-	return struct{}{}, nil
 }
 
 // cmdResult answers a write or command event before its deadline.
