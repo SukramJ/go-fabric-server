@@ -57,7 +57,7 @@ type Server struct {
 	meter *protocol.Meter
 	node  atomic.Pointer[node.Node]
 
-	// declMu serialises declare and remove: the topology has one
+	// declMu serialises declare, remove and forget: the topology has one
 	// author, and a batch reassembles while it holds the lock.
 	declMu sync.Mutex
 

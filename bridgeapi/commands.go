@@ -296,16 +296,59 @@ func cmdRemove(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 		return nil, protocol.Errorf(protocol.UnknownError, "remove: %v", err)
 	}
 	s.mu.Lock()
-	delete(s.devices, a.Device)
-	for i, key := range s.order {
-		if key == a.Device {
+	s.drop(a.Device)
+	s.mu.Unlock()
+	b.release()
+	return struct{}{}, nil
+}
+
+// cmdForget removes one device if it is still declared and frees the
+// endpoint number stored under its key (Aggregator.Forget): a later
+// declare of the key gets a fresh number, as a new device would. It is
+// idempotent: a key that is not declared (one remove dropped, one a past
+// run knew, or none at all) is forgotten too and answers the same, since
+// go-fabric's Forget of a key with nothing stored is no error and nothing
+// tells whether a number was stored; only an empty key is refused. It
+// mirrors go-fabric's Forget beside
+// Remove (node/reserve.go, matter.js Endpoint.delete beside close,
+// endpoint/Endpoint.ts:987-992, :1024-1032 at 862ad75f).
+func cmdForget(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	var a struct {
+		Device string `json:"device"`
+	}
+	if err := c.args(&a); err != nil {
+		return nil, err
+	}
+	s.declMu.Lock()
+	defer s.declMu.Unlock()
+	if a.Device == "" {
+		return nil, invalidArgs(c.req.Command, "device is required")
+	}
+	s.mu.Lock()
+	b := s.devices[a.Device]
+	s.mu.Unlock()
+	if err := s.node.Load().Aggregator().Forget(ctx, device.StringKey(a.Device)); err != nil {
+		return nil, protocol.Errorf(protocol.UnknownError, "forget: %v", err)
+	}
+	s.mu.Lock()
+	s.drop(a.Device)
+	s.mu.Unlock()
+	if b != nil {
+		b.release()
+	}
+	return map[string]any{"device": a.Device}, nil
+}
+
+// drop deletes key from the declared devices and their order; s.mu is
+// held.
+func (s *Server) drop(key string) {
+	delete(s.devices, key)
+	for i, k := range s.order {
+		if k == key {
 			s.order = append(s.order[:i:i], s.order[i+1:]...)
 			break
 		}
 	}
-	s.mu.Unlock()
-	b.release()
-	return struct{}{}, nil
 }
 
 // cmdResult answers a write or command event before its deadline.

@@ -120,6 +120,7 @@ func init() {
 		"set":           cmdSet,
 		"host":          cmdHost,
 		"remove":        cmdRemove,
+		"forget":        cmdForget,
 		"result":        cmdResult,
 		"pairing_codes": cmdPairingCodes,
 		"node_info":     cmdNodeInfo,

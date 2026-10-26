@@ -106,7 +106,8 @@ the two are separate composition roots in go-fabric (`controller.New`,
 
 The host's commands `declare` (the topology document, names not ids, one
 `Aggregator.Batch`), `set` (state deltas through the typed `Server.Set`),
-`host` (name, addresses, reachability, label), `remove`, `result` (the answer
+`host` (name, addresses, reachability, label), `remove` (keeps the
+endpoint number), `forget` (frees it), `result` (the answer
 to a `write` or `command` event, with correlation and deadline),
 `pairing_codes`, `node_info`, `start_listening`.
 

@@ -3,6 +3,11 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.3.2
+
+- The `/bridge` half gains `forget`, which frees a device's endpoint
+  number; `remove` keeps it.
+
 ## 0.3.1
 
 - On go-fabric v0.13.3 and go-fabric-ui v0.1.2: the node pages show the
