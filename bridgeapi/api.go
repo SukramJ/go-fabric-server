@@ -68,7 +68,7 @@ type Server struct {
 	order   []string // the device keys in declaration order
 	// kept are the keys remove dropped since the start whose endpoint
 	// number is still stored: forget accepts them as known.
-	kept map[string]bool
+	kept    map[string]bool
 	conn    *bconn
 	pending map[uint64]*pending
 	closing bool
