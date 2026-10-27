@@ -3,6 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.1
+
+- Option `bluetooth_proxies`: commission BLE devices through ESPHome
+  Bluetooth proxies, without a Bluetooth adapter on the host. Each proxy
+  needs `bluetooth_proxy: active: true`; Home Assistant's Bluetooth
+  integration shares it, so a dedicated proxy pairs most reliably.
+
 ## 0.4.0
 
 - The web UI shows the controller's pages: the commissioned nodes,

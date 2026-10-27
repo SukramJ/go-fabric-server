@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-27
+
+On go-fabric v0.13.5 and its nested module `ble/esphome` (brief S5).
+
+### Added
+
+- `--bluetooth-proxy host[:port][,key]`, repeatable: `commission_with_code` and the pages commission BLE devices through ESPHome Bluetooth proxies (go-fabric `ble/esphome`), so the host needs no Bluetooth adapter or D-Bus. Not together with `--bluetooth-adapter` (a start-up error); a proxy that refuses (wrong or missing key, no `bluetooth_proxy: active: true`) or none answering stops the start. A pairing that fails at a proxy (another API client took it, usually Home Assistant) reports the module's error text as it is.
+- The add-on's option `bluetooth_proxies` (a list, empty by default), passed as repeated `--bluetooth-proxy`; the add-on still has no `host_dbus`.
+
+### Fixed
+
+- `server_info.bluetooth_enabled` is true when a BLE backend is configured (matterjs-server's `ble.enable`); it was always false, also with `--bluetooth-adapter`.
+
+### Changed
+
+- The BLE central is closed before the controller on shutdown.
+
 ## [0.4.0] - 2026-10-27
 
 On go-fabric-ui v0.2.1 (the controller family of v0.2.0, building on 32-bit targets; go-fabric stays v0.13.3; brief S4).

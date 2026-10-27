@@ -3,9 +3,10 @@ module github.com/SukramJ/go-fabric-server
 go 1.27.3
 
 require (
-	github.com/SukramJ/go-fabric v0.13.3
+	github.com/SukramJ/go-fabric v0.13.5
 	github.com/SukramJ/go-fabric-ui v0.2.1
 	github.com/SukramJ/go-fabric/ble/bluez v0.12.1
+	github.com/SukramJ/go-fabric/ble/esphome v0.0.0-20261027094253-7b5e826edd4a
 	github.com/coder/websocket v1.8.15
 )
 
@@ -14,6 +15,7 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/flynn/noise v1.1.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
@@ -22,6 +24,7 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oapi-codegen/runtime v1.7.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	modernc.org/libc v1.77.1 // indirect

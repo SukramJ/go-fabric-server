@@ -28,6 +28,18 @@ export FABRIC_SERVER_BRIDGE_LISTEN=":$(bashio::config 'bridge_port')"
 export FABRIC_SERVER_WEB="0.0.0.0:8099"
 export FABRIC_SERVER_WEB_ADMIN_SOURCE="172.30.32.2"
 
+# --- BLE commissioning through ESPHome Bluetooth proxies ---
+# One --bluetooth-proxy per entry (host[:port][,key]); the keys stay out of
+# the log.
+args=()
+if bashio::config.has_value 'bluetooth_proxies'; then
+    while IFS= read -r proxy; do
+        [ -n "${proxy}" ] || continue
+        args+=(--bluetooth-proxy "${proxy}")
+        bashio::log.info "Bluetooth proxy ${proxy%%,*}"
+    done < <(bashio::config 'bluetooth_proxies')
+fi
+
 bashio::log.info "API on ws://${FABRIC_SERVER_LISTEN}/ws, store /data; node pages through Ingress."
 
-exec /usr/bin/fabric-server
+exec /usr/bin/fabric-server "${args[@]}"

@@ -48,8 +48,11 @@ var facade = map[string]bool{
 	// The BLE central type of controller.PairOptions.BLE, and the Thread
 	// dataset codec the CJ report names as the dataset reader (go-fabric
 	// notes/briefs/reports/CJ.md, 1.13: controller/thread.DecodeDataset).
-	"controller/ble":     true,
-	"ble/bluez":          true,
+	"controller/ble": true,
+	"ble/bluez":      true,
+	// The central over ESPHome Bluetooth proxies (brief S5): the second
+	// ble.Central platform, beside ble/bluez.
+	"ble/esphome":        true,
 	"controller/thread":  true,
 	"client/discovery":   true,
 	"client/exchange":    true,
@@ -64,7 +67,15 @@ var facade = map[string]bool{
 var exceptions = map[string]map[string]string{}
 
 // testOnly are the go-fabric packages a test may import besides.
-var testOnly = map[string]bool{"fabrictest": true, "clock": true}
+var testOnly = map[string]bool{
+	"fabrictest": true, "clock": true,
+	// The in-process pairing through a fake ESPHome proxy (brief S5 §1):
+	// the fake proxy, the peripheral it fronts, and the BTP side of the
+	// site device that serves it — fabrictest has no BLE device (report
+	// S5, Questions).
+	"ble/esphome/esphometest": true, "controller/ble/bletest": true,
+	"bridge/bridgetest": true, "transport/btp": true,
+}
 
 // layers are the module's own import rules: a package may import only the
 // module packages its entry lists ("" is any).

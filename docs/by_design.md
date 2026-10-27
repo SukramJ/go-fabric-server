@@ -110,6 +110,17 @@ it the command is `InvalidArguments`; matterjs-server sets no maximum and
 leaves the error to matter.js (clone `WebSocketControllerHandler.ts:2316-2330`):
 the command's field is 16 bits (go-fabric `client.Node.OpenCommissioningWindow`).
 
+**B22 — `--bluetooth-proxy` is ESPHome's API, and one BLE backend.** The
+daemon reaches ESPHome Bluetooth proxies itself over their native API
+(go-fabric `ble/esphome`); matterjs-server's `--ble-proxy` instead opens a
+`/ble` WebSocket a remote BLE client connects to (read map §4,
+`docs/ble-proxy-protocol.md`), which this server does not serve, so
+`server_info.ble_proxy_enabled` stays false while `bluetooth_enabled` is
+true with either backend (`WebSocketControllerHandler.ts:1182`, `ble.enable`).
+`--bluetooth-proxy` with `--bluetooth-adapter` is a start-up error where
+matterjs-server warns and prefers `--ble-proxy` (`MatterServer.ts:88-91`):
+the two flags name different mechanisms, so neither silently wins.
+
 ## Bridge half
 
 **B11 — one bridge client at a time.** A second `/bridge` connection gets

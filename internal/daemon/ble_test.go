@@ -36,14 +36,14 @@ func TestBluetoothAdapterWired(t *testing.T) {
 	fake := &fakeCentral{}
 	asked := stubCentral(t, fake, nil)
 
-	if c, err := bleCentral(""); c != nil || err != nil {
+	if c, err := adapterCentral(""); c != nil || err != nil {
 		t.Fatalf("no adapter: %v %v", c, err)
 	}
 	if len(*asked) != 0 {
 		t.Fatalf("no adapter opened %v", *asked)
 	}
 	for _, adapter := range []string{"0", "hci1"} {
-		c, err := bleCentral(adapter)
+		c, err := adapterCentral(adapter)
 		if err != nil || c != fake {
 			t.Fatalf("%s: %v %v", adapter, c, err)
 		}
@@ -52,7 +52,7 @@ func TestBluetoothAdapterWired(t *testing.T) {
 		t.Fatalf("adapters %v, want [hci0 hci1]", got)
 	}
 
-	c, err := bleCentral("0")
+	c, err := adapterCentral("0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestBluetoothAdapterWired(t *testing.T) {
 	}
 
 	stubCentral(t, nil, errors.New("bluez: no such adapter"))
-	if _, err := bleCentral("7"); err == nil || err.Error() != "--bluetooth-adapter 7: bluez: no such adapter" {
+	if _, err := adapterCentral("7"); err == nil || err.Error() != "--bluetooth-adapter 7: bluez: no such adapter" {
 		t.Fatalf("refusal: %v", err)
 	}
 }
