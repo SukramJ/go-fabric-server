@@ -35,8 +35,8 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
 | `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened |
-| `--web` | — | serve the bridge node's pages (go-fabric-ui) on this address; read-only unless `--web-admin` or `--web-admin-source` |
-| `--web-admin` | `false` | the pages may write and show the pairing code (the page's token mode) |
+| `--web` | — | serve go-fabric-ui's pages on this address: the bridge node's with `--bridge`, the controller's with `--controller`; read-only unless `--web-admin` or `--web-admin-source` |
+| `--web-admin` | `false` | the pages may write, show the pairing code and use the controller's admin routes (the page's token mode) |
 | `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
 | `--version` | — | print the version and exit |
@@ -126,22 +126,58 @@ slog text lines on stderr (journald, `docker logs`); the message keys follow
 go-fabric's convention (`fabricserver.*` for the server, `matter.*` for the
 stack).
 
-## The node pages
+## The pages
 
-`--web host:port` serves go-fabric-ui's node pages (`fabricui.Handler`,
-v0.1.1) for the bridge node of `--bridge`: status, pairing, fabrics, the
-commissioning window, diagnostics. Without `--bridge` the node family is
-shown as disabled. The host decides what is exposed over `/bridge`, so the
-pages have no exposure selection. Three admin modes:
+`--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, v0.2.1),
+both families in one handler:
 
-- default — read-only: no writes, no pairing code;
+- **The node pages** for the bridge node of `--bridge`: status, pairing,
+  fabrics, the commissioning window, diagnostics. Without `--bridge` the
+  node family is shown as disabled. The host decides what is exposed over
+  `/bridge`, so the pages have no exposure selection.
+- **The controller pages** for the controller half (`--controller`, on by
+  default): the fabric, the commissioned nodes (attributes, commands, ACL,
+  bindings, ICD, fabrics, the commissioning window), commissioning by code
+  or from a discovery, the fabric label, the Wi-Fi and Thread credentials
+  and software updates. With `--controller=false` the family is shown as
+  disabled. The source is go-fabric-ui's adapter
+  (`fabricui/gofabric.ControllerOf`) over the daemon's controller.
+
+Three admin modes, the same for both families — a controller route marked
+admin (commissioning, discovery, a write, decommissioning, the credentials,
+the label) follows the rule a node page's write follows:
+
+- default — read-only: no writes, no pairing code, no admin route;
 - `--web-admin` — the page's token mode: a random per-process token in
-  `GET /api/v1/node/status` the page sends with every write;
+  `GET /api/v1/node/status` and `GET /api/v1/controller/status` the page
+  sends with every write;
 - `--web-admin-source IP` — only requests from that address are answered,
   each as an admin: the Ingress proxy of a Home Assistant add-on
   authenticates the user ([addon.md](addon.md)).
 
-The controller pages come with go-fabric-ui's next family (U2).
+The controller pages and `/ws` share the controller half's state:
+
+- **One credential list.** The pages' credentials are `server.json`'s, the
+  entries `set_wifi_credentials` and `set_thread_dataset` store and
+  `get_all_credentials` lists: an entry set on either side is listed on
+  the other, by name only (SSID, the dataset's network name); a secret is
+  never read back. A dataset set on the pages must be MeshCoP TLVs, as
+  over `/ws`; removing an entry the store does not hold is 404 on the pages
+  (the commands succeed without effect). Every change broadcasts
+  `server_info`, as the commands do.
+- **One label.** The pages' fabric label is `set_default_fabric_label`'s:
+  stored for the next start, set on the fabric and pushed to the nodes in
+  the background; with `--default-fabric-label` the pages' change is
+  refused (409).
+- **One pairing template.** A commissioning on the pages uses the half's
+  attestation policy, its subscription mode
+  (`--disable-auto-subscription`) and the BLE central of
+  `--bluetooth-adapter` (the status' `capabilities.ble`).
+- **One event stream per side.** go-fabric-ui's node hooks are chained
+  after the half's (`gofabric.Hooks.Wrap` over `controllerapi`'s hooks),
+  so `/ws` keeps its events and the pages get theirs. On shutdown the
+  daemon closes the pages' hooks (`gofabric.Hooks.Close`) before it closes
+  the controller.
 
 ## Home Assistant
 

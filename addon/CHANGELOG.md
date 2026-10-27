@@ -3,6 +3,12 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.0
+
+- The web UI shows the controller's pages: the commissioned nodes,
+  commissioning, the Wi-Fi and Thread credentials (the same list Home
+  Assistant's integration fills) and the fabric label.
+
 ## 0.3.2
 
 - The `/bridge` half gains `forget`, which frees a device's endpoint

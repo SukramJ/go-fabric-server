@@ -112,6 +112,10 @@ reported as `other` until go-fabric names an attestation rejection.
 | `get_thread_border_routers`, `get_thread_diagnostics` | waits for go-fabric | a Thread border router route (milestone 6, ADR 0027) |
 | `camera_*`, `send_webrtc_provider_command` | never | camera and WebRTC are out of scope |
 
+The controller pages of `--web` call the same operations: their
+decommission is `remove_node`, and their credential list is the store of
+the credential commands ([operations.md](operations.md#the-pages)).
+
 A command the server does not answer is absent from `capabilities`.
 
 ### Test nodes

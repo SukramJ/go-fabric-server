@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-27
+
+On go-fabric-ui v0.2.1 (the controller family of v0.2.0, building on 32-bit targets; go-fabric stays v0.13.3; brief S4).
+
+### Added
+
+- `--web` serves go-fabric-ui's controller pages beside the node pages, over the daemon's controller (`fabricui/gofabric.ControllerOf`): the fabric, the commissioned nodes with their attributes, commands, ACL, bindings, ICD and fabrics, commissioning by code or from a discovery, decommissioning, the fabric label, the Wi-Fi and Thread credentials and software updates. `--controller=false` shows the family as disabled. The admin rule of `--web-admin` and `--web-admin-source` covers the controller's admin routes too; read-only by default.
+- The pages and `/ws` share the controller half's state: one credential list (`server.json`; an entry set on either side is listed on the other by name only, a dataset set on the pages must be MeshCoP TLVs, every change broadcasts `server_info`), one fabric label (a change on the pages is stored as `set_default_fabric_label` stores it; refused with 409 under `--default-fabric-label`) and one pairing template (the attestation policy, `--disable-auto-subscription`, the BLE central of `--bluetooth-adapter`).
+- `controllerapi.Server` gains the host side of that state: `Credentials`, `SetWiFiCredential`, `SetThreadDataset`, `RemoveCredential`, `WiFiCredential`, `ThreadDataset`, `SetFabricLabel` and `PairOptions`, with `ErrInvalidCredential`, `ErrUnknownCredential` and `ErrLabelPinned`.
+
+### Changed
+
+- The add-on's Ingress shows the controller pages, and the bridge node's pages with **bridge** on.
+- With `--web`, go-fabric-ui's node hooks are chained after the controller half's (`gofabric.Hooks.Wrap`) and closed (`Hooks.Close`) before the controller closes.
+
 ## [0.3.2] - 2026-10-26
 
 ### Added

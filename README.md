@@ -17,7 +17,7 @@ python-matter-server / matterjs-server contract, schema 14), and a
 > `InvalidCommand` naming what they wait for. The bridge half (`/bridge`,
 > `--bridge`) lets a host declare devices by name;
 > [`examples/bridge-python/`](examples/bridge-python/) is a host in 71 lines
-> of Python, and `--web` serves the bridge node's pages. A Home Assistant
+> of Python, and `--web` serves the controller's and the bridge node's pages. A Home Assistant
 > add-on is in [`addon/`](addon/). See [`docs/protocol.md`](docs/protocol.md).
 
 ## Commands of `/ws`

@@ -4,7 +4,7 @@
 # (ghcr.io/sukramj/go-fabric-server-addon-{arch}); `make version-check` and
 # the release workflow refuse a tag where they differ.
 name: go-fabric-server
-version: "0.3.2"
+version: "0.4.0"
 slug: go_fabric_server
 description: >-
   A Matter controller server for Home Assistant's Matter integration, on
@@ -28,8 +28,8 @@ init: false
 # and talks to them over UDP, IPv6 included; Home Assistant's integration
 # connects to ws://localhost:<port>/ws on the same host. The API listens on
 # loopback only (Home Assistant sends no token). With host networking the
-# node pages listen on the host too; the daemon answers only the Ingress
-# proxy (172.30.32.2).
+# pages (the controller's, and the bridge node's with `bridge`) listen on the
+# host too; the daemon answers only the Ingress proxy (172.30.32.2).
 host_network: true
 
 # The controller's database and the server's settings are SQLite and JSON

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
 	"github.com/SukramJ/go-fabric/ble/bluez"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
@@ -67,8 +68,9 @@ type Config struct {
 	// may commission over (matterjs-server's --bluetooth-adapter); empty
 	// is no BLE.
 	BluetoothAdapter string
-	// Web is the address of the node pages (go-fabric-ui); empty serves
-	// none. WebAdmin lets the pages write (token mode), WebAdminSource
+	// Web is the address of the pages (go-fabric-ui: the node family over
+	// the bridge node, the controller family over the controller); empty
+	// serves none. WebAdmin lets the pages write (token mode), WebAdminSource
 	// admits only requests from that address as an admin (an Ingress
 	// proxy); without either the pages are read-only.
 	Web            string
@@ -109,9 +111,9 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
 	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the HCI id of the BLE adapter (0 for hci0) commission_with_code may commission over; empty is no BLE (Linux, BlueZ)")
-	fs.StringVar(&c.Web, "web", "", "serve the bridge node's pages (go-fabric-ui) on this address, read-only unless --web-admin or --web-admin-source")
-	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the node pages write and show the pairing code (the page's token mode)")
-	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit node page requests from this IP address only as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
+	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; read-only unless --web-admin or --web-admin-source")
+	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the pages write, show the pairing code and use the controller's admin routes (the page's token mode)")
+	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit page requests from this IP address only, as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
 	set := map[string]bool{}
 	if err := fs.Parse(args); err != nil {
 		return c, err
@@ -183,6 +185,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 
 	var api *controllerapi.Server
 	var ctrl *controller.Controller
+	var ctrlPages fabricui.ControllerSource
 	if c.Controller {
 		trust, err := trustStore(c)
 		if err != nil {
@@ -213,13 +216,31 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			// closed in v0.12.1): node_event names its node.
 			HooksFor: api.Hooks,
 		}
+		// The controller pages' stream: go-fabric-ui's hooks chained
+		// after the half's (Hooks.Wrap: each of api.Hooks(id) runs, then
+		// the stream's; Event stays the half's), never instead of them.
+		var pageHooks *gofabric.Hooks
+		if c.Web != "" {
+			pageHooks = gofabric.NewHooks()
+			cfg.HooksFor = pageHooks.Wrap(cfg.HooksFor)
+		}
 		ctrl, err = controller.New(ctx, cfg)
 		if err != nil {
 			return fmt.Errorf("controller: %w", err)
 		}
-		defer func() { _ = ctrl.Close(context.WithoutCancel(ctx)) }()
+		defer func() {
+			// The pages' hooks stop their node_updated timers before the
+			// controller goes (gofabric.Hooks.Close, go-fabric-ui v0.2.0).
+			if pageHooks != nil {
+				pageHooks.Close()
+			}
+			_ = ctrl.Close(context.WithoutCancel(ctx))
+		}()
 		if err := api.Start(ctx, ctrl); err != nil {
 			return err
+		}
+		if pageHooks != nil {
+			ctrlPages = controllerSource(ctrl, api, pageHooks, log)
 		}
 	}
 
@@ -234,7 +255,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		defer func() { _ = bridgeNode.Stop(context.WithoutCancel(ctx)) }()
 	}
 	if c.Web != "" {
-		stop, err := serveWeb(ctx, c, bridgeNode, ev, log)
+		stop, err := serveWeb(ctx, c, bridgeNode, ctrlPages, ev, log)
 		if err != nil {
 			return err
 		}
