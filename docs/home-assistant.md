@@ -54,3 +54,15 @@ credential; without it devices are commissioned on the network (Wi-Fi or
 Ethernet devices already joined, or a code shared from another ecosystem
 through `open_commissioning_window`). The add-on does not pass the flag
 yet.
+
+## The add-on's pages
+
+The add-on's web UI (Ingress) shows go-fabric-ui's two families: the
+controller pages — the nodes the integration commissioned, their
+attributes, ACL, bindings and fabrics, commissioning by code, the Wi-Fi and
+Thread credentials, the fabric label — and, with **bridge** on, the bridge
+node's pages. The Ingress user is the pages' administrator. The
+controller pages work on the same controller as the integration: a node
+decommissioned on the pages is a `remove_node`, and the integration hears
+`node_removed`; the credential list is the one `set_wifi_credentials` and
+`set_thread_operational_dataset` fill ([operations.md](operations.md#the-pages)).

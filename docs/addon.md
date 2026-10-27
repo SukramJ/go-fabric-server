@@ -33,8 +33,9 @@ add-on first.
 ## Network and Ingress
 
 The add-on runs with `host_network: true`: Matter needs the host's IPv6 link
-and mDNS. The API listens on `127.0.0.1` only. The node pages
-(go-fabric-ui) are on the Ingress port 8099; with host networking that
+and mDNS. The API listens on `127.0.0.1` only. The pages
+(go-fabric-ui: the controller's, and the bridge node's with **bridge** on)
+are on the Ingress port 8099; with host networking that
 listener is on the LAN too, so the daemon answers only the Ingress proxy
 (`172.30.32.2`, `--web-admin-source`), which authenticates the user and is
 the pages' administrator.

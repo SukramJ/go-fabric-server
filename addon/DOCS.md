@@ -25,8 +25,10 @@ acts on the official add-on only — so this add-on sends no discovery:
 - **bridge_port** (5540): that node's Matter port.
 
 The database and settings are under `/data`; a backup stops the add-on
-first. The add-on's web UI (Ingress) shows the bridge node's pages when
-**bridge** is on; it answers the Ingress proxy only.
+first. The add-on's web UI (Ingress) shows the controller's pages — the
+commissioned nodes, commissioning, the Wi-Fi and Thread credentials, the
+fabric label — and the bridge node's pages when **bridge** is on; it
+answers the Ingress proxy only.
 
 Devices that need BLE commissioning are not supported yet; commission them
 over the network or share them from another ecosystem.
