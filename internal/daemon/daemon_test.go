@@ -209,7 +209,7 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatalf("source check: %v", err)
 	}
 	// The pages answer without a node: the family disabled.
-	h, err := webHandler(Config{}, nil, nil, nil)
+	h, err := webHandler(Config{}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatalf("shell %d", rec.Code)
 	}
 	// Behind the Ingress only the proxy is answered.
-	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil)
+	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,13 +17,14 @@ import (
 	"github.com/SukramJ/go-fabric/node"
 )
 
-// webHandler is the node pages of go-fabric-ui (v0.1.1, docs/embedding.md):
-// the bridge node's family with no Exposure (the host decides what is
-// exposed over /bridge) and the admin rule of the flags. A nil node serves
-// the family as disabled. The controller pages come with go-fabric-ui's
-// U2.
-func webHandler(c Config, n *node.Node, ev *fabricui.Events, log *slog.Logger) (http.Handler, error) {
-	o := fabricui.Options{Events: ev, Logger: log}
+// webHandler is the pages of go-fabric-ui (v0.2.0, docs/embedding.md):
+// the node family over the bridge node with no Exposure (the host decides
+// what is exposed over /bridge), the controller family over ctrl, and the
+// admin rule of the flags for both — a controller route marked admin
+// follows the same Options.Admin as a node page that writes. A nil node or
+// a nil ctrl serves that family as disabled.
+func webHandler(c Config, n *node.Node, ctrl fabricui.ControllerSource, ev *fabricui.Events, log *slog.Logger) (http.Handler, error) {
+	o := fabricui.Options{Events: ev, Logger: log, Controller: ctrl}
 	if n != nil {
 		o.Node = n
 	}
@@ -42,7 +43,7 @@ func webHandler(c Config, n *node.Node, ev *fabricui.Events, log *slog.Logger) (
 	src, _ := netip.ParseAddr(c.WebAdminSource) // checked by webAdmin
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !fromAddr(r, src) {
-			http.Error(w, "the node pages answer the Ingress proxy only", http.StatusForbidden)
+			http.Error(w, "the pages answer the Ingress proxy only", http.StatusForbidden)
 			return
 		}
 		h.ServeHTTP(w, r)
@@ -76,9 +77,9 @@ func fromAddr(r *http.Request, src netip.Addr) bool {
 	return ap.Addr().Unmap() == src.Unmap()
 }
 
-// serveWeb serves the node pages on --web until the returned stop.
-func serveWeb(ctx context.Context, c Config, n *node.Node, ev *fabricui.Events, log *slog.Logger) (func(), error) {
-	h, err := webHandler(c, n, ev, log)
+// serveWeb serves the pages on --web until the returned stop.
+func serveWeb(ctx context.Context, c Config, n *node.Node, ctrl fabricui.ControllerSource, ev *fabricui.Events, log *slog.Logger) (func(), error) {
+	h, err := webHandler(c, n, ctrl, ev, log)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func serveWeb(ctx context.Context, c Config, n *node.Node, ev *fabricui.Events, 
 			log.Error("fabricserver.web.serve", slog.Any("error", err))
 		}
 	}()
-	log.Info("fabricserver.web.listening", slog.String("listen", ln.Addr().String()), slog.Bool("admin", c.WebAdmin || c.WebAdminSource != ""))
+	log.Info("fabricserver.web.listening", slog.String("listen", ln.Addr().String()), slog.Bool("admin", c.WebAdmin || c.WebAdminSource != ""), slog.Bool("node", n != nil), slog.Bool("controller", ctrl != nil))
 	return func() {
 		sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()

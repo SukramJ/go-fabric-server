@@ -41,15 +41,21 @@ The WebSocket transport: pure Go, context-aware, concurrent writes.
 
 ### github.com/SukramJ/go-fabric-ui — Apache-2.0
 
-The node pages (`--web`, the add-on's Ingress): `fabricui.Handler` with
-its built bundle embedded in the module (no Node.js toolchain here).
+The pages (`--web`, the add-on's Ingress): `fabricui.Handler` with its
+built bundle embedded in the module (no Node.js toolchain here), the node
+family and, from v0.2.0, the controller family through its adapter
+`fabricui/gofabric`.
 
 - Source: <https://github.com/SukramJ/go-fabric-ui>
 - Copyright (C) 2026 SukramJ. Apache License 2.0; the bundle's own notices
   travel in its `THIRD-PARTY-NOTICES.md`.
-- Decision: brief S3 §5 (concept v9, one UI for the family's daemons).
+- Decision: brief S3 §5 (concept v9, one UI for the family's daemons);
+  the controller family brief S4.
 
 ## Indirect dependencies
+
+Through go-fabric-ui (v0.2.0, its generated router): github.com/oapi-codegen/runtime
+(Apache-2.0) and github.com/apapsch/go-jsonmerge/v2 (MIT).
 
 Through go-fabric/ble/bluez: github.com/godbus/dbus/v5 (BSD-2-Clause, see
 [`licenses/LICENSE-godbus-dbus.txt`](licenses/LICENSE-godbus-dbus.txt)).
