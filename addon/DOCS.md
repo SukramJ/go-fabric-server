@@ -23,6 +23,9 @@ acts on the official add-on only — so this add-on sends no discovery:
 - **bridge** (false): also run the bridge half for hosts that declare
   devices over `/bridge`, with its own Matter node.
 - **bridge_port** (5540): that node's Matter port.
+- **bluetooth_proxies** (empty): ESPHome Bluetooth proxies to commission
+  BLE devices through, one entry each: `host[:port][,key]`, for example
+  `proxy-office.local,<base64 API encryption key>` (port 6053 by default).
 
 The database and settings are under `/data`; a backup stops the add-on
 first. The add-on's web UI (Ingress) shows the controller's pages — the
@@ -30,5 +33,20 @@ commissioned nodes, commissioning, the Wi-Fi and Thread credentials, the
 fabric label — and the bridge node's pages when **bridge** is on; it
 answers the Ingress proxy only.
 
-Devices that need BLE commissioning are not supported yet; commission them
-over the network or share them from another ecosystem.
+## Bluetooth through ESPHome proxies
+
+Devices that need BLE commissioning are paired through ESPHome Bluetooth
+proxies listed in **bluetooth_proxies**; the host needs no Bluetooth
+adapter. Each proxy needs `bluetooth_proxy: active: true` and, with an
+encrypted API, its key after the comma. Store a Wi-Fi or Thread credential
+first: the device is put on that network over BLE. A proxy serves its
+Bluetooth to one API client at a time, usually Home Assistant's Bluetooth
+integration: while a pairing runs the add-on takes the proxy over and Home
+Assistant takes it back. Dedicate a proxy to commissioning, or accept that
+it flaps during a pairing; a pairing that loses the proxy fails with "the
+Bluetooth proxy is in use by another API client". A wrong key or a proxy
+without `active: true` stops the add-on at start, naming the proxy (see the
+log).
+
+Without proxies, commission devices over the network or share them from
+another ecosystem.

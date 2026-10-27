@@ -52,6 +52,7 @@ options:
   enable_test_net_dcl: false
   bridge: false
   bridge_port: 5540
+  bluetooth_proxies: []
 
 schema:
   port: port
@@ -59,3 +60,8 @@ schema:
   enable_test_net_dcl: bool
   bridge: bool
   bridge_port: port
+  # ESPHome Bluetooth proxies (host[:port][,key]), passed as repeated
+  # --bluetooth-proxy by run.sh: BLE commissioning without an adapter, so
+  # no host_dbus.
+  bluetooth_proxies:
+    - str?

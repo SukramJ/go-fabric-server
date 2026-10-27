@@ -48,12 +48,16 @@ these is answered ([protocol.md](protocol.md#commands)); the CI job
 `compat-python` runs them with the pinned client against the daemon and a
 commissioned device ([compat.md](compat.md)).
 
-Devices on BLE need `--bluetooth-adapter` (go-fabric's BlueZ central, a
-daemon with system-bus rights to `org.bluez`) and a stored Wi-Fi or Thread
-credential; without it devices are commissioned on the network (Wi-Fi or
-Ethernet devices already joined, or a code shared from another ecosystem
-through `open_commissioning_window`). The add-on does not pass the flag
-yet.
+Devices on BLE need a BLE backend and a stored Wi-Fi or Thread credential:
+`--bluetooth-proxy` (ESPHome Bluetooth proxies, the add-on's
+`bluetooth_proxies` option; [operations.md](operations.md#bluetooth-through-esphome-proxies))
+or `--bluetooth-adapter` (go-fabric's BlueZ central, a daemon with
+system-bus rights to `org.bluez`; not in the add-on). Without either,
+devices are commissioned on the network (Wi-Fi or Ethernet devices already
+joined, or a code shared from another ecosystem through
+`open_commissioning_window`). A proxy serves one API client at a time:
+Home Assistant's Bluetooth integration usually holds it, so dedicate a
+proxy to commissioning or accept that it flaps while a pairing runs.
 
 ## The add-on's pages
 

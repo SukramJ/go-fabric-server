@@ -35,6 +35,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
 | `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened |
+| `--bluetooth-proxy` | — | an ESPHome Bluetooth proxy `commission_with_code` may commission through, `host[:port][,key]` (port 6053; `key` the base64 API encryption key, none for a plaintext API); repeatable, the environment variable gives one; not with `--bluetooth-adapter`. go-fabric's `ble/esphome` central, pure Go, no adapter or D-Bus; the start fails when a proxy refuses (wrong or missing key, no active connections) or none answers ([Bluetooth through ESPHome proxies](#bluetooth-through-esphome-proxies)) |
 | `--web` | — | serve go-fabric-ui's pages on this address: the bridge node's with `--bridge`, the controller's with `--controller`; read-only unless `--web-admin` or `--web-admin-source` |
 | `--web-admin` | `false` | the pages may write, show the pairing code and use the controller's admin routes (the page's token mode) |
 | `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |
@@ -172,12 +173,47 @@ The controller pages and `/ws` share the controller half's state:
 - **One pairing template.** A commissioning on the pages uses the half's
   attestation policy, its subscription mode
   (`--disable-auto-subscription`) and the BLE central of
-  `--bluetooth-adapter` (the status' `capabilities.ble`).
+  `--bluetooth-proxy` or `--bluetooth-adapter` (the status'
+  `capabilities.ble`).
 - **One event stream per side.** go-fabric-ui's node hooks are chained
   after the half's (`gofabric.Hooks.Wrap` over `controllerapi`'s hooks),
   so `/ws` keeps its events and the pages get theirs. On shutdown the
   daemon closes the pages' hooks (`gofabric.Hooks.Close`) before it closes
   the controller.
+
+## Bluetooth through ESPHome proxies
+
+`--bluetooth-proxy` commissions devices that are still on BLE through
+ESPHome Bluetooth proxies (ESP32 boards that scan and hold GATT connections
+for the daemon, reached over the ESPHome native API on TCP), so the host
+needs neither an adapter nor system-bus rights. go-fabric's guide
+[`docs/guides/ble-proxies.md`](https://github.com/SukramJ/go-fabric/blob/main/docs/guides/ble-proxies.md)
+is the full description.
+
+- **The proxy needs `bluetooth_proxy: active: true`.** Without it the proxy
+  only forwards advertisements and the start fails ("the proxy has no
+  active connections").
+- **The API key.** `api: encryption: key:` is the `key` after the comma;
+  a wrong key, a key at a plaintext proxy or none at an encrypted one fail
+  the start, naming the proxy.
+- **One API subscriber per proxy.** A proxy serves its Bluetooth to the
+  last API client that subscribed — usually Home Assistant's Bluetooth
+  integration. While the daemon scans or pairs it takes the proxy over
+  (`ble.esphome.proxy_taken` in the log), and Home Assistant takes it back.
+  Dedicate a proxy to commissioning, or accept that Home Assistant's use of
+  it flaps while a device is paired; a proxy taken over twice during a
+  pairing fails it with "the Bluetooth proxy is in use by another API
+  client", which `commission_with_code` reports as it is.
+- **Several proxies** are scanned together; the connect goes through the
+  one that saw the device with the strongest signal. One that is only
+  unreachable at start is retried in the background.
+- `server_info.bluetooth_enabled` and the pages' `capabilities.ble` are
+  true; commissioning over BLE still needs a stored Wi-Fi or Thread
+  credential ([by_design.md](by_design.md) B20, B22).
+
+```sh
+fabric-server --bluetooth-proxy proxy-office.local,<base64 key> --bluetooth-proxy 10.0.0.42:6053,<key>
+```
 
 ## Home Assistant
 
