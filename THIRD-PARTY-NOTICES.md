@@ -54,7 +54,7 @@ family and, from v0.2.0, the controller family through its adapter
 
 ## Indirect dependencies
 
-Through go-fabric-ui (v0.2.0, its generated router): github.com/oapi-codegen/runtime
+Through go-fabric-ui (from v0.2.0, its generated router): github.com/oapi-codegen/runtime
 (Apache-2.0) and github.com/apapsch/go-jsonmerge/v2 (MIT).
 
 Through go-fabric/ble/bluez: github.com/godbus/dbus/v5 (BSD-2-Clause, see

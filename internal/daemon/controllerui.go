@@ -16,7 +16,7 @@ import (
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )
 
-// controllerSource is the controller pages' source (go-fabric-ui v0.2.0,
+// controllerSource is the controller pages' source (go-fabric-ui v0.2.1,
 // docs/embedding.md "The controller family"): go-fabric-ui's adapter over
 // the daemon's controller, with the controller half's credential store,
 // pairing template and fabric label, so the pages and /ws see one list,

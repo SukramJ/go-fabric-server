@@ -128,7 +128,7 @@ stack).
 
 ## The pages
 
-`--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, v0.2.0),
+`--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, v0.2.1),
 both families in one handler:
 
 - **The node pages** for the bridge node of `--bridge`: status, pairing,

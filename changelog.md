@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.4.0] - 2026-10-27
 
-On go-fabric-ui v0.2.0 (go-fabric stays v0.13.3; brief S4).
+On go-fabric-ui v0.2.1 (the controller family of v0.2.0, building on 32-bit targets; go-fabric stays v0.13.3; brief S4).
 
 ### Added
 

@@ -17,7 +17,7 @@ import (
 	"github.com/SukramJ/go-fabric/node"
 )
 
-// webHandler is the pages of go-fabric-ui (v0.2.0, docs/embedding.md):
+// webHandler is the pages of go-fabric-ui (v0.2.1, docs/embedding.md):
 // the node family over the bridge node with no Exposure (the host decides
 // what is exposed over /bridge), the controller family over ctrl, and the
 // admin rule of the flags for both — a controller route marked admin
