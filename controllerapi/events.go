@@ -98,6 +98,10 @@ func (s *Server) serverInfo() serverInfoData {
 		MinSupportedSchemaVersion: protocol.MinSupportedSchemaVersion,
 		SDKVersion:                fmt.Sprintf("go-fabric-server/%s (go-fabric/%s)", s.opts.Version, s.opts.GoFabricVersion),
 		Capabilities:              s.Capabilities(),
+		// matterjs-server's commandHandler.bleEnabled: a BLE backend is
+		// configured (WebSocketControllerHandler.ts:1182). ble_proxy_enabled
+		// stays false: it is matterjs-server's /ble endpoint, not ours.
+		BluetoothEnabled: s.opts.BLE != nil,
 	}
 	if b := s.b(); b != nil {
 		if f := b.Fabric(); f != nil {

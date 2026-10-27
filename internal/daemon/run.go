@@ -16,11 +16,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
 	"github.com/SukramJ/go-fabric/ble/bluez"
+	"github.com/SukramJ/go-fabric/ble/esphome"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
@@ -68,6 +70,11 @@ type Config struct {
 	// may commission over (matterjs-server's --bluetooth-adapter); empty
 	// is no BLE.
 	BluetoothAdapter string
+	// BluetoothProxies are the ESPHome Bluetooth proxies commission_with_code
+	// may commission through (--bluetooth-proxy, repeatable;
+	// github.com/SukramJ/go-fabric/ble/esphome); one BLE backend, so not
+	// with BluetoothAdapter.
+	BluetoothProxies []esphome.Proxy
 	// Web is the address of the pages (go-fabric-ui: the node family over
 	// the bridge node, the controller family over the controller); empty
 	// serves none. WebAdmin lets the pages write (token mode), WebAdminSource
@@ -111,6 +118,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
 	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the HCI id of the BLE adapter (0 for hci0) commission_with_code may commission over; empty is no BLE (Linux, BlueZ)")
+	fs.Var((*proxyList)(&c.BluetoothProxies), "bluetooth-proxy", "an ESPHome Bluetooth proxy commission_with_code may commission through: host[:port][,key] (port 6053, key the base64 API encryption key); repeatable; not with --bluetooth-adapter")
 	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; read-only unless --web-admin or --web-admin-source")
 	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the pages write, show the pairing code and use the controller's admin routes (the page's token mode)")
 	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit page requests from this IP address only, as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
@@ -191,13 +199,19 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
-		central, err := bleCentral(c.BluetoothAdapter)
+		central, err := bleCentral(c, log)
 		if err != nil {
 			return err
 		}
-		if cl, ok := central.(io.Closer); ok {
-			defer func() { _ = cl.Close() }()
-		}
+		// The central goes before the controller (registered again after
+		// the controller's close below, so it runs first); once, also when
+		// the start fails before the controller exists.
+		closeCentral := sync.OnceFunc(func() {
+			if cl, ok := central.(io.Closer); ok {
+				_ = cl.Close()
+			}
+		})
+		defer closeCentral()
 		// The controller's database through go-fabric's opener (Q11
 		// closed in v0.12.1): no SQLite driver of our own.
 		db, err := controller.OpenDB(filepath.Join(c.StoragePath, "fabric-server.db"))
@@ -236,6 +250,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			}
 			_ = ctrl.Close(context.WithoutCancel(ctx))
 		}()
+		defer closeCentral()
 		if err := api.Start(ctx, ctrl); err != nil {
 			return err
 		}
@@ -404,12 +419,71 @@ func trustStore(c Config) (attestation.PAAStore, error) {
 // for the system bus (no BLE in CI).
 var newCentral = bluez.NewCentral
 
-// bleCentral is the BlueZ central of --bluetooth-adapter
+// newProxyCentral opens the central over ESPHome Bluetooth proxies; a
+// variable so a test can stand in for the proxies' sockets.
+var newProxyCentral = func(proxies []esphome.Proxy, opts esphome.Options) (ble.Central, error) {
+	c, err := esphome.NewCentral(proxies, opts)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// proxyList is --bluetooth-proxy: each use appends one proxy, parsed by
+// esphome.ParseProxy (host[:port][,key]).
+type proxyList []esphome.Proxy
+
+// String names the proxies by address only: never a key.
+func (l *proxyList) String() string {
+	if l == nil {
+		return ""
+	}
+	return strings.Join(proxyAddrs(*l), " ")
+}
+
+func (l *proxyList) Set(spec string) error {
+	p, err := esphome.ParseProxy(spec)
+	if err != nil {
+		return err
+	}
+	*l = append(*l, p)
+	return nil
+}
+
+func proxyAddrs(proxies []esphome.Proxy) []string {
+	addrs := make([]string, len(proxies))
+	for i, p := range proxies {
+		addrs[i] = p.Addr
+	}
+	return addrs
+}
+
+// bleCentral is the BLE central commission_with_code commissions over:
+// the ESPHome proxies' of --bluetooth-proxy, the BlueZ adapter's of
+// --bluetooth-adapter, or nil without either; both is a start-up error
+// (one BLE backend; matterjs-server instead prefers --ble-proxy with a
+// warning, MatterServer.ts:88-91, but its proxy is a different mechanism).
+func bleCentral(c Config, log *slog.Logger) (ble.Central, error) {
+	if len(c.BluetoothProxies) > 0 {
+		if c.BluetoothAdapter != "" {
+			return nil, errors.New("--bluetooth-adapter and --bluetooth-proxy: one BLE backend, not both")
+		}
+		log.Info("fabricserver.ble_proxies", slog.Any("proxies", proxyAddrs(c.BluetoothProxies)))
+		central, err := newProxyCentral(c.BluetoothProxies, esphome.Options{Logger: log})
+		if err != nil {
+			return nil, fmt.Errorf("--bluetooth-proxy: %w", err)
+		}
+		return central, nil
+	}
+	return adapterCentral(c.BluetoothAdapter)
+}
+
+// adapterCentral is the BlueZ central of --bluetooth-adapter
 // (github.com/SukramJ/go-fabric/ble/bluez); nil without the flag. The flag
 // takes matterjs-server's HCI id ("0" is hci0); an adapter name (hci1) is
 // passed as it is. Opening fails without system-bus rights to org.bluez or
 // on a platform without BlueZ.
-func bleCentral(adapter string) (ble.Central, error) {
+func adapterCentral(adapter string) (ble.Central, error) {
 	if adapter == "" {
 		return nil, nil //nolint:nilnil // no adapter is no central and no error
 	}
@@ -425,7 +499,8 @@ func bleCentral(adapter string) (ble.Central, error) {
 }
 
 // controllerOptions are the controller half's options; BLE is the central
-// of --bluetooth-adapter, which commission_with_code commissions over.
+// of --bluetooth-proxy or --bluetooth-adapter, which commission_with_code
+// commissions over.
 func controllerOptions(c Config, log *slog.Logger, lvl *slog.LevelVar, central ble.Central) controllerapi.Options {
 	return controllerapi.Options{
 		Version: version.Version, GoFabricVersion: version.GoFabric(), StoragePath: c.StoragePath,

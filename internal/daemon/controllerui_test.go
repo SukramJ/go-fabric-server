@@ -20,6 +20,7 @@ import (
 	"github.com/SukramJ/go-fabric/clock"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
+	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
@@ -46,6 +47,14 @@ type pagesEnv struct {
 
 func newPagesEnv(t *testing.T, c Config) *pagesEnv {
 	t.Helper()
+	return newPagesEnvWith(t, c, nil, nil)
+}
+
+// newPagesEnvWith is newPagesEnv with the device's configuration widened
+// by configure and the half's BLE central made by central (nil: none), as
+// Run hands bleCentral's to controllerOptions.
+func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), central func(*fabrictest.Device) ble.Central) *pagesEnv {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
 	log := slog.New(slog.DiscardHandler)
@@ -54,12 +63,17 @@ func newPagesEnv(t *testing.T, c Config) *pagesEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dev := site.AddDevice(fabrictest.Topology{Bridged: []node.Endpoint{plug}})
+	dev := site.AddDevice(fabrictest.Topology{Bridged: []node.Endpoint{plug}, Configure: configure})
+	var bleCentral ble.Central
+	if central != nil {
+		bleCentral = central(dev)
+	}
 	api, err := controllerapi.New(controllerapi.Options{
 		Version: "test", GoFabricVersion: "v-test", StoragePath: t.TempDir(), Logger: log,
 		DefaultFabricLabel: c.DefaultFabricLabel,
 		// The site's device carries go-fabric's test attestation.
 		Attestation: attestation.Accept(),
+		BLE:         bleCentral,
 	})
 	if err != nil {
 		t.Fatal(err)

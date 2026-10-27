@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 go-fabric-server is licensed under the Apache License 2.0 (see
-[`LICENSE`](LICENSE)). It depends on four Go modules directly (go-fabric, its BlueZ central github.com/SukramJ/go-fabric/ble/bluez, coder/websocket, go-fabric-ui); every
+[`LICENSE`](LICENSE)). It depends on five Go modules directly (go-fabric, its BlueZ central github.com/SukramJ/go-fabric/ble/bluez, its ESPHome-proxy central github.com/SukramJ/go-fabric/ble/esphome, coder/websocket, go-fabric-ui); every
 further dependency is a decision recorded here (MIT, Apache-2.0, BSD and
 the equivalent ISC only). No third-party source is copied into this tree,
 except the documented JSON examples of matterjs-server that serve as test
@@ -28,6 +28,17 @@ a module of its own so the D-Bus dependency stays out of go-fabric.
 - Source: <https://github.com/SukramJ/go-fabric/tree/main/ble/bluez>
 - Copyright (C) 2026 SukramJ. Apache License 2.0.
 - Decision: report S3, Questions Q22; brief F1 §2 (v0.12.1).
+
+### github.com/SukramJ/go-fabric/ble/esphome — Apache-2.0
+
+go-fabric's BLE central over ESPHome Bluetooth proxies on the ESPHome native
+API (`--bluetooth-proxy`), pure Go, a module of its own so the Noise
+dependency stays out of go-fabric.
+
+- Source: <https://github.com/SukramJ/go-fabric/tree/main/ble/esphome>
+- Copyright (C) 2026 SukramJ. Apache License 2.0; its notices travel in
+  its `THIRD-PARTY-NOTICES.md`.
+- Decision: brief S5 (go-fabric brief BP1, v0.13.5).
 
 ### github.com/coder/websocket — ISC
 
@@ -59,6 +70,12 @@ Through go-fabric-ui (from v0.2.0, its generated router): github.com/oapi-codege
 
 Through go-fabric/ble/bluez: github.com/godbus/dbus/v5 (BSD-2-Clause, see
 [`licenses/LICENSE-godbus-dbus.txt`](licenses/LICENSE-godbus-dbus.txt)).
+
+Through go-fabric/ble/esphome: github.com/flynn/noise (BSD-3-Clause, see
+[`licenses/LICENSE-flynn-noise.txt`](licenses/LICENSE-flynn-noise.txt)) and
+golang.org/x/crypto (BSD-3-Clause, see
+[`licenses/LICENSE-golang-x-crypto.txt`](licenses/LICENSE-golang-x-crypto.txt)),
+the API's Noise transport.
 
 Through go-fabric: filippo.io/nistec (BSD-3-Clause), github.com/grandcat/zeroconf
 (MIT), github.com/miekg/dns (BSD-3-Clause), golang.org/x/net and
