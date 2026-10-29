@@ -3,6 +3,11 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.2
+
+- Library updates (go-fabric 0.14.0, go-fabric-ui 0.2.4); the pages follow
+  Home Assistant's theme from the first frame (go-fabric-ui 0.2.2).
+
 ## 0.4.1
 
 - Option `bluetooth_proxies`: commission BLE devices through ESPHome

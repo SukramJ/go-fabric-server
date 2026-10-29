@@ -308,7 +308,6 @@ func TestBridgeErrors(t *testing.T) {
 		{`{"devices":[], "extra": 1}`, `unknown field "extra"`},
 		{`{"devices":[{"type":"OnOffLight"}]}`, "devices[0].key"},
 		{`{"devices":[{"key":"a","type":"Toaster"}]}`, `no device type "Toaster"`},
-		{`{"devices":[{"key":"a","type":"VideoDoorbell"}]}`, "does not build VideoDoorbell"},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"Nope":{}}}]}`, `devices[0].clusters.Nope: no cluster "Nope"`},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"AccessControl":{}}}]}`, "no typed package"},
 		{`{"devices":[{"key":"a","type":"OnOffLight","clusters":{"OnOff":{"initial":{"nope":1}}}}]}`, `devices[0].clusters.OnOff.initial.nope`},
@@ -330,6 +329,12 @@ func TestBridgeErrors(t *testing.T) {
 		if !errors.As(err, &perr) || perr.ErrorCode != protocol.InvalidArguments || !strings.Contains(perr.Details, c.want) {
 			t.Errorf("%s: %v, want %q", c.doc, err, c.want)
 		}
+	}
+	// VideoDoorbell, a composite the kit did not build before go-fabric
+	// v0.13.12 (CHANGELOG: device.NewVideoDoorbell; v0.14.0 generates every
+	// snapshot device type, 91/91): accepted, no longer "does not build".
+	if _, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"VideoDoorbell"}]}`)); err != nil {
+		t.Fatalf("a VideoDoorbell: %v", err)
 	}
 	// The host's Identify handler on a bridged device (Q16, go-fabric
 	// v0.12.1): accepted.

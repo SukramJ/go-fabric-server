@@ -11,7 +11,7 @@ import (
 	"sort"
 
 	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/thread"
+	"github.com/SukramJ/go-fabric/thread"
 )
 
 // The host side of the server: what a second surface over the same
@@ -80,7 +80,7 @@ func (s *Server) SetWiFiCredential(id, ssid, passphrase string) error {
 }
 
 // SetThreadDataset is set_thread_dataset with the dataset's bytes: it must
-// read as MeshCoP TLVs (controller/thread.DecodeDataset); it is stored as
+// read as MeshCoP TLVs (thread.DecodeDataset); it is stored as
 // the hex string the command stores.
 func (s *Server) SetThreadDataset(id string, dataset []byte) error {
 	if len(dataset) == 0 {

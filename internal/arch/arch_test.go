@@ -47,13 +47,14 @@ var facade = map[string]bool{
 	"controller/dcl": true,
 	// The BLE central type of controller.PairOptions.BLE, and the Thread
 	// dataset codec the CJ report names as the dataset reader (go-fabric
-	// notes/briefs/reports/CJ.md, 1.13: controller/thread.DecodeDataset).
+	// notes/briefs/reports/CJ.md, 1.13: then controller/thread.DecodeDataset;
+	// moved to thread in go-fabric v0.13.7, CHANGELOG "Removed").
 	"controller/ble": true,
 	"ble/bluez":      true,
 	// The central over ESPHome Bluetooth proxies (brief S5): the second
 	// ble.Central platform, beside ble/bluez.
 	"ble/esphome":        true,
-	"controller/thread":  true,
+	"thread":             true,
 	"client/discovery":   true,
 	"client/exchange":    true,
 	"client/handshake":   true,
