@@ -30,6 +30,10 @@ go-fabric-ui `v0.2.4`.
   clock is still not set). The camera, Thread Border Router, Joint
   Fabric, TLS and AmbientContextSensing servers it adds are not composed
   by this daemon.
+- `/bridge`: a declaration of a `VideoDoorbell` device is accepted; it was
+  refused as a type go-fabric's device kit does not build. go-fabric
+  v0.13.12 builds the composite, and v0.14.0 builds every device type of
+  the snapshot, so no declared type is refused for that reason any more.
 - go-fabric `ble/esphome` from a pseudo-version of 2026-10-27 to its tag
   `v0.13.10`. `ble/bluez` stays at `v0.12.1`, its latest tag.
 - go-fabric-ui `v0.2.1` → `v0.2.4`: the pages take Home Assistant's theme
