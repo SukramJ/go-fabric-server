@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SukramJ/go-fabric/controller/thread"
+	"github.com/SukramJ/go-fabric/thread"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -141,7 +141,7 @@ func cmdSetThreadDataset(_ context.Context, s *Server, c *call) (any, *protocol.
 	if *a.Dataset == "" || !isHex(*a.Dataset) {
 		return nil, invalidArgs(c.req.Command, "Invalid Thread operational dataset: must be a non-empty hex string with even length (each byte is two hex characters)")
 	}
-	// The dataset must also read as MeshCoP TLVs (controller/thread, the
+	// The dataset must also read as MeshCoP TLVs (go-fabric thread, the
 	// port of matter.js OperationalDataset.ts): matterjs-server checks the
 	// hex only (WebSocketControllerHandler.ts:2173-2200), a dataset no
 	// device could join is refused here (report S3, by_design candidate).

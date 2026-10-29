@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/SukramJ/go-fabric/controller/commissioner"
-	"github.com/SukramJ/go-fabric/controller/thread"
+	"github.com/SukramJ/go-fabric/thread"
 )
 
 // defaultCredentialID is the reserved entry pre-schema-12 callers use
@@ -274,7 +274,7 @@ func (s *settingsStore) summaries() (wifi, threads []map[string]any) {
 
 // threadSummary is a get_all_credentials Thread entry: the id, and the
 // dataset's network name and extended PAN id (uppercase hex) when it
-// decodes (controller/thread.DecodeDatasetHex, go-fabric's port of
+// decodes (thread.DecodeDatasetHex, go-fabric's port of
 // matter.js OperationalDataset.ts) — matterjs-server's
 // WebSocketControllerHandler.ts:2250-2302. The secrets are never returned.
 func threadSummary(e threadCredential) map[string]any {

@@ -6,6 +6,44 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-29
+
+Dependency release: go-fabric `v0.14.0` (its `ble/esphome` at `v0.13.10`),
+go-fabric-ui `v0.2.4`.
+
+### Changed
+
+- go-fabric `v0.13.5` → `v0.14.0`. go-fabric v0.13.7 removed
+  `controller/thread`; the Thread dataset codec of `set_thread_dataset`,
+  `get_all_credentials` and the pages' Thread credentials is now
+  `github.com/SukramJ/go-fabric/thread`, every identifier unchanged, and
+  the import guard allows `thread` in its place. What a dataset must be
+  to be accepted does not change. Through go-fabric, for this daemon:
+  the controller rotates its operational key on every start (a new key
+  pair and NOC under the same fabric, saved over the stored record);
+  `commission_with_code` commissions every matching device it finds in
+  parallel and keeps the first to establish PASE, and with a BLE backend
+  searches DNS-SD as well; single invokes within one batch window share
+  one InvokeRequest when the device accepts several paths; the bridge
+  half's node answers TimeSynchronization's SetUTCTime with
+  connectedhomeip's statuses instead of accepting every request (the
+  clock is still not set). The camera, Thread Border Router, Joint
+  Fabric, TLS and AmbientContextSensing servers it adds are not composed
+  by this daemon.
+- `/bridge`: a declaration of a `VideoDoorbell` device is accepted; it was
+  refused as a type go-fabric's device kit does not build. go-fabric
+  v0.13.12 builds the composite, and v0.14.0 builds every device type of
+  the snapshot, so no declared type is refused for that reason any more.
+- go-fabric `ble/esphome` from a pseudo-version of 2026-10-27 to its tag
+  `v0.13.10`. `ble/bluez` stays at `v0.12.1`, its latest tag.
+- go-fabric-ui `v0.2.1` → `v0.2.4`: the pages take Home Assistant's theme
+  from the first frame (v0.2.2), build-tooling updates (v0.2.3), the
+  go-fabric `v0.14.0` build and the exported `NodeObservers` (v0.2.4),
+  which this daemon does not use.
+- `protocol/schema` regenerated from go-fabric `v0.14.0`'s snapshot: only
+  the go-fabric version stamp moves (`x-go-fabric-version`,
+  `GoFabricVersion`); no id, name or type changes.
+
 ## [0.4.1] - 2026-10-27
 
 On go-fabric v0.13.5 and its nested module `ble/esphome` (brief S5).
