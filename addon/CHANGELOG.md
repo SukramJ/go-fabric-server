@@ -3,6 +3,14 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.5
+
+- Library updates (go-fabric 0.15.3, go-fabric-ui 0.2.7). The node's surface
+  report has its own page (Surface tab): effective surface per endpoint,
+  decisions, withheld elements and announced changes.
+- Options `surface_extensions`, `surface_level` and `surface_profiles` for
+  the bridge node's surface policies.
+
 ## 0.4.4
 
 - Library updates (go-fabric 0.15.2, go-fabric-ui 0.2.6). The status page shows
