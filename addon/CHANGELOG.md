@@ -3,6 +3,14 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.6
+
+- Library updates (go-fabric 0.15.4, go-fabric-ui 0.2.8). The Surface tab
+  learns of every surface change the node makes, including reassemblies the
+  host runs on its own, and shows the root endpoint.
+- A device the configured specification level does not know is withheld
+  instead of refusing the whole declaration; the `declare` answer lists it.
+
 ## 0.4.5
 
 - Library updates (go-fabric 0.15.3, go-fabric-ui 0.2.7). The node's surface
