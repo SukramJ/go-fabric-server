@@ -3,8 +3,8 @@ module github.com/SukramJ/go-fabric-server
 go 1.27.3
 
 require (
-	github.com/SukramJ/go-fabric v0.14.0
-	github.com/SukramJ/go-fabric-ui v0.2.4
+	github.com/SukramJ/go-fabric v0.15.1
+	github.com/SukramJ/go-fabric-ui v0.2.5
 	github.com/SukramJ/go-fabric/ble/bluez v0.12.1
 	github.com/SukramJ/go-fabric/ble/esphome v0.13.10
 	github.com/coder/websocket v1.8.15

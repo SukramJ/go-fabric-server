@@ -6,6 +6,37 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-30
+
+Dependency release: go-fabric `v0.15.1`, go-fabric-ui `v0.2.5`.
+
+### Changed
+
+- go-fabric `v0.14.0` → `v0.15.1`. The daemon builds and its tests pass
+  without a code change. go-fabric v0.15.0 serves each endpoint's surface
+  (device types, clusters, features, the global lists) as a value under
+  node-level policies (its ADR 0030): a specification level, opt-ins for
+  the features it implements ahead of matter.js, and controller profiles,
+  all in `node.Config.Surface`, which this daemon leaves at its zero
+  value. Through go-fabric, for the bridge half: when an endpoint comes
+  back after a restart with a different surface, the node raises its and
+  the root's ConfigurationVersion in one change and bumps the changed
+  clusters' data versions, so a paired controller reloads it. **A
+  `/bridge` declaration that selects a feature go-fabric implements ahead
+  of matter.js** — Thermostat's `MatterScheduleConfiguration` or its
+  events feature, TimeSynchronization's time-zone, NTP client, NTP server
+  and time-sync-client features — **is now refused** by go-fabric
+  (`surface.ErrExtensionNotEnabled`) because the daemon does not yet
+  expose the opt-in; every other feature selection is unchanged. The
+  opt-in in the daemon's configuration is a follow-up. v0.15.1: a bridged
+  endpoint whose device has no name keeps its Descriptor; three race-job
+  test flakes fixed in go-fabric.
+- go-fabric-ui `v0.2.4` → `v0.2.5`: the selection page hides items whose
+  verdict is unmappable until the toggle above the list shows them.
+- `protocol/schema` regenerated from go-fabric `v0.15.1`'s snapshot: only
+  the go-fabric version stamp moves (`x-go-fabric-version`,
+  `GoFabricVersion`); no id, name or type changes.
+
 ## [0.4.2] - 2026-10-29
 
 Dependency release: go-fabric `v0.14.0` (its `ble/esphome` at `v0.13.10`),
