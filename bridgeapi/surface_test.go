@@ -12,6 +12,7 @@ import (
 	"github.com/SukramJ/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
+	fsclient "github.com/SukramJ/go-fabric-server/client"
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
@@ -79,24 +80,137 @@ func TestSurfaceExtensionEnabled(t *testing.T) {
 	}
 }
 
-// TestSurfaceWithheld: a device type the node's specification level does
-// not know (Closure, absent from the 1.4.2 model: go-fabric
-// device/surface_level_test.go TestLevelWithholdsAnUnknownType) is
-// refused with InvalidArguments naming the level, the flag and the
-// endpoint.
-func TestSurfaceWithheld(t *testing.T) {
-	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
-	_, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"Closure"}]}`))
-	var perr *protocol.Error
-	if !errors.As(err, &perr) || perr.ErrorCode != protocol.InvalidArguments {
-		t.Fatalf("declare: %v", err)
+// withheldDecl declares a Closure, a type absent from the 1.4.2 model
+// (go-fabric device/surface_level_test.go TestLevelWithholdsAnUnknownType),
+// beside a light every level knows.
+const withheldDecl = `{"devices":[{"key":"c","type":"Closure"},{"key":"l","type":"OnOffLight"}]}`
+
+// withheldAt reports whether rep lists a withheld element of endpoint key
+// and whether its effective surface serves key.
+func withheldAt(rep surface.Report, key string) (withheld, served bool) {
+	withheld = slices.ContainsFunc(rep.Withheld, func(el surface.Element) bool { return el.Endpoint == key })
+	served = slices.ContainsFunc(rep.Effective.Endpoints, func(ep surface.Endpoint) bool { return ep.Key == key })
+	return withheld, served
+}
+
+// nodeKeys are the keys of the devices node_info lists: the endpoints the
+// node serves.
+func nodeKeys(t *testing.T, e *env) []string {
+	t.Helper()
+	ni, err := e.host.NodeInfo(e.ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, want := range []string{"devices[0] (c)", "specification level 1.4.2 (--bridge-spec-level)", `withholds endpoint "c"`} {
-		if !strings.Contains(perr.Details, want) {
-			t.Errorf("details %q lack %q", perr.Details, want)
+	var keys []string
+	for _, d := range ni["devices"].([]any) {
+		if k, ok := d.(map[string]any)["key"].(string); ok {
+			keys = append(keys, k)
 		}
 	}
-	if rep := surfaceReport(t, e); rep.Level != "1.4.2" || rep.LevelOrigin != "explicit" {
+	slices.Sort(keys)
+	return keys
+}
+
+// TestSurfaceWithheld: a device type the node's specification level does
+// not know runs on (go-fabric ADR 0030 decision 3): the declaration
+// succeeds, the device is added without an endpoint, the answer's
+// withheld list names it with its type and the level, the node serves
+// only the light and the surface report lists the Closure withheld. The
+// same declaration again leaves it as it is and still names it.
+func TestSurfaceWithheld(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
+	for _, want := range []string{"added", "unchanged"} {
+		res, err := e.host.Declare(e.ctx, doc(withheldDecl))
+		if err != nil || len(res.Devices) != 2 {
+			t.Fatalf("declare: %+v %v", res, err)
+		}
+		c, l := res.Devices[0], res.Devices[1]
+		if c.Key != "c" || c.Action != want || c.Error != "" || c.Endpoint != nil {
+			t.Errorf("c: %+v, want %s without endpoint", c, want)
+		}
+		if l.Key != "l" || l.Action != want || l.Error != "" || l.Endpoint == nil {
+			t.Errorf("l: %+v, want %s with endpoint", l, want)
+		}
+		if !slices.Equal(res.Withheld, []fsclient.WithheldDevice{{Key: "c", DeviceType: "Closure", SpecLevel: "1.4.2"}}) {
+			t.Errorf("withheld %+v", res.Withheld)
+		}
+	}
+	if keys := nodeKeys(t, e); !slices.Equal(keys, []string{"l"}) {
+		t.Errorf("node_info keys %v, want [l]", keys)
+	}
+	rep := surfaceReport(t, e)
+	if rep.Level != "1.4.2" || rep.LevelOrigin != "explicit" {
 		t.Fatalf("report level %q (%s)", rep.Level, rep.LevelOrigin)
+	}
+	if withheld, served := withheldAt(rep, "c"); !withheld || served {
+		t.Errorf("c withheld %v, served %v; report withheld %+v", withheld, served, rep.Withheld)
+	}
+	if withheld, served := withheldAt(rep, "l"); withheld || !served {
+		t.Errorf("l withheld %v, served %v", withheld, served)
+	}
+}
+
+// TestSurfaceWithheldRemoved: a later declaration without the withheld
+// device removes it as any other key — named in removed, gone from the
+// withheld list — and the light stays.
+func TestSurfaceWithheldRemoved(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
+	if _, err := e.host.Declare(e.ctx, doc(withheldDecl)); err != nil {
+		t.Fatal(err)
+	}
+	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"l","type":"OnOffLight"}]}`))
+	if err != nil || len(res.Devices) != 1 || res.Devices[0].Action != "unchanged" {
+		t.Fatalf("declare: %+v %v", res, err)
+	}
+	if !slices.Equal(res.Removed, []string{"c"}) || len(res.Withheld) != 0 {
+		t.Errorf("removed %v, withheld %+v", res.Removed, res.Withheld)
+	}
+	if keys := nodeKeys(t, e); !slices.Equal(keys, []string{"l"}) {
+		t.Errorf("node_info keys %v, want [l]", keys)
+	}
+	if err := e.host.Set(e.ctx, "c", "OnOff", map[string]any{"onOff": true}); err == nil {
+		t.Error("set on the removed key: no error")
+	}
+}
+
+// TestSurfaceWithheldReplaced: a key moves between a withheld and a
+// served device by re-declaration: served, it gets an endpoint; withheld
+// again, it leaves the node and the withheld list names it; remove and
+// forget of the withheld key answer as for any key.
+func TestSurfaceWithheldReplaced(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
+	steps := []struct {
+		decl     string
+		endpoint bool
+		keys     []string
+	}{
+		{`{"devices":[{"key":"c","type":"Closure"}]}`, false, nil},
+		{`{"devices":[{"key":"c","type":"OnOffLight"}]}`, true, []string{"c"}},
+		{`{"devices":[{"key":"c","type":"Closure"}]}`, false, nil},
+	}
+	for i, st := range steps {
+		res, err := e.host.Declare(e.ctx, doc(st.decl))
+		if err != nil || len(res.Devices) != 1 || res.Devices[0].Error != "" {
+			t.Fatalf("step %d: declare: %+v %v", i, res, err)
+		}
+		if got := res.Devices[0].Endpoint != nil; got != st.endpoint {
+			t.Errorf("step %d: endpoint %v, want %v", i, got, st.endpoint)
+		}
+		if got := len(res.Withheld) == 1; got == st.endpoint {
+			t.Errorf("step %d: withheld %+v", i, res.Withheld)
+		}
+		if keys := nodeKeys(t, e); !slices.Equal(keys, st.keys) {
+			t.Errorf("step %d: node_info keys %v, want %v", i, keys, st.keys)
+		}
+	}
+	if err := e.host.Remove(e.ctx, "c"); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if err := e.host.Forget(e.ctx, "c"); err != nil {
+		t.Fatalf("forget: %v", err)
+	}
+	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"Closure"}]}`))
+	if err != nil || res.Devices[0].Action != "added" || len(res.Withheld) != 1 {
+		t.Fatalf("declare after forget: %+v %v", res, err)
 	}
 }

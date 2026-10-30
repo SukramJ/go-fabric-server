@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A `/bridge` device whose type or mandated cluster the specification
+  level (`--bridge-spec-level`) does not know is withheld instead of
+  refusing the whole declaration, as go-fabric's reference daemon does: the
+  declaration succeeds, the device serves no endpoint, the node records it
+  as withheld (the `surface` report lists it), the daemon logs the warning
+  `fabricserver.bridge.withheld` once, and `declare`'s answer gains
+  `withheld: [{key, device_type, spec_level}]`, absent when none. The Go
+  client's `DeclareResult` gains `Withheld`.
+- The Python compatibility job's test dependencies: pytest `8.4.2` →
+  `9.0.3` (Dependabot alert 1).
+
 ## [0.4.5] - 2026-10-30
 
 Dependency release: go-fabric `v0.15.3`, go-fabric-ui `v0.2.7`.
