@@ -73,7 +73,8 @@ func strict(raw json.RawMessage, path string, dst any) error {
 // decodeDeclaration decodes a declare's args into devices built by the
 // kit, nothing applied yet. A malformed document is an error naming the
 // path; the kit's refusal of a device (device.New) is returned with the
-// kit's message.
+// kit's message, a refusal by the node's surface policies with how the
+// operator lifts it (surfaceHint).
 func (s *Server) decodeDeclaration(ctx context.Context, raw json.RawMessage) ([]*bridged, error) {
 	var doc struct {
 		Devices []json.RawMessage `json:"devices"`
@@ -148,13 +149,15 @@ func (s *Server) buildDevice(ctx context.Context, raw json.RawMessage, path stri
 		}
 		decls = append(decls, decl)
 	}
+	policies := s.opts.Surface
 	opts := device.Options{
 		StableKey: device.StringKey(d.Key), Name: d.Name, Vendor: d.Vendor,
 		DeviceAddress: d.DeviceAddress, ChannelAddress: d.ChannelAddress,
+		Surface: &policies,
 	}
 	dev, err := device.New(typ, opts, decls...)
 	if err != nil {
-		return nil, fmt.Errorf("%s (%s): %w", path, d.Key, err)
+		return nil, fmt.Errorf("%s (%s): %w%s", path, d.Key, err, s.surfaceHint(err))
 	}
 	if d.Reachable != nil {
 		dev.SetReachable(ctx, *d.Reachable)

@@ -64,7 +64,11 @@ func newEnv(t *testing.T, opts bridgeapi.Options) *env {
 		opts.SubscriptionPoll = 50 * time.Millisecond
 	}
 	br := bridgeapi.New(opts)
-	dev := site.AddDevice(fabrictest.Topology{Configure: func(cfg *node.Config) { cfg.Observers = br.Observers() }})
+	// The node composes under the half's surface policies, the daemon's
+	// wiring (internal/daemon startBridge).
+	dev := site.AddDevice(fabrictest.Topology{Configure: func(cfg *node.Config) {
+		cfg.Observers, cfg.Surface = br.Observers(), opts.Surface
+	}})
 	if err := br.Start(ctx, dev.Node()); err != nil {
 		t.Fatal(err)
 	}

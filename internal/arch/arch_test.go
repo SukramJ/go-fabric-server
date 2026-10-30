@@ -29,9 +29,12 @@ const (
 // of controller.Config and controller.PairOptions), the snapshot, the
 // generated schema and the <cluster>def packages under cluster/spec/.
 var facade = map[string]bool{
-	"node":                    true,
-	"node/metrics/expvar":     true,
-	"device":                  true,
+	"node":                true,
+	"node/metrics/expvar": true,
+	"device":              true,
+	// The type of node.Config.Surface and node.Node.Surface's report
+	// (go-fabric ADR 0030): the bridge node's surface policies.
+	"surface":                 true,
 	"contract":                true,
 	"parity":                  true,
 	"schema":                  true,
@@ -207,6 +210,7 @@ func TestGuardRefuses(t *testing.T) {
 		{"bridgeapi", "cluster/spec/powersource", false},
 		{"bridgeapi", "device", false},
 		{"bridgeapi", "node", false},
+		{"bridgeapi", "surface", false},
 	} {
 		if !facadeImport(c.pkg, c.dep, c.test) {
 			t.Errorf("%s may import %s", c.pkg, c.dep)

@@ -17,6 +17,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/SukramJ/go-fabric/node"
+	"github.com/SukramJ/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -48,6 +49,12 @@ type Options struct {
 	Conn protocol.ConnOptions
 	// MaxInFlight bounds the requests the client runs at once; 0 is 64.
 	MaxInFlight int
+	// Surface are the surface policies of the node the server binds to:
+	// the node's node.Config.Surface, the same value. Every declared
+	// device is built under them (device.Options.Surface), since the
+	// node's Aggregator refuses a device composed under other policies
+	// (go-fabric node.ErrPolicyMismatch). The zero value is no policy.
+	Surface surface.Policies
 }
 
 // Server is the bridge half. Its methods are safe for concurrent use.

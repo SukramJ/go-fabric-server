@@ -60,11 +60,11 @@ exactly; send ids as integer literals, never in exponent form.
 | 0 | UnknownError | a device's status answer (with `status`, `cluster_status`), any unclassified failure |
 | 1 | NodeCommissionFailed | a failed commissioning, with `reason` |
 | 2 | NodeInterviewFailed | `interview_node` failing |
-| 3 | NodeNotReady | a node not commissioned, disabled or closed |
+| 3 | NodeNotReady | a node not commissioned, disabled or closed; `/bridge` `surface` without a bound node |
 | 4 | NodeNotResolving | a node not reached (timeout, network failure) |
 | 5 | NodeNotExists | a `node_id` the controller does not hold |
 | 7 | SDKStackError | `read_attribute` without any value |
-| 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form |
+| 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form; on `/bridge`, a declaration the kit or the node's surface policies refuse (an ahead-of-matter.js feature not enabled, naming the register IDs and `--bridge-extensions`; a device type the specification level withholds) |
 | 9 | InvalidCommand | an unknown or not yet implemented command |
 | 6, 10, 11, 100-103 | VersionMismatch, UpdateCheckError, UpdateError, IcdMultiAdmin, OtaUploadError, Camera… | defined, not raised yet |
 | 200 | BridgeClientConnected | `/bridge` only: a second bridge client (our own code) |
@@ -286,6 +286,7 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
 | `result` | `{correlation, ok? \| error: {status?, cluster_status?}, response?}` | `{}` |
 | `pairing_codes` | — | `{qr_code, manual_code}` |
 | `node_info` | — | `{aggregator_endpoint, devices: [{key, endpoint, device_type, name, reachable}], fabrics: [...], commissioning_window: {open, own}, subscriptions}` |
+| `surface` | — | the node's surface report, go-fabric's `surface.Report` (below) |
 
 ### `declare`
 
@@ -332,6 +333,19 @@ Names, not ids; every name is matched without regard to case:
   (a cluster the type does not allow, a missing mandatory server, a feature
   selection it refuses) is the error too, with the kit's message
   (`devices[1] (light-1): device: configuration refused: …`).
+- A refusal by the node's surface policies is `InvalidArguments` as well,
+  with how the operator lifts it: a feature go-fabric implements ahead of
+  matter.js whose register row the node does not enable
+  (`surface.ErrExtensionNotEnabled`) gains `; the node does not enable
+  <ids>: enable them with --bridge-extensions <value> (go-fabric
+  notes/parity/by_design.md, Ahead-of-matter.js register)`, where
+  `<value>` is the enabled IDs and the refused ones; a device whose type
+  or mandated cluster the node's specification level does not know
+  (`surface.ErrWithheld`) gains
+  `; the node composes at specification level <level>
+  (--bridge-spec-level), which withholds endpoint "<key>"`. The policies
+  are the operator's (operations, §Surface policies); a declaration
+  cannot change them.
 - `GET /schema/declaration` serves the JSON Schema of the document
   (`protocol/schema/declaration.schema.json`, generated from go-fabric's
   snapshot and its typed cluster packages): `$defs/patch.<Cluster>` is a
@@ -347,6 +361,18 @@ attribute to null (the Patch's `Null` list); an attribute or struct member
 the cluster does not have is refused with its path. `set` applies a patch
 through the typed server's `Set`: every value is checked, and all of them
 are stored or none; the controllers' subscriptions report the change.
+
+### `surface`
+
+No arguments. The answer is the bridge node's surface report,
+`node.Node.Surface()`, encoded by go-fabric's own
+[`surface.Report`](https://pkg.go.dev/github.com/SukramJ/go-fabric@v0.15.2/surface#Report) JSON (`MarshalJSON`) and passed
+through unchanged: `policies`, `level`, `level_origin`, `profiles`,
+`extensions`, `effective`, `decisions`, `withheld`, `assembled`,
+`changed`. The shape and its meaning are go-fabric's; this document does
+not restate them. Before the node has assembled its topology the report
+is the device-level view (`assembled: false`). Without a bound node the
+answer is `NodeNotReady`.
 
 ### `host`
 

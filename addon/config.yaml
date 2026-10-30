@@ -53,6 +53,8 @@ options:
   bridge: false
   bridge_port: 5540
   bluetooth_proxies: []
+  surface_extensions: []
+  surface_profiles: []
 
 schema:
   port: port
@@ -64,4 +66,12 @@ schema:
   # --bluetooth-proxy by run.sh: BLE commissioning without an adapter, so
   # no host_dbus.
   bluetooth_proxies:
+    - str?
+  # The bridge node's surface policies, passed by run.sh as
+  # --bridge-extensions (the ahead-of-matter.js register IDs),
+  # --bridge-spec-level and --bridge-profile; the daemon validates them.
+  surface_extensions:
+    - str?
+  surface_level: str?
+  surface_profiles:
     - str?

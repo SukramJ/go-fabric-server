@@ -6,6 +6,30 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The bridge node's surface policies (go-fabric's `node.Config.Surface`,
+  its ADR 0030): `--bridge-extensions id[,id…]` enables features go-fabric
+  implements ahead of matter.js by register ID (Thermostat's
+  `MatterScheduleConfiguration` is `BD-chip-Thermostat-Schedules`),
+  `--bridge-spec-level` sets the specification level and
+  `--bridge-profile name[,name…]` the controller profiles. Each has its
+  `FABRIC_SERVER_` variable; an unknown value stops the start with the
+  known ones. Every declared device is built under the node's policies.
+- The `/bridge` command `surface`: the node's surface report, go-fabric's
+  `surface.Report` JSON unchanged (policies, level, profiles, extensions,
+  the effective surface, decisions, withheld elements, changes).
+- Add-on options `surface_extensions`, `surface_level` and
+  `surface_profiles`, passed as the three flags.
+
+### Changed
+
+- A `/bridge` declaration that selects an ahead-of-matter.js feature the
+  node does not enable is still `InvalidArguments`, and its details now
+  name the register IDs and the `--bridge-extensions` value that enables
+  them; a device type the specification level withholds names the level
+  and `--bridge-spec-level`.
+
 ## [0.4.4] - 2026-10-30
 
 Dependency release: go-fabric `v0.15.2`, go-fabric-ui `v0.2.6`.

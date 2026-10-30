@@ -26,6 +26,18 @@ acts on the official add-on only — so this add-on sends no discovery:
 - **bluetooth_proxies** (empty): ESPHome Bluetooth proxies to commission
   BLE devices through, one entry each: `host[:port][,key]`, for example
   `proxy-office.local,<base64 API encryption key>` (port 6053 by default).
+- **surface_extensions** (empty): features go-fabric implements ahead of
+  matter.js that the bridge node serves, by register ID, for example
+  `BD-chip-Thermostat-Schedules` for a Thermostat's
+  MatterScheduleConfiguration. A declaration that selects such a feature
+  is refused until its ID is listed here; the refusal names the ID.
+- **surface_level** (unset): the Matter specification level the bridge
+  node composes at, for example `1.4.2`; unset is go-fabric's own.
+- **surface_profiles** (empty): controller profiles the bridge node
+  composes for, for example `apple-home`.
+
+An unknown extension, level or profile stops the add-on; its log lists the
+known values.
 
 The database and settings are under `/data`; a backup stops the add-on
 first. The add-on's web UI (Ingress) shows the controller's pages — the
