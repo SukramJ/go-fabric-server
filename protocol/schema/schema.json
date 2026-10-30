@@ -20309,7 +20309,7 @@
  "description": "The attribute values of a node's data (MatterNodeData.attributes) for every cluster of the Matter 1.6.1 model: the node data keys a value by \"endpoint/cluster/attribute\"; $defs/cluster.<cluster id> types the values of one cluster by attribute id. Structs are keyed by field id, bytes are base64, enums and bitmaps numbers, epoch times Unix-based. A value of a cluster or attribute outside this model is sent as decoded from the TLV.",
  "title": "go-fabric-server node data values",
  "type": "object",
- "x-go-fabric-version": "v0.15.3",
+ "x-go-fabric-version": "v0.15.4",
  "x-matter-revision": "1.6.1",
  "x-matter-source-commit": "862ad75f4d3c7ab528b8a3954168146082cad8a6"
 }

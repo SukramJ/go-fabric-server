@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-30
+
+Dependency release: go-fabric `v0.15.4`, go-fabric-ui `v0.2.8`.
+
 ### Changed
 
 - A `/bridge` device whose type or mandated cluster the specification
@@ -18,6 +22,14 @@ All notable changes to this project are documented here. The format follows
   client's `DeclareResult` gains `Withheld`.
 - The Python compatibility job's test dependencies: pytest `8.4.2` →
   `9.0.3` (Dependabot alert 1).
+- go-fabric `v0.15.3` → `v0.15.4`: `node.Observers.OnSurfaceChanged` announces
+  an endpoint whose served surface an assembly changed; a withheld key's
+  record leaves `Node.Surface().Withheld` on `Remove` and `Forget`; two test
+  flakes (#306). Nothing composed changes.
+- go-fabric-ui `v0.2.7` → `v0.2.8`: `surface_changed` comes from the node's
+  observer, so a reassembly the host runs on its own reaches the stream too;
+  the status page's warning count text is neutral; the Surface page shows the
+  root endpoint.
 
 ## [0.4.5] - 2026-10-30
 
