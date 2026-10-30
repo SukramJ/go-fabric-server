@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-30
+
+Dependency release: go-fabric `v0.15.3`, go-fabric-ui `v0.2.7`.
+
 ### Added
 
 - The bridge node's surface policies (go-fabric's `node.Config.Surface`,
@@ -29,6 +33,14 @@ All notable changes to this project are documented here. The format follows
   name the register IDs and the `--bridge-extensions` value that enables
   them; a device type the specification level withholds names the level
   and `--bridge-spec-level`.
+- go-fabric `v0.15.2` → `v0.15.3`: `surface.Warn`, the verdict of a policy that
+  keeps an element and flags it; a controller profile's Reported or Inherited
+  row is a `Warn` decision. Nothing composed changes.
+- go-fabric-ui `v0.2.6` → `v0.2.7`: the node's surface report gets its own page
+  (`GET /node/surface`: effective surface per endpoint, decisions, withheld
+  elements, announced changes), a Surface tab in the shell, the stream event
+  `surface_changed` and a marker on the Endpoints page for an endpoint whose
+  surface changed; the status page counts warnings by the `Warn` verdict.
 
 ## [0.4.4] - 2026-10-30
 
