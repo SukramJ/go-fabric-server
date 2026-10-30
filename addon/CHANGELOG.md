@@ -3,6 +3,14 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.3
+
+- Library updates (go-fabric 0.15.1, go-fabric-ui 0.2.5). The selection
+  page hides items that cannot be mapped to an endpoint; a toggle above
+  the list shows them again. A bridged device whose served clusters or
+  features change across a restart is announced to paired controllers
+  through its ConfigurationVersion.
+
 ## 0.4.2
 
 - Library updates (go-fabric 0.14.0, go-fabric-ui 0.2.4); the pages follow
