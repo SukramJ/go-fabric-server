@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- go-fabric `v0.15.1` → `v0.15.2`: `surface.Report.Extensions` lists the enabled ahead-of-matter.js register IDs in the node's surface report, for go-fabric-ui's status page (its 0.2.6). Nothing composed changes. `protocol/schema` regenerated: only the go-fabric version stamp moves.
+
 ## [0.4.3] - 2026-10-30
 
 Dependency release: go-fabric `v0.15.1`, go-fabric-ui `v0.2.5`.
