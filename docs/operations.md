@@ -33,6 +33,9 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-vendor-id`, `--bridge-product-id` | `0xFFF1`, `0x8001` | the bridge node's vendor and product (the CSA test vendor) |
 | `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel |
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
+| `--bridge-extensions` | — | the features go-fabric implements ahead of matter.js that the bridge node serves, by register ID, `id[,id…]`: `BD-Thread-NetComm-ThreadVariant`, `BD-chip-Thermostat-Events`, `BD-chip-Thermostat-Schedules`, `BD-chip-TimeSynchronization-Features` at go-fabric v0.15.2 ([Surface policies](#surface-policies)); an unknown ID stops the start with the known ones |
+| `--bridge-spec-level` | the pin's (`1.6.1`) | the Matter specification level the bridge node composes at: `1.4`, `1.4.1`, `1.4.2`, `1.5.1`, `1.6.0`, `1.6.1` at go-fabric v0.15.2; another value stops the start with the list |
+| `--bridge-profile` | — | the controller profiles the bridge node composes for, `name[,name…]`: `alexa`, `apple-home`, `google-home`, `home-assistant`, `smartthings` at go-fabric v0.15.2; an unknown name, or two whose levels differ without `--bridge-spec-level`, stops the start |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
 | `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened |
 | `--bluetooth-proxy` | — | an ESPHome Bluetooth proxy `commission_with_code` may commission through, `host[:port][,key]` (port 6053; `key` the base64 API encryption key, none for a plaintext API); repeatable, the environment variable gives one; not with `--bluetooth-adapter`. go-fabric's `ble/esphome` central, pure Go, no adapter or D-Bus; the start fails when a proxy refuses (wrong or missing key, no active connections) or none answers ([Bluetooth through ESPHome proxies](#bluetooth-through-esphome-proxies)) |
@@ -54,6 +57,48 @@ attestation chain, so a controller may warn that it is uncertified; set
 `--bridge-passcode` and `--bridge-discriminator` before pairing for real.
 The declared devices are not stored by the server: the client declares
 them after every connect, and each keeps its endpoint number under its key.
+
+### Surface policies
+
+go-fabric serves each endpoint's surface — device types, clusters,
+features — as a value composed under node-level policies (its
+[ADR 0030](https://github.com/SukramJ/go-fabric/blob/v0.15.2/docs/adr/0030-the-served-surface-is-a-value-under-policies.md)),
+the bridge node's `node.Config.Surface`. Three flags set them:
+
+- `--bridge-extensions` enables features go-fabric implements ahead of
+  matter.js, by their row in go-fabric's
+  [Ahead-of-matter.js register](https://github.com/SukramJ/go-fabric/blob/v0.15.2/notes/parity/by_design.md).
+  A declaration that selects such a feature while its row is not enabled
+  — Thermostat's `MatterScheduleConfiguration` (row
+  `BD-chip-Thermostat-Schedules`) or its events feature
+  (`BD-chip-Thermostat-Events`) — is refused whole with
+  `InvalidArguments`; the details name the device, the register IDs and
+  the flag value that enables them besides the enabled ones:
+
+  ```text
+  declare: devices[0] (t): Thermostat: surface: composition refused (surface: ahead-of-matter.js extension not enabled: BD-chip-Thermostat-Schedules): …; the node does not enable BD-chip-Thermostat-Schedules: enable them with --bridge-extensions BD-chip-Thermostat-Schedules (go-fabric notes/parity/by_design.md, Ahead-of-matter.js register)
+  ```
+
+- `--bridge-spec-level` composes at an earlier specification level: the
+  optional surface the level does not know is removed, what the pin
+  mandates is kept, and a device whose type or mandated cluster the level
+  does not know is refused with `InvalidArguments` naming the level and
+  the endpoint.
+- `--bridge-profile` selects controller profiles: each removes what a
+  Reproduced row of go-fabric's profile register names (a mandatory
+  element is kept) and records a warning for every other row
+  (`surface.Policies.Profiles`); a profile's level applies when
+  `--bridge-spec-level` is not given.
+
+The policies are the operator's: they hold for the whole node, and a
+`/bridge` client cannot ask for an extension per declaration (go-fabric's
+Aggregator refuses a device composed under other policies,
+`node.ErrPolicyMismatch`). The `/bridge` command `surface` answers the
+node's surface report — the policies, the effective surface, every
+decision, the withheld elements — and the node pages show the policies
+on the status page. Changing a policy changes what the node serves: a
+paired controller is told through the endpoint's ConfigurationVersion at
+the next start.
 
 ## Files
 

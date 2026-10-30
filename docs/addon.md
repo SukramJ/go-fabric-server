@@ -26,6 +26,9 @@ HA base image + bashio + the static binary).
 | `bridge` | `false` | also run the bridge half (`/bridge`) and its bridge node |
 | `bridge_port` | `5540` | the bridge node's Matter port |
 | `bluetooth_proxies` | `[]` | ESPHome Bluetooth proxies to commission BLE devices through, each `host[:port][,key]` (the base64 API encryption key); passed as repeated `--bluetooth-proxy` ([operations.md](operations.md#bluetooth-through-esphome-proxies)). The add-on has no `host_dbus` and no `--bluetooth-adapter` |
+| `surface_extensions` | `[]` | the ahead-of-matter.js register IDs the bridge node enables, joined into `--bridge-extensions` ([operations.md](operations.md#surface-policies)) |
+| `surface_level` | — | the specification level of the bridge node, `--bridge-spec-level`; unset is the pin's |
+| `surface_profiles` | `[]` | the controller profiles of the bridge node, joined into `--bridge-profile` |
 
 The controller's database and the server's settings live under `/data`
 (`fabric-server.db`, `server.json`, `bridge.db`); a cold backup stops the

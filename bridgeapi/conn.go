@@ -124,6 +124,7 @@ func init() {
 		"result":        cmdResult,
 		"pairing_codes": cmdPairingCodes,
 		"node_info":     cmdNodeInfo,
+		"surface":       cmdSurface,
 	}
 }
 

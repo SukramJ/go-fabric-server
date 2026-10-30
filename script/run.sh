@@ -22,6 +22,29 @@ export FABRIC_SERVER_ENABLE_TEST_NET_DCL="$(bashio::config 'enable_test_net_dcl'
 export FABRIC_SERVER_BRIDGE="$(bashio::config 'bridge')"
 export FABRIC_SERVER_BRIDGE_LISTEN=":$(bashio::config 'bridge_port')"
 
+# The bridge node's surface policies: the lists joined by commas into
+# --bridge-extensions and --bridge-profile, the level into
+# --bridge-spec-level; the daemon refuses an unknown value with the known
+# ones.
+join_list() {
+    local out="" item
+    while IFS= read -r item; do
+        [ -n "${item}" ] || continue
+        out="${out:+${out},}${item}"
+    done < <(bashio::config "$1")
+    printf '%s' "${out}"
+}
+if bashio::config.has_value 'surface_extensions'; then
+    export FABRIC_SERVER_BRIDGE_EXTENSIONS="$(join_list 'surface_extensions')"
+    bashio::log.info "Bridge node extensions: ${FABRIC_SERVER_BRIDGE_EXTENSIONS}"
+fi
+if bashio::config.has_value 'surface_level'; then
+    export FABRIC_SERVER_BRIDGE_SPEC_LEVEL="$(bashio::config 'surface_level')"
+fi
+if bashio::config.has_value 'surface_profiles'; then
+    export FABRIC_SERVER_BRIDGE_PROFILE="$(join_list 'surface_profiles')"
+fi
+
 # --- The node pages through Ingress ---
 # On the host's network: listen on ingress_port and answer only the Ingress
 # proxy, which is also the pages' administrator.

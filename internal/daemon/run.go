@@ -58,7 +58,15 @@ type Config struct {
 	BridgeProductID     uint
 	BridgeLabel         string
 	BridgeResultTimeout time.Duration
-	ShowVersion         bool
+	// The bridge node's surface policies (node.Config.Surface, go-fabric
+	// ADR 0030), comma-separated: the enabled "Ahead of matter.js"
+	// register IDs (--bridge-extensions), the specification level
+	// (--bridge-spec-level, "" the pin's) and the controller profiles
+	// (--bridge-profile).
+	BridgeExtensions string
+	BridgeSpecLevel  string
+	BridgeProfile    string
+	ShowVersion      bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
 	// shell or curl).
@@ -114,6 +122,9 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.UintVar(&c.BridgeProductID, "bridge-product-id", 0x8001, "the bridge node's product id")
 	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel")
 	fs.DurationVar(&c.BridgeResultTimeout, "bridge-result-timeout", 5*time.Second, "how long a write or command event waits for the bridge client's result")
+	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
+	fs.StringVar(&c.BridgeSpecLevel, "bridge-spec-level", "", "the specification level the bridge node composes at (default the pin's): "+levelList())
+	fs.StringVar(&c.BridgeProfile, "bridge-profile", "", "the controller profiles the bridge node composes for, name[,name...]: "+profileList())
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
@@ -315,11 +326,15 @@ var bridgeSalt = []byte("go-fabric-server bridge node")
 
 // bridgeConfig is the bridge node's configuration from the flags: its
 // commissioning identity, its store under --storage-path, the daemon's
-// logger.
+// logger, its surface policies (surfacePolicies).
 func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
 	// Widths only: node.New validates the values (Config.Validate).
 	if c.BridgePasscode > math.MaxUint32 || c.BridgeDiscriminator > math.MaxUint16 || c.BridgeVendorID > math.MaxUint16 || c.BridgeProductID > math.MaxUint16 {
 		return node.Config{}, errors.New("--bridge-passcode, --bridge-discriminator, --bridge-vendor-id or --bridge-product-id is wider than its field")
+	}
+	policies, err := surfacePolicies(c)
+	if err != nil {
+		return node.Config{}, err
 	}
 	return node.Config{
 		Network: node.Network{Listen: c.BridgeListen},
@@ -332,8 +347,9 @@ func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
 			VendorName: "go-fabric-server", ProductName: "fabric-server bridge", NodeLabel: c.BridgeLabel,
 			SerialNumber: "FABRIC-SERVER-BRIDGE", SoftwareVersionString: version.Version,
 		},
-		Store:  node.Store{Path: filepath.Join(c.StoragePath, "bridge.db")},
-		Logger: log,
+		Store:   node.Store{Path: filepath.Join(c.StoragePath, "bridge.db")},
+		Logger:  log,
+		Surface: policies,
 	}, nil
 }
 
@@ -347,6 +363,9 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 	br := bridgeapi.New(bridgeapi.Options{
 		Version: version.Version, GoFabricVersion: version.GoFabric(), ResultTimeout: c.BridgeResultTimeout,
 		Logger: log, Metrics: expvarmetrics.New("fabricserver.bridge."),
+		// The node's policies: the half builds every declared device under
+		// them (node.ErrPolicyMismatch otherwise).
+		Surface: cfg.Surface,
 	})
 	// The node pages' event stream observes the node itself (go-fabric-ui
 	// v0.1.2: the handler's Node.Observe), so only the half's observers go
