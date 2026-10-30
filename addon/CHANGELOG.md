@@ -3,6 +3,12 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.4
+
+- Library updates (go-fabric 0.15.2, go-fabric-ui 0.2.6). The status page shows
+  the node's surface policies: specification level, controller profiles and
+  enabled extensions.
+
 ## 0.4.3
 
 - Library updates (go-fabric 0.15.1, go-fabric-ui 0.2.5). The selection
