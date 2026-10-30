@@ -9,12 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"sort"
 
 	"github.com/SukramJ/go-fabric/contract"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/node"
+	"github.com/SukramJ/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -92,10 +94,53 @@ type declared struct {
 	Error    string  `json:"error,omitempty"`
 }
 
+// withheldDevice is one entry of declare's withheld list: a declared
+// device the node's specification level withholds.
+type withheldDevice struct {
+	Key        string `json:"key"`
+	DeviceType string `json:"device_type"`
+	SpecLevel  string `json:"spec_level"`
+}
+
+// add adds b's device in bt. A device the specification level withheld
+// is recorded by the node (node.Aggregator.Add), serves nothing and is no
+// error: it is logged once as a warning, as go-fabric's reference daemon
+// does (examples/reference-bridge/surface.go addAll).
+func (s *Server) add(bt *node.Batch, b *bridged) error {
+	err := bt.Add(b.dev)
+	var w *surface.WithheldError
+	if !errors.As(err, &w) {
+		return err
+	}
+	b.withheld = w
+	s.log.Warn("fabricserver.bridge.withheld", slog.String("key", w.Endpoint),
+		slog.String("device_type", b.typeName), slog.String("spec_level", string(w.Report.Level)))
+	return nil
+}
+
+// replace puts b's device in the place of prev's. A withheld device holds
+// no place in the Aggregator (node Batch.Add records it without adding
+// it), so when either is withheld the new device is added (recorded, if
+// withheld) and a served prev removed after it — Remove, not Forget: the
+// key keeps its endpoint number, as Replace keeps it.
+func (s *Server) replace(bt *node.Batch, prev, b *bridged) error {
+	if prev.withheld == nil && b.withheld == nil {
+		return bt.Replace(device.StringKey(b.key), b.dev)
+	}
+	if prev.withheld != nil {
+		return s.add(bt, b)
+	}
+	if err := s.add(bt, b); err != nil {
+		return err
+	}
+	return bt.Remove(device.StringKey(b.key))
+}
+
 // cmdDeclare applies the declaration document as one Aggregator.Batch: a
 // new key is added, a changed device replaced, an unchanged one left as it
 // is, a key the document no longer names removed and its endpoint number
-// forgotten (Batch.Forget).
+// forgotten (Batch.Forget). A device the specification level withholds is
+// declared like any other and named in the answer's withheld list.
 func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	n := s.node.Load()
 	devs, err := s.decodeDeclaration(ctx, c.req.Args)
@@ -120,12 +165,12 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 				results[i].Action = "unchanged"
 			case ok:
 				results[i].Action = "replaced"
-				if err := bt.Replace(device.StringKey(b.key), b.dev); err != nil {
+				if err := s.replace(bt, prev, b); err != nil {
 					results[i].Error = err.Error()
 				}
 			default:
 				results[i].Action = "added"
-				if err := bt.Add(b.dev); err != nil {
+				if err := s.add(bt, b); err != nil {
 					results[i].Error = err.Error()
 				}
 			}
@@ -173,6 +218,12 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 		delete(s.devices, key)
 	}
 	s.order = order
+	var withheld []withheldDevice
+	for _, key := range order {
+		if w := s.devices[key].withheld; w != nil {
+			withheld = append(withheld, withheldDevice{Key: key, DeviceType: s.devices[key].typeName, SpecLevel: string(w.Report.Level)})
+		}
+	}
 	s.mu.Unlock()
 	sort.Strings(removed)
 	if batchErr != nil {
@@ -181,7 +232,11 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 	if removed == nil {
 		removed = []string{}
 	}
-	return map[string]any{"devices": results, "removed": removed}, nil
+	out := map[string]any{"devices": results, "removed": removed}
+	if withheld != nil {
+		out["withheld"] = withheld
+	}
+	return out, nil
 }
 
 // device is the declared device with key.

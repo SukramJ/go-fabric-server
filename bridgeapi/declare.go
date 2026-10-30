@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/SukramJ/go-fabric/device"
+	"github.com/SukramJ/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
@@ -27,6 +28,10 @@ type bridged struct {
 	canon string
 	// declared are the clusters the declaration names, by id.
 	declared map[uint32]bool
+	// withheld is set when the node's specification level does not know
+	// the device's type or a cluster it mandates (device.New returned the
+	// device with it): the device serves nothing, the node records it.
+	withheld *surface.WithheldError
 	unsub    []func()
 }
 
@@ -74,7 +79,8 @@ func strict(raw json.RawMessage, path string, dst any) error {
 // kit, nothing applied yet. A malformed document is an error naming the
 // path; the kit's refusal of a device (device.New) is returned with the
 // kit's message, a refusal by the node's surface policies with how the
-// operator lifts it (surfaceHint).
+// operator lifts it (surfaceHint). A device the specification level
+// withholds is no refusal: it is kept, marked withheld (buildDevice).
 func (s *Server) decodeDeclaration(ctx context.Context, raw json.RawMessage) ([]*bridged, error) {
 	var doc struct {
 		Devices []json.RawMessage `json:"devices"`
@@ -156,7 +162,17 @@ func (s *Server) buildDevice(ctx context.Context, raw json.RawMessage, path stri
 		Surface: &policies,
 	}
 	dev, err := device.New(typ, opts, decls...)
-	if err != nil {
+	// A device the specification level withholds runs on: device.New
+	// returns it with its *surface.WithheldError, it serves nothing and
+	// node.Aggregator.Add records it (go-fabric ADR 0030 decision 3, "a
+	// node never dies of an operator choice"). Mirrors go-fabric's
+	// reference daemon, examples/reference-bridge/surface.go withheldOr.
+	var w *surface.WithheldError
+	switch {
+	case err == nil:
+	case errors.Is(err, surface.ErrWithheld) && dev != nil && errors.As(err, &w):
+		b.withheld = w
+	default:
 		return nil, fmt.Errorf("%s (%s): %w%s", path, d.Key, err, s.surfaceHint(err))
 	}
 	if d.Reachable != nil {

@@ -64,7 +64,7 @@ exactly; send ids as integer literals, never in exponent form.
 | 4 | NodeNotResolving | a node not reached (timeout, network failure) |
 | 5 | NodeNotExists | a `node_id` the controller does not hold |
 | 7 | SDKStackError | `read_attribute` without any value |
-| 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form; on `/bridge`, a declaration the kit or the node's surface policies refuse (an ahead-of-matter.js feature not enabled, naming the register IDs and `--bridge-extensions`; a device type the specification level withholds) |
+| 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form; on `/bridge`, a declaration the kit or the node's surface policies refuse (an ahead-of-matter.js feature not enabled, naming the register IDs and `--bridge-extensions`) — a device type the specification level withholds is no refusal, `declare` names it in `withheld` |
 | 9 | InvalidCommand | an unknown or not yet implemented command |
 | 6, 10, 11, 100-103 | VersionMismatch, UpdateCheckError, UpdateError, IcdMultiAdmin, OtaUploadError, Camera… | defined, not raised yet |
 | 200 | BridgeClientConnected | `/bridge` only: a second bridge client (our own code) |
@@ -278,7 +278,7 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
 | --- | --- | --- |
 | `server_info` | — | the `server_info` object |
 | `start_listening` | — | `{devices: [{key, type, endpoint, reachable, clusters: {<Cluster>: <state>}}]}`, then events |
-| `declare` | the declaration document (below) | `{devices: [{key, action, endpoint, error?}], removed: [key]}` |
+| `declare` | the declaration document (below) | `{devices: [{key, action, endpoint, error?}], removed: [key], withheld?: [{key, device_type, spec_level}]}` |
 | `set` | `{device, cluster, patch}` | `{}` |
 | `host` | `{device, name?, device_address?, channel_address?, reachable?, label?}` | `{}` |
 | `remove` | `{device}` | `{}` |
@@ -339,13 +339,32 @@ Names, not ids; every name is matched without regard to case:
   (`surface.ErrExtensionNotEnabled`) gains `; the node does not enable
   <ids>: enable them with --bridge-extensions <value> (go-fabric
   notes/parity/by_design.md, Ahead-of-matter.js register)`, where
-  `<value>` is the enabled IDs and the refused ones; a device whose type
-  or mandated cluster the node's specification level does not know
-  (`surface.ErrWithheld`) gains
-  `; the node composes at specification level <level>
-  (--bridge-spec-level), which withholds endpoint "<key>"`. The policies
-  are the operator's (operations, §Surface policies); a declaration
-  cannot change them.
+  `<value>` is the enabled IDs and the refused ones. The policies are the
+  operator's (operations, §Surface policies); a declaration cannot change
+  them.
+- A device whose type or mandated cluster the node's specification level
+  (`--bridge-spec-level`) does not know is **withheld**, not refused: a
+  node never dies of an operator choice (go-fabric ADR 0030 decision 3,
+  mirrored from its reference daemon, `examples/reference-bridge/surface.go`
+  `withheldOr`, `addAll`). The device is declared like any other key —
+  its entry in `devices` has its `action`, no `endpoint` and no `error` —
+  but serves nothing: the node records it as withheld (go-fabric
+  `node.Aggregator.Add`), `node_info` does not list it, `start_listening`
+  lists it without `endpoint` and with no clusters, and the `surface`
+  report names its withheld elements. The answer's `withheld` lists every
+  declared device the level withholds, `{key, device_type, spec_level}`
+  (`device_type` the declared type's name, `spec_level` the level the
+  node composes at); it is absent when there is none. The daemon logs
+  each withheld device once, when it is added, as the warning
+  `fabricserver.bridge.withheld` (`key`, `device_type`, `spec_level`).
+  `remove`, `forget` and a re-`declare` treat a withheld key as any
+  other: declared again as a type the level knows, it gets its endpoint;
+  a served key declared as a withheld type leaves the node and keeps its
+  endpoint number, as a replaced device does. At go-fabric v0.15.3 the
+  node's surface report keeps listing a removed withheld key's elements
+  until the key is declared again as a type the level knows or the
+  daemon restarts (go-fabric `node/surface.go` `recordWithheld` clears
+  its in-memory record only when the key is added again served).
 - `GET /schema/declaration` serves the JSON Schema of the document
   (`protocol/schema/declaration.schema.json`, generated from go-fabric's
   snapshot and its typed cluster packages): `$defs/patch.<Cluster>` is a

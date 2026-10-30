@@ -82,8 +82,11 @@ the bridge node's `node.Config.Surface`. Three flags set them:
 - `--bridge-spec-level` composes at an earlier specification level: the
   optional surface the level does not know is removed, what the pin
   mandates is kept, and a device whose type or mandated cluster the level
-  does not know is refused with `InvalidArguments` naming the level and
-  the endpoint.
+  does not know is withheld: the declaration succeeds, the device serves
+  no endpoint, `declare`'s answer names it in `withheld` with the level,
+  the log has one `fabricserver.bridge.withheld` warning for it, and the
+  `surface` report lists its withheld elements. The node runs on with
+  the devices the level knows.
 - `--bridge-profile` selects controller profiles: each removes what a
   Reproduced row of go-fabric's profile register names (a mandatory
   element is kept) and records a warning for every other row

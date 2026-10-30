@@ -73,10 +73,21 @@ type Declared struct {
 	Error    string  `json:"error"`
 }
 
-// DeclareResult is declare's answer.
+// WithheldDevice is a declared device the bridge node's specification
+// level withholds: it is declared, serves no endpoint, and the node's
+// surface report lists it as withheld.
+type WithheldDevice struct {
+	Key        string `json:"key"`
+	DeviceType string `json:"device_type"`
+	SpecLevel  string `json:"spec_level"`
+}
+
+// DeclareResult is declare's answer. Withheld is empty when the
+// specification level withholds no declared device.
 type DeclareResult struct {
-	Devices []Declared `json:"devices"`
-	Removed []string   `json:"removed"`
+	Devices  []Declared       `json:"devices"`
+	Removed  []string         `json:"removed"`
+	Withheld []WithheldDevice `json:"withheld"`
 }
 
 // Declare sends the declaration document (an object with "devices").
