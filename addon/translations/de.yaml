@@ -1,0 +1,52 @@
+# Deutsche Beschriftungen der Add-on-Optionen.
+#
+# Die Konfigurationsseite darf lokalisiert sein; die Schlüssel müssen exakt
+# den `options` und dem `schema` in config.yaml entsprechen. Die Bedeutung
+# der Optionen: DOCS.md und docs/addon.md.
+configuration:
+  port:
+    name: API-Port
+    description: >-
+      Der Port der WebSocket-API auf Loopback, ws://localhost:<port>/ws.
+      5580 ist auch der Port des offiziellen Matter-Server-Add-ons, daher
+      läuft nur eines von beiden.
+  log_level:
+    name: Log-Stufe
+    description: critical, error, warning, notice, info oder debug.
+  enable_test_net_dcl:
+    name: Test-Zertifikatswurzeln vertrauen
+    description: >-
+      Zusätzlich den CSA-Testwurzeln vertrauen, für Geräte mit
+      Testzertifikaten (Entwicklungskits, nicht zertifizierte Geräte).
+  bridge:
+    name: Bridge-Hälfte
+    description: >-
+      Zusätzlich die Bridge-Hälfte (/bridge) mit eigenem Matter-Knoten
+      betreiben, für Hosts, die diesem Server Geräte deklarieren.
+  bridge_port:
+    name: Port des Bridge-Knotens
+    description: Der Matter-Port des Bridge-Knotens.
+  bluetooth_proxies:
+    name: ESPHome-Bluetooth-Proxys
+    description: >-
+      Proxys, über die Bluetooth-Geräte in Betrieb genommen werden, je
+      Zeile host[:port][,key] mit dem base64-API-Verschlüsselungsschlüssel
+      des Proxys nach dem Komma, z. B. proxy-buero.local,<key>. Der Host
+      braucht keinen Bluetooth-Adapter.
+  surface_extensions:
+    name: Erweiterungen des Bridge-Knotens
+    description: >-
+      Funktionen, die go-fabric vor matter.js implementiert und die der
+      Bridge-Knoten anbietet, als Register-ID (z. B.
+      BD-chip-Thermostat-Schedules). Eine Deklaration, die eine hier nicht
+      gelistete Funktion wählt, wird mit Nennung der ID abgewiesen.
+  surface_level:
+    name: Spezifikationsstand des Bridge-Knotens
+    description: >-
+      Der Matter-Spezifikationsstand, auf dem der Bridge-Knoten
+      zusammengesetzt wird, z. B. 1.4.2. Leer ist go-fabrics eigener Stand.
+  surface_profiles:
+    name: Controller-Profile des Bridge-Knotens
+    description: >-
+      Controller-Profile, für die der Bridge-Knoten zusammengesetzt wird,
+      z. B. apple-home.

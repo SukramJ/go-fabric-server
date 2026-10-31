@@ -1,0 +1,54 @@
+# Home Assistant add-on option labels.
+#
+# Without this file the configuration page shows the raw option keys —
+# "enable_test_net_dcl" rather than "Trust the test certificate roots". The
+# Supervisor reads it automatically; the keys here must match config.yaml's
+# `options` and `schema` exactly. The meaning of each option: DOCS.md and
+# docs/addon.md.
+configuration:
+  port:
+    name: API port
+    description: >-
+      The port of the WebSocket API on loopback, ws://localhost:<port>/ws.
+      5580 is also the official Matter Server add-on's, so only one of the
+      two runs.
+  log_level:
+    name: Log level
+    description: critical, error, warning, notice, info or debug.
+  enable_test_net_dcl:
+    name: Trust the test certificate roots
+    description: >-
+      Also trust the CSA test roots, for devices with test certificates
+      (development kits, uncertified devices).
+  bridge:
+    name: Bridge half
+    description: >-
+      Also run the bridge half (/bridge) with its own Matter node, for hosts
+      that declare devices to this server.
+  bridge_port:
+    name: Bridge node port
+    description: The Matter port of the bridge node.
+  bluetooth_proxies:
+    name: ESPHome Bluetooth proxies
+    description: >-
+      Proxies to commission Bluetooth devices through, one per line as
+      host[:port][,key] with the proxy's base64 API encryption key after the
+      comma, for example proxy-office.local,<key>. The host needs no
+      Bluetooth adapter.
+  surface_extensions:
+    name: Bridge node extensions
+    description: >-
+      Features go-fabric implements ahead of matter.js that the bridge node
+      serves, by register ID (for example BD-chip-Thermostat-Schedules). A
+      declaration that selects a feature not listed here is refused and
+      names the ID.
+  surface_level:
+    name: Bridge node specification level
+    description: >-
+      The Matter specification level the bridge node composes at, for
+      example 1.4.2. Empty is go-fabric's own level.
+  surface_profiles:
+    name: Bridge node controller profiles
+    description: >-
+      Controller profiles the bridge node composes for, for example
+      apple-home.
