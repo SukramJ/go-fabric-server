@@ -4,7 +4,7 @@
 # (ghcr.io/sukramj/go-fabric-server-addon-{arch}); `make version-check` and
 # the release workflow refuse a tag where they differ.
 name: go-fabric-server
-version: "0.4.6"
+version: "0.4.7"
 slug: go_fabric_server
 description: >-
   A Matter controller server for Home Assistant's Matter integration, on
