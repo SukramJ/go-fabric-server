@@ -11,23 +11,30 @@ import (
 	"time"
 )
 
-// Backpressure defaults — matterjs-server's WebSocketConnection
-// (packages/ws-controller/src/server/WebSocketConnection.ts:55-59):
-// DEFAULT_HIGH_WATER 1 MiB, DEFAULT_HIGH_WATER_CEILING 50 MiB,
-// DEFAULT_CAP_BASE 1000, DEFAULT_CAP_PER_NODE 20, DEFAULT_WATCHDOG 5 min.
+// Backpressure and keepalive defaults — matterjs-server's
+// WebSocketConnection (packages/ws-controller/src/server/WebSocketConnection.ts:64-71
+// at 0bd06f22): DEFAULT_HIGH_WATER 1 MiB, DEFAULT_HIGH_WATER_CEILING 50 MiB,
+// DEFAULT_CAP_BASE 1000, DEFAULT_CAP_PER_NODE 20, DEFAULT_WATCHDOG 5 min,
+// DEFAULT_KEEPALIVE 30 s, MAX_UNANSWERED_PINGS 3.
 const (
 	DefaultHighWater        = 1 << 20
 	DefaultHighWaterCeiling = 50 << 20
 	DefaultCapBase          = 1000
 	DefaultCapPerNode       = 20
 	DefaultWatchdog         = 5 * time.Minute
+	DefaultKeepalive        = 30 * time.Second
+	// MaxUnansweredPings is the number of keepalive pings in a row a peer
+	// may leave without a pong or a message before it is terminated.
+	MaxUnansweredPings = 3
 )
 
 // Socket is the outgoing half of one WebSocket. Write blocks until the
-// frame is written or ctx ends; Abort tears the connection down without a
-// closing handshake (a half-open peer may never complete one).
+// frame is written or ctx ends; Ping sends a ping and blocks until the pong
+// arrived or ctx ends; Abort tears the connection down without a closing
+// handshake (a half-open peer may never complete one).
 type Socket interface {
 	Write(ctx context.Context, frame []byte) error
+	Ping(ctx context.Context) error
 	Abort(reason string)
 }
 
@@ -48,7 +55,8 @@ const (
 	// MetricDropped counts frames dropped under backpressure.
 	MetricDropped = "ws.dropped"
 	// MetricClosedOverflow counts connections closed by the send path: more
-	// undroppable frames waiting than the cap, or a stalled send.
+	// undroppable frames waiting than the cap, a stalled send, or
+	// MaxUnansweredPings keepalive pings without a pong or a message.
 	MetricClosedOverflow = "ws.closed_overflow"
 )
 
@@ -105,6 +113,14 @@ type ConnOptions struct {
 	// Watchdog closes the connection when an in-flight write makes no
 	// progress for this long.
 	Watchdog time.Duration
+	// Keepalive is the interval between pings. Proxies on the path (a
+	// remote access relay, an ingress) close connections that carry no
+	// traffic, and browsers never ping on their own. A peer that leaves
+	// MaxUnansweredPings pings in a row without a pong or a message
+	// ([Conn.Received]) is terminated; a ping sent in queued mode resets the
+	// count, because pongs wait behind the backlog
+	// (WebSocketConnection.ts:44-50).
+	Keepalive time.Duration
 	// Meter receives the gauges and counters.
 	Meter *Meter
 	// Logger receives the mode changes; nil discards.
@@ -126,7 +142,7 @@ type outEntry struct {
 }
 
 // Conn is the per-connection send path — matterjs-server's
-// WebSocketConnection (WebSocketConnection.ts:60-310) translated. In direct
+// WebSocketConnection (WebSocketConnection.ts:88-349) translated. In direct
 // mode a frame goes to the socket at once, in emit order. When the bytes
 // in flight (handed to the socket, not yet written: the Go form of
 // ws.bufferedAmount) pass the high-water mark, the connection queues:
@@ -138,7 +154,9 @@ type outEntry struct {
 // the cap close the connection, as does an in-flight write without
 // progress for the watchdog interval. Reliable frames (responses,
 // server_info, server_shutdown) always go to the socket at once. When the
-// outbox and the socket drain, the connection returns to direct mode.
+// outbox and the socket drain, the connection returns to direct mode. A
+// periodic ping keeps idle connections open through proxies and terminates
+// a peer that stopped answering (#onKeepalive).
 type Conn struct {
 	sock Socket
 	opts ConnOptions
@@ -156,6 +174,7 @@ type Conn struct {
 	seq           uint64
 	disposed      bool
 	capWarned     bool
+	unanswered    int // keepalive pings since the last pong or message
 	watchdog      *time.Timer
 	wake          chan struct{}
 	done          chan struct{}
@@ -181,6 +200,9 @@ func NewConn(sock Socket, opts ConnOptions) *Conn {
 	if opts.Watchdog <= 0 {
 		opts.Watchdog = DefaultWatchdog
 	}
+	if opts.Keepalive <= 0 {
+		opts.Keepalive = DefaultKeepalive
+	}
 	log := opts.Logger
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
@@ -196,6 +218,7 @@ func NewConn(sock Socket, opts ConnOptions) *Conn {
 	}
 	opts.Meter.add(1, 0)
 	go c.writer()
+	go c.keepaliver()
 	return c
 }
 
@@ -214,6 +237,14 @@ func (c *Conn) OutboxLen() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return len(c.outbox)
+}
+
+// Received marks the peer alive: the reader calls it for every message, as
+// a pong does (WebSocketConnection.ts:134-136, ws.on("message")).
+func (c *Conn) Received() {
+	c.mu.Lock()
+	c.unanswered = 0
+	c.mu.Unlock()
 }
 
 // SendReliable sends a frame that is never queued or dropped: a response,
@@ -430,6 +461,56 @@ func (c *Conn) onWatchdog() {
 		return
 	}
 	c.terminateLocked("outbound send stalled beyond watchdog")
+}
+
+// keepaliver pings the peer every Keepalive interval until the send path
+// ends (WebSocketConnection.ts:127-136; #onKeepalive :328-339).
+func (c *Conn) keepaliver() {
+	t := time.NewTicker(c.opts.Keepalive)
+	defer t.Stop()
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-t.C:
+			c.onKeepalive(c.ctx)
+		}
+	}
+}
+
+// onKeepalive is one tick: in queued mode the count resets (pongs wait
+// behind the backlog); else MaxUnansweredPings unanswered pings terminate
+// the connection, and otherwise the count grows. A ping goes out in every
+// other case; its pong resets the count. The wait for the pong is bounded,
+// so a pong that never comes leaves no goroutine behind.
+func (c *Conn) onKeepalive(ctx context.Context) {
+	c.mu.Lock()
+	if c.disposed {
+		c.mu.Unlock()
+		return
+	}
+	switch {
+	case c.queued:
+		c.unanswered = 0
+	case c.unanswered >= MaxUnansweredPings:
+		c.terminateLocked("no pong or message for " + strconv.Itoa(MaxUnansweredPings) + " keepalive pings")
+		c.mu.Unlock()
+		return
+	default:
+		c.unanswered++
+	}
+	c.mu.Unlock()
+	go c.ping(ctx)
+}
+
+// ping sends one ping and marks the peer alive when the pong arrives
+// within MaxUnansweredPings intervals.
+func (c *Conn) ping(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(MaxUnansweredPings)*c.opts.Keepalive)
+	defer cancel()
+	if c.sock.Ping(ctx) == nil {
+		c.Received()
+	}
 }
 
 func (c *Conn) terminateLocked(reason string) {

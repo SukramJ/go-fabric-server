@@ -63,7 +63,7 @@ func TestICDCommands(t *testing.T) {
 	}
 	ctx := e.ctx
 	// A node without ICD Management: not supported, not an error
-	// (ControllerCommandHandler.ts:2575-2588).
+	// (ControllerCommandHandler.ts:2581-2594).
 	var st icdState
 	if err := e.client.Call(ctx, "get_icd_state", map[string]any{"node_id": light.NodeID}, &st); err != nil || st.Supported || st.OperatingMode != nil {
 		t.Fatalf("the light: %+v %v", st, err)

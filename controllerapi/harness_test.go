@@ -16,7 +16,6 @@ import (
 	"github.com/SukramJ/go-fabric/clock"
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
 	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
@@ -44,9 +43,6 @@ type envOptions struct {
 	token  string
 	// noDial skips the client connection.
 	noDial bool
-	// rejectAttestation keeps the server's default policy, which rejects
-	// the site device's test certificate.
-	rejectAttestation bool
 	// configure edits the controller's configuration.
 	configure func(*controller.Config)
 }
@@ -78,11 +74,9 @@ func newEnv(t *testing.T, o envOptions) *env {
 	if o.server.Logger == nil {
 		o.server.Logger = logger()
 	}
-	// The site's devices carry test certificates: accept their findings
-	// unless the test checks the rejection.
-	if !o.rejectAttestation {
-		o.server.Attestation = attestation.Accept()
-	}
+	// The site's devices carry test certificates, which the site's trust
+	// store accepts; their test Certification Declaration is an info
+	// finding the server's policy proceeds on.
 	if o.server.StoragePath == "" {
 		o.server.StoragePath = t.TempDir()
 	}

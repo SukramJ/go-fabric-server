@@ -19,7 +19,6 @@ import (
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
 	"github.com/SukramJ/go-fabric/clock"
 	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
@@ -71,9 +70,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	api, err := controllerapi.New(controllerapi.Options{
 		Version: "test", GoFabricVersion: "v-test", StoragePath: t.TempDir(), Logger: log,
 		DefaultFabricLabel: c.DefaultFabricLabel,
-		// The site's device carries go-fabric's test attestation.
-		Attestation: attestation.Accept(),
-		BLE:         bleCentral,
+		BLE:                bleCentral,
 	})
 	if err != nil {
 		t.Fatal(err)

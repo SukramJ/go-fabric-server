@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0
+     Copyright (C) 2026 SukramJ.
+
+     The add-on icon: the server (two units with their indicator lights)
+     at one end of the fabric, go-fabric-ui's three threads and node (its
+     favicon) at the other, as go-ha2fabric's icon shows the home. No
+     Connectivity Standards Alliance mark is used.
+     Render: rsvg-convert -w 256 -h 256 addon/icon.svg -o addon/icon.png -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2cb6a3"/>
+      <stop offset="1" stop-color="#0e7f73"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <rect x="2" y="2" width="252" height="252" rx="54" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+  <!-- the server: two units, each with its light -->
+  <g fill="#ffffff">
+    <rect x="30" y="84" width="74" height="30" rx="9"/>
+    <rect x="30" y="128" width="74" height="30" rx="9"/>
+  </g>
+  <g fill="#0e7f73">
+    <circle cx="48" cy="99" r="6"/>
+    <circle cx="48" cy="143" r="6"/>
+  </g>
+  <!-- the three threads -->
+  <g stroke="#ffffff" stroke-width="14" stroke-linecap="round" fill="none">
+    <path d="M124 104h96"/>
+    <path d="M116 136h104"/>
+    <path d="M124 168h96"/>
+  </g>
+  <!-- the node on the fabric -->
+  <circle cx="184" cy="136" r="22" fill="#ffffff"/>
+  <circle cx="184" cy="136" r="9" fill="#0e7f73"/>
+</svg>

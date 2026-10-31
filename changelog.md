@@ -6,6 +6,46 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The add-on icon and logo (`addon/icon.svg`, `addon/logo.svg`, rendered to
+  `icon.png` and `logo.png` with rsvg-convert): the server and the fabric's
+  three threads with their node, go-fabric-ui's motif as go-ha2fabric's
+  icon uses it. No Connectivity Standards Alliance mark.
+- Option labels for the add-on's configuration page in English and German
+  (`addon/translations/en.yaml`, `de.yaml`): the page shows "API port" and
+  "Bridge node extensions" rather than the raw keys.
+
+### Fixed
+
+- `/ws` and `/bridge` ping every client every 30 seconds, so proxies and
+  remote access relays no longer close idle connections; a client that
+  answers neither a ping nor sends a message for three pings in a row is
+  disconnected, a ping sent while the connection queues does not count
+  (matterjs-server #1217, `WebSocketConnection.ts` at `0bd06f22`). The
+  closes count in `ws.closed_overflow`.
+- `set_default_fabric_label` with the label the server already holds, as
+  Home Assistant sends on every connect, no longer pushes the label to
+  every node again (matterjs-server #1227).
+- A device with a test Certification Declaration, such as a go-ha2fabric
+  bridge or a development kit, is commissioned again: the attestation
+  policy is now matterjs-server's (`ControllerCommandHandler.ts:305-314`,
+  `:2041-2052`), which refuses a test certificate the trust store does not
+  accept (with the hint to enable `--enable-test-net-dcl`, the add-on's
+  `enable_test_net_dcl`) and any error-level finding, and proceeds on info
+  and warning findings. Before, go-fabric's `Reject` policy refused every
+  finding, the test Certification Declaration included, so such a device
+  failed with "Device attestation produced 1 finding(s) and was rejected by
+  policy" even with the test roots trusted. Report S3's decision D4 was
+  wrong about matterjs-server.
+
+### Changed
+
+- The matterjs-server pin of the `/ws` contract: `a7922e85` (1.5.5) →
+  `0bd06f22` (1.5.6-alpha.0-20261031-362f4cc). The API documentation is
+  unchanged between the two; the line citations into
+  `ControllerCommandHandler.ts` follow the two insertions of #1227.
+
 ## [0.4.6] - 2026-10-30
 
 Dependency release: go-fabric `v0.15.4`, go-fabric-ui `v0.2.8`.

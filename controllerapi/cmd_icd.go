@@ -16,8 +16,8 @@ import (
 
 // The four ICD commands run on go-fabric's ICD client
 // (controller/client.ICDClient, v0.12.0, after matter.js IcdClient.ts) —
-// matterjs-server's ControllerCommandHandler.ts:2426-2602 and
-// WebSocketControllerHandler.ts:2112-2150 at a7922e85.
+// matterjs-server's ControllerCommandHandler.ts:2432-2608 and
+// WebSocketControllerHandler.ts:2112-2150 at 0bd06f22.
 
 var (
 	icdManagement     = schema.ClusterByName("IcdManagement")
@@ -45,7 +45,7 @@ func (s *Server) icdNode(command string, id *protocol.Uint64) (*client.Node, uin
 	return s.node(command, id)
 }
 
-// icdStateOf is getIcdState (ControllerCommandHandler.ts:2575-2600): a
+// icdStateOf is getIcdState (ControllerCommandHandler.ts:2581-2606): a
 // node without ICD Management is not supported, not an error; the
 // operating mode is the node's OperatingMode from the cache, LIT or SIT.
 func (s *Server) icdStateOf(n *client.Node) icdState {
@@ -180,7 +180,7 @@ func cmdUnregisterICD(ctx context.Context, s *Server, c *call) (any, *protocol.E
 
 // cmdResyncICD forgets the local registration and re-establishes the
 // server's subscription, so a LIT peer registers again
-// (ControllerCommandHandler.ts:2452-2477); with the subscription off it
+// (ControllerCommandHandler.ts:2458-2483); with the subscription off it
 // only forgets.
 func cmdResyncICD(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a nodeArg
