@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-10-31
+
 ### Added
 
 - The add-on icon and logo (`addon/icon.svg`, `addon/logo.svg`, rendered to

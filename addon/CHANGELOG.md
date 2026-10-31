@@ -3,6 +3,21 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.7
+
+- Pairing a device with a test Certification Declaration, such as a
+  go-ha2fabric bridge, works again: the attestation policy is now
+  matterjs-server's, which refuses only an untrusted test certificate
+  (naming the `enable_test_net_dcl` option) or an error-level finding.
+- The server pings every client every 30 seconds, so proxies and remote
+  access relays no longer close idle connections.
+- Setting the fabric label to the value it already has, as Home Assistant
+  does on every connect, no longer sends it to every node again.
+- An icon and a logo, and option labels in English and German on the
+  configuration page.
+- The matterjs-server pin of the API contract moves to 1.5.6-alpha
+  (`0bd06f22`); the API is unchanged.
+
 ## 0.4.6
 
 - Library updates (go-fabric 0.15.4, go-fabric-ui 0.2.8). The Surface tab
