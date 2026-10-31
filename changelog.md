@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The add-on icon and logo (`addon/icon.svg`, `addon/logo.svg`, rendered to
+  `icon.png` and `logo.png` with rsvg-convert): the server and the fabric's
+  three threads with their node, go-fabric-ui's motif as go-ha2fabric's
+  icon uses it. No Connectivity Standards Alliance mark.
+- Option labels for the add-on's configuration page in English and German
+  (`addon/translations/en.yaml`, `de.yaml`): the page shows "API port" and
+  "Bridge node extensions" rather than the raw keys.
 ### Fixed
 
 - `/ws` and `/bridge` ping every client every 30 seconds, so proxies and
