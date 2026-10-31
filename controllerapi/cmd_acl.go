@@ -33,7 +33,7 @@ type listWriteResult struct {
 // writeList writes a whole list attribute, named by cluster and attribute
 // name, in one write, and answers matterjs-server's one-entry result with
 // the status the node answered
-// (ControllerCommandHandler.ts:2655-2667, :2690-2696; #writeAttribute
+// (ControllerCommandHandler.ts:2661-2673, :2696-2702; #writeAttribute
 // :1515-1545 returns the first status).
 func (s *Server) writeList(ctx context.Context, command string, n *client.Node, ep uint16, cluster, attribute string, entries []map[string]any) (any, *protocol.Error) {
 	cl := schema.ClusterByName(cluster)
@@ -65,7 +65,7 @@ func (s *Server) writeList(ctx context.Context, command string, n *client.Node, 
 // fabricIndexOf is our fabric's index on the node, from its
 // OperationalCredentials CurrentFabricIndex in the node data, as
 // matterjs-server reads it from the node's state
-// (ControllerCommandHandler.ts:2609-2612); false when the data has none,
+// (ControllerCommandHandler.ts:2615-2618); false when the data has none,
 // and the entries then go without one — the node fills a fabric-scoped
 // entry's index with the accessing fabric's.
 func (s *Server) fabricIndexOf(n *client.Node) (uint64, bool) {
@@ -86,7 +86,7 @@ func (s *Server) fabricIndexOf(n *client.Node) (uint64, bool) {
 }
 
 // cmdSetACLEntry replaces our fabric's ACL entries on the node
-// (ControllerCommandHandler.ts:2618-2668): a subject naming the node itself
+// (ControllerCommandHandler.ts:2624-2674): a subject naming the node itself
 // is left out, and an entry left without subjects dropped (a node always
 // has access to itself), and the call still succeeds.
 func cmdSetACLEntry(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
@@ -152,7 +152,7 @@ func cmdSetACLEntry(ctx context.Context, s *Server, c *call) (any, *protocol.Err
 }
 
 // cmdSetNodeBinding replaces our fabric's Binding entries on an endpoint
-// of the node (ControllerCommandHandler.ts:2674-2697); a null member is
+// of the node (ControllerCommandHandler.ts:2680-2703); a null member is
 // left out.
 func cmdSetNodeBinding(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {

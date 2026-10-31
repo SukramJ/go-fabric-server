@@ -8,7 +8,7 @@
 // (bridgeapi, S2) fill the envelope.
 //
 // The envelope is matterjs-server's (the python-matter-server contract,
-// read map §1.1-1.6 at matterjs-server a7922e85): a request is
+// read map §1.1-1.6 at matterjs-server 0bd06f22): a request is
 // {message_id, command, args}, a success {message_id, result}, a failure
 // {message_id, error_code, details, status?, cluster_status?, reason?}, an
 // event {event, data}. The server_info frame a connection receives first

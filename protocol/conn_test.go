@@ -5,7 +5,9 @@ package protocol_test
 
 import (
 	"context"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,12 +15,16 @@ import (
 )
 
 // slowSocket writes only while its gate is open; it records what it wrote.
+// It answers pings only while pongs is set (off by default: the peer is
+// silent), and counts them.
 type slowSocket struct {
 	mu      sync.Mutex
 	gate    chan struct{}
 	written []string
 	aborted chan string
 	open    bool
+	pongs   atomic.Bool
+	pings   atomic.Int64
 }
 
 func newSlowSocket() *slowSocket {
@@ -35,6 +41,15 @@ func (s *slowSocket) Write(ctx context.Context, frame []byte) error {
 	s.written = append(s.written, string(frame))
 	s.mu.Unlock()
 	return nil
+}
+
+func (s *slowSocket) Ping(ctx context.Context) error {
+	s.pings.Add(1)
+	if s.pongs.Load() {
+		return nil
+	}
+	<-ctx.Done()
+	return ctx.Err()
 }
 
 func (s *slowSocket) Abort(reason string) {
@@ -233,4 +248,96 @@ func TestConnFlushAndClose(t *testing.T) {
 	if got := sock.frames(); len(got) != 1 {
 		t.Fatalf("frames after Close: %v", got)
 	}
+}
+
+// A peer that answers neither a ping nor sends a message for
+// MaxUnansweredPings keepalive intervals is terminated, with the reason
+// matterjs-server logs (WebSocketConnection.ts:333).
+func TestConnKeepaliveTerminatesSilentPeer(t *testing.T) {
+	sock := newSlowSocket()
+	sock.release()
+	m := newCountMetrics()
+	c := protocol.NewConn(sock, protocol.ConnOptions{Keepalive: 5 * time.Millisecond, Meter: protocol.NewMeter(m)})
+	select {
+	case r := <-sock.aborted:
+		if !strings.Contains(r, "keepalive") {
+			t.Fatalf("reason %q", r)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a silent peer is terminated")
+	}
+	<-c.Done()
+	if n := sock.pings.Load(); n < protocol.MaxUnansweredPings {
+		t.Fatalf("%d pings before the termination", n)
+	}
+	if m.counter(protocol.MetricClosedOverflow) != 1 {
+		t.Fatal("the termination counts as a close by the send path")
+	}
+}
+
+// A pong, or any message from the peer, resets the count.
+func TestConnKeepaliveAnsweredPeerStays(t *testing.T) {
+	t.Run("pongs", func(t *testing.T) {
+		sock := newSlowSocket()
+		sock.release()
+		sock.pongs.Store(true)
+		c := protocol.NewConn(sock, protocol.ConnOptions{Keepalive: 2 * time.Millisecond})
+		defer c.Close()
+		waitFor(t, "pings", func() bool { return sock.pings.Load() >= 3*protocol.MaxUnansweredPings })
+		select {
+		case r := <-sock.aborted:
+			t.Fatalf("terminated: %s", r)
+		default:
+		}
+	})
+	t.Run("messages", func(t *testing.T) {
+		sock := newSlowSocket()
+		sock.release()
+		c := protocol.NewConn(sock, protocol.ConnOptions{Keepalive: 20 * time.Millisecond})
+		defer c.Close()
+		stop := time.After(150 * time.Millisecond)
+		for done := false; !done; {
+			select {
+			case <-stop:
+				done = true
+			case r := <-sock.aborted:
+				t.Fatalf("terminated while the peer sends: %s", r)
+			case <-time.After(2 * time.Millisecond):
+				c.Received()
+			}
+		}
+		if sock.pings.Load() < 2*protocol.MaxUnansweredPings {
+			t.Fatal("the pings kept going")
+		}
+	})
+}
+
+// In queued mode the pongs wait behind the backlog, so the count resets at
+// every tick; once the connection drained, a silent peer is terminated.
+func TestConnKeepaliveQueuedModeResets(t *testing.T) {
+	sock := newSlowSocket()
+	c := protocol.NewConn(sock, protocol.ConnOptions{Keepalive: 5 * time.Millisecond, HighWater: 8})
+	// The mark ratchets to twice the largest frame, so three frames of ten
+	// bytes pass it.
+	for range 3 {
+		c.SendReliable([]byte("0123456789"))
+	}
+	waitFor(t, "queued mode", c.Queued)
+	waitFor(t, "pings", func() bool { return sock.pings.Load() >= 3*protocol.MaxUnansweredPings })
+	select {
+	case r := <-sock.aborted:
+		t.Fatalf("terminated in queued mode: %s", r)
+	default:
+	}
+	sock.release()
+	waitFor(t, "direct mode", func() bool { return !c.Queued() })
+	select {
+	case r := <-sock.aborted:
+		if !strings.Contains(r, "keepalive") {
+			t.Fatalf("reason %q", r)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("after the drain a silent peer is terminated")
+	}
+	<-c.Done()
 }
