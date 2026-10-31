@@ -72,8 +72,10 @@ type Options struct {
 	// production DCL's vendor records.
 	Vendors VendorSource
 	// Attestation decides a commissioning whose device attestation has
-	// findings; the zero value rejects it (attestation.Reject), as
-	// matterjs-server without its test-net DCL option.
+	// findings; the zero value is matterjs-server's rule (attestationPolicy):
+	// a test certificate the trust store does not accept and any error-level
+	// finding refuse, info and warning findings (a test Certification
+	// Declaration) do not.
 	Attestation attestation.Policy
 	// BLE is the Bluetooth LE central commission_with_code finds a device
 	// on BLE through (--ble-adapter); nil commissions over DNS-SD only.
@@ -138,6 +140,13 @@ func New(opts Options) (*Server, error) {
 	}
 	if opts.Vendors == nil {
 		opts.Vendors = dclVendors()
+	}
+	if opts.Attestation.Decide == nil && opts.Attestation.OnFailure == nil {
+		l := opts.Logger
+		if l == nil {
+			l = slog.New(slog.DiscardHandler)
+		}
+		opts.Attestation = attestationPolicy(l)
 	}
 	log := opts.Logger
 	if log == nil {

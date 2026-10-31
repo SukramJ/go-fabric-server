@@ -15,6 +15,7 @@ All notable changes to this project are documented here. The format follows
 - Option labels for the add-on's configuration page in English and German
   (`addon/translations/en.yaml`, `de.yaml`): the page shows "API port" and
   "Bridge node extensions" rather than the raw keys.
+
 ### Fixed
 
 - `/ws` and `/bridge` ping every client every 30 seconds, so proxies and
@@ -26,6 +27,17 @@ All notable changes to this project are documented here. The format follows
 - `set_default_fabric_label` with the label the server already holds, as
   Home Assistant sends on every connect, no longer pushes the label to
   every node again (matterjs-server #1227).
+- A device with a test Certification Declaration, such as a go-ha2fabric
+  bridge or a development kit, is commissioned again: the attestation
+  policy is now matterjs-server's (`ControllerCommandHandler.ts:305-314`,
+  `:2041-2052`), which refuses a test certificate the trust store does not
+  accept (with the hint to enable `--enable-test-net-dcl`, the add-on's
+  `enable_test_net_dcl`) and any error-level finding, and proceeds on info
+  and warning findings. Before, go-fabric's `Reject` policy refused every
+  finding, the test Certification Declaration included, so such a device
+  failed with "Device attestation produced 1 finding(s) and was rejected by
+  policy" even with the test roots trusted. Report S3's decision D4 was
+  wrong about matterjs-server.
 
 ### Changed
 
