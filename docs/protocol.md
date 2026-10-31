@@ -8,7 +8,7 @@ half at `/bridge`, our own, for a host that declares devices
 ## Compatibility statement
 
 `/ws` is wire-compatible with matterjs-server's WebSocket API at schema 14
-(matterjs-server 1.5.5, commit `a7922e85`), the contract of
+(matterjs-server 1.5.6-alpha.0-20261031-362f4cc, commit `0bd06f22`), the contract of
 python-matter-server that Home Assistant's Matter integration speaks:
 
 - the same envelope, error codes, event names and shapes;
@@ -198,8 +198,12 @@ per node, per path); past the cap (1000, or 20 per node) the oldest
 `node_removed`, `endpoint_added`, `endpoint_removed` and
 `subscription_ended` are never dropped, and more of them than the cap close
 the connection, as does a write without progress for 5 minutes. Responses
-are never queued. Metrics: `ws.connections`, `ws.queued_bytes`,
-`ws.dropped`, `ws.closed_overflow` (expvar, prefix `fabricserver.`).
+are never queued. The server pings every connection every 30 seconds, so
+proxies and remote access relays do not close an idle one; a client that
+answers neither a ping nor sends a message for three pings in a row is
+disconnected (a ping sent while the connection queues does not count).
+Metrics: `ws.connections`, `ws.queued_bytes`, `ws.dropped`,
+`ws.closed_overflow` (expvar, prefix `fabricserver.`).
 
 ## Extensions
 

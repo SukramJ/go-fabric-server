@@ -60,7 +60,7 @@ func nodeError(command string, err error) *protocol.Error {
 
 // commissionError maps a failed commissioning to NodeCommissionFailed with
 // the reason (docs/websockets_api.md:82-90) — matterjs-server's
-// commissionFailureOf (ControllerCommandHandler.ts:305-345 at a7922e85):
+// commissionFailureOf (ControllerCommandHandler.ts:305-345 at 0bd06f22):
 // an attestation the policy rejects is attestation-rejected
 // (commissioner.ErrAttestationRejected, go-fabric v0.12.1), a code the
 // decoder refuses InvalidArguments with invalid-payload.

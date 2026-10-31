@@ -7,7 +7,7 @@
 // speaks), over go-fabric's controller facade.
 //
 // The shapes are the read map's (notes/reads/read-v8-matterjs-server.md,
-// matterjs-server a7922e85): the dispatch table (§1.7), the arguments
+// matterjs-server 0bd06f22): the dispatch table (§1.7), the arguments
 // (§1.8), the results (§1.9), the node data (§2), the events (§1.5-1.6)
 // and the connection model (§3.3-3.7) — server_info on connect, events
 // only after start_listening has answered, the backpressure send path of
@@ -120,6 +120,8 @@ type Server struct {
 	labelOwner *wsConn
 	// labelCancel cancels the label push running (pushLabel).
 	labelCancel context.CancelFunc
+	// labelPushes counts the pushes started (a test seam, export_test.go).
+	labelPushes atomic.Int64
 	// bg are the background pushes Shutdown waits for.
 	bg sync.WaitGroup
 }

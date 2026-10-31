@@ -18,7 +18,7 @@ import (
 // Test nodes are node dumps imported with import_test_node, answered from
 // the server's memory without a network peer — matterjs-server's
 // TestNodeCommandHandler (packages/ws-controller/src/controller/TestNodeCommandHandler.ts
-// at a7922e85). go-fabric's registry has no import route, and a test node
+// at 0bd06f22). go-fabric's registry has no import route, and a test node
 // is not a node of our fabric, so they live here, in memory only, lost on
 // a restart as there.
 

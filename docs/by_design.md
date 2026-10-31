@@ -4,14 +4,14 @@ Each entry is a difference from matterjs-server's wire behaviour (the
 controller half, `/ws`) or a design rule of the bridge half (`/bridge`)
 that a reader could take for a defect. Citations: the read map
 `notes/reads/read-v8-matterjs-server.md` ("map *line*") and the
-matterjs-server clone at `a7922e85` ("clone *file:line*"). A gap that is
+matterjs-server clone at `0bd06f22` ("clone *file:line*"). A gap that is
 not deliberate is a question in a bundle report, not an entry here.
 
 ## Controller half
 
 **B1 — `ping_node` is a Matter read.** Each address of the node is
 answered with the outcome of a Matter read of the node, not of ICMP echoes
-(clone `packages/ws-controller/src/controller/ControllerCommandHandler.ts:2261-2300`;
+(clone `packages/ws-controller/src/controller/ControllerCommandHandler.ts:2267-2306`;
 map 1795-1806): the daemon runs non-root in a distroless image, without the
 raw sockets an echo needs.
 
@@ -61,7 +61,7 @@ matterjs-server merges its static table under the DCL's.
 **B14 — `enable_auto_subscription` persists.** The choice is kept in the
 node's settings across a restart (go-fabric `controller/client/node.go`,
 `SetAutoSubscribe`); matterjs-server keeps it in memory only (clone
-`ControllerCommandHandler.ts:2488-2562`, "not kept across a restart"): the
+`ControllerCommandHandler.ts:2494-2568`, "not kept across a restart"): the
 facade has one switch, and a server that forgets what a client switched
 off would resubscribe a node the client chose to read itself.
 
@@ -74,13 +74,13 @@ join fails at commissioning time otherwise, far from its cause.
 **B16 — `commission_on_network`'s `ip_addr` selects, it does not dial.**
 The server searches DNS-SD for the device of the filter that announces the
 address; matterjs-server commissions at the address first and falls back
-to discovery (clone `ControllerCommandHandler.ts:2052-2095`): go-fabric's
+to discovery (clone `ControllerCommandHandler.ts:2058-2101`): go-fabric's
 registry commissions a discovered device (`Registry.ForDevice`), and the
 facade has no commissioning by bare address.
 
 **B17 — `discover` answers what a device announced.** Absent TXT keys are
 absent; matterjs-server fills them with `""`, `0` or `-1` (clone
-`ControllerCommandHandler.ts:2135-2185`): a default of its own would read
+`ControllerCommandHandler.ts:2141-2191`): a default of its own would read
 as an announced value, and every key of the python client's
 `CommissionableNodeData` has a default (models.py:256-277).
 
@@ -101,7 +101,7 @@ for an address, and an old client ignores the key.
 (a QR code without the BLE capability does) and a stored Wi-Fi or Thread
 credential can put the device on its network; matterjs-server takes BLE
 whenever it is enabled and `network_only` is false (clone
-`ControllerCommandHandler.ts:1965-2115`): go-fabric's BLE route requires a
+`ControllerCommandHandler.ts:1971-2121`): go-fabric's BLE route requires a
 network to provision (`controller.PairOptions.BLE`), and a device already
 on the network is found over DNS-SD.
 

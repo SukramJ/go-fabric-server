@@ -165,7 +165,7 @@ func cmdGetNodeIPAddresses(_ context.Context, s *Server, c *call) (any, *protoco
 }
 
 // cmdPingNode answers {ip: reachable} for each address of the node.
-// matterjs-server sends ICMP echoes (ControllerCommandHandler.ts:2261-2300);
+// matterjs-server sends ICMP echoes (ControllerCommandHandler.ts:2267-2306);
 // a non-root daemon in a distroless image has no raw socket, so each
 // attempt is a Matter read of the node's DataModelRevision instead, and
 // every address carries its outcome (report S1, by_design candidate B3).
@@ -213,7 +213,7 @@ var (
 )
 
 // cmdGetMatterFabrics reads the node's Fabrics unfiltered
-// (ControllerCommandHandler.ts:2382-2410) and answers
+// (ControllerCommandHandler.ts:2388-2416) and answers
 // [{fabric_id, vendor_id, fabric_index, fabric_label}].
 func cmdGetMatterFabrics(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a nodeArg
@@ -295,7 +295,7 @@ type windowData struct {
 // cmdOpenCommissioningWindow opens an enhanced commissioning window on the
 // node (client.Node.OpenCommissioningWindow, go-fabric v0.12.1) for
 // timeout seconds — matterjs-server's #handleOpenCommissioningWindow
-// (WebSocketControllerHandler.ts:2316-2330, ControllerCommandHandler.ts:2364-2379):
+// (WebSocketControllerHandler.ts:2316-2330, ControllerCommandHandler.ts:2370-2385):
 // iteration, option and discriminator are accepted and not used (the
 // window takes a random discriminator and passcode), a timeout that is not
 // a positive number is InvalidArguments, and the answer carries the

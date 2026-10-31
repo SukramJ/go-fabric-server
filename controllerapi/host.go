@@ -156,19 +156,7 @@ func (s *Server) SetFabricLabel(ctx context.Context, label string) error {
 	if s.opts.DefaultFabricLabel != "" {
 		return ErrLabelPinned
 	}
-	if err := s.cfg.setLabel(label); err != nil {
-		return err
-	}
-	label = s.cfg.label()
-	if b := s.b(); b != nil {
-		if f := b.Fabric(); f != nil {
-			if err := f.SetLabel(label); err != nil {
-				return err
-			}
-		}
-	}
-	s.pushLabel(context.WithoutCancel(ctx), label)
-	return nil
+	return s.applyLabel(ctx, label)
 }
 
 // PairOptions is the template of a commissioning outside /ws: the

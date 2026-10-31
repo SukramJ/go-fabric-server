@@ -40,7 +40,7 @@ func discoveryTimeout(command string, raw json.RawMessage) (time.Duration, *prot
 // (controller.ParsePairingCode, matter.js's PairingCodeSchema). A code it
 // refuses is InvalidArguments with reason invalid-payload and the details
 // matterjs-server gives (packages/ws-controller/src/controller/onboardingPayload.ts:40-52
-// at a7922e85: "Invalid pairing code: <message>").
+// at 0bd06f22: "Invalid pairing code: <message>").
 func parseCode(code string) (controller.PairingCode, *protocol.Error) {
 	pc, err := controller.ParsePairingCode(code)
 	if err != nil {
@@ -102,7 +102,7 @@ func (s *Server) bleNetwork(command string, wifiID, threadID *string) (*commissi
 // code does not rule BLE out (a QR code's discovery capabilities without
 // the BLE bit do) and a stored Wi-Fi or Thread credential can put the
 // device on its network — matterjs-server takes BLE whenever it is
-// enabled and network_only is false (ControllerCommandHandler.ts:1965-2115).
+// enabled and network_only is false (ControllerCommandHandler.ts:1971-2121).
 func cmdCommissionWithCode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Code              *string         `json:"code"`
@@ -326,7 +326,7 @@ func nonZero(v uint16) *uint16 {
 }
 
 // discoverWindowList is how long discover listens before it answers:
-// matterjs-server's 3 seconds (ControllerCommandHandler.ts:2135-2185).
+// matterjs-server's 3 seconds (ControllerCommandHandler.ts:2141-2191).
 const discoverWindowList = 3 * time.Second
 
 // cmdDiscover lists the commissionable devices that answer within the

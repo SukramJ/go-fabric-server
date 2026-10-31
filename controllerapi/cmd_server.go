@@ -218,12 +218,15 @@ func isHex(s string) bool {
 // "HomeAssistant"; the argument itself is required,
 // docs/websockets_api.md:2483-2486). The first connection that sets it
 // owns it until it disconnects; a pinned --default-fabric-label ignores
-// every request. The label is stored for the next start and pushed to the
-// fabric and every connected node in the background
+// every request. The label is stored for the next start, set on our
+// fabric, and pushed to every connected node in the background
 // (client.Registry.SetFabricLabel, go-fabric v0.12.1; a node offline gets
 // it at its next connection), as matterjs-server pushes it
-// (ControllerCommandHandler.ts:1559-1626); a newer label cancels the push
-// of an older one, and the answer does not wait for it.
+// (ControllerCommandHandler.ts:1562-1631 at 0bd06f22); a newer label
+// cancels the push of an older one, and the answer does not wait for it.
+// A label the store and the fabric already hold tells no node
+// (matterjs-server #1227, :1565-1567): Home Assistant sends its label on
+// every connect.
 func cmdSetDefaultFabricLabel(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Label *string `json:"label"`
@@ -250,11 +253,46 @@ func cmdSetDefaultFabricLabel(ctx context.Context, s *Server, c *call) (any, *pr
 	if a.Label != nil {
 		label = *a.Label
 	}
-	if err := s.cfg.setLabel(label); err != nil {
+	if err := s.applyLabel(ctx, label); err != nil {
 		return nil, protocol.Errorf(protocol.UnknownError, "%s: %v", c.req.Command, err)
 	}
-	s.pushLabel(context.WithoutCancel(ctx), s.cfg.label())
 	return nil, nil
+}
+
+// applyLabel is the shared half of set_default_fabric_label and
+// [Server.SetFabricLabel]: a label the store and our fabric already hold
+// changes nothing and tells no node; otherwise it is stored, set on the
+// fabric at once (so a repeat during the push is seen as held), and pushed
+// to the connected nodes in the background.
+func (s *Server) applyLabel(ctx context.Context, label string) error {
+	want := normalizeLabel(label)
+	if want == s.cfg.label() && s.fabricHolds(want) {
+		s.log.Debug("fabricserver.label.unchanged", slog.String("label", want))
+		return nil
+	}
+	if err := s.cfg.setLabel(want); err != nil {
+		return err
+	}
+	if b := s.b(); b != nil {
+		if f := b.Fabric(); f != nil {
+			if err := f.SetLabel(want); err != nil {
+				return err
+			}
+		}
+	}
+	s.pushLabel(context.WithoutCancel(ctx), want)
+	return nil
+}
+
+// fabricHolds reports whether our fabric carries label; without a backend
+// or a fabric nothing holds it.
+func (s *Server) fabricHolds(label string) bool {
+	b := s.b()
+	if b == nil {
+		return false
+	}
+	f := b.Fabric()
+	return f != nil && f.CurrentLabel() == label
 }
 
 // labelPushTimeout bounds one background label push.
@@ -267,6 +305,7 @@ func (s *Server) pushLabel(parent context.Context, label string) {
 	if b == nil {
 		return
 	}
+	s.labelPushes.Add(1)
 	ctx, cancel := context.WithTimeout(parent, labelPushTimeout)
 	s.labelMu.Lock()
 	if s.labelCancel != nil {
