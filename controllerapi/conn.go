@@ -59,6 +59,7 @@ func (c *wsConn) run(ctx context.Context) {
 		if err != nil {
 			break
 		}
+		c.send.Received()
 		select {
 		case c.sem <- struct{}{}:
 		case <-ctx.Done():

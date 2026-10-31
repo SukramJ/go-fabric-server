@@ -19,7 +19,7 @@ import (
 // (controller/client json.go, v0.12.1: client.DecodeJSON, client.EncodeJSON,
 // typed by the generated cluster definitions). It renders in
 // matterjs-server's forms (packages/ws-controller/src/server/Converters.ts:430-531
-// at a7922e85): attribute values tag-based (a struct keyed by field id,
+// at 0bd06f22): attribute values tag-based (a struct keyed by field id,
 // members the model does not name left out), command responses and event
 // data name-based (camelCase), bytes base64, enums and bitmaps numbers,
 // epoch times the raw TLV value (report S1, D5), and a value the model does

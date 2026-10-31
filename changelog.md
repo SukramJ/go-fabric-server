@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `/ws` and `/bridge` ping every client every 30 seconds, so proxies and
+  remote access relays no longer close idle connections; a client that
+  answers neither a ping nor sends a message for three pings in a row is
+  disconnected, a ping sent while the connection queues does not count
+  (matterjs-server #1217, `WebSocketConnection.ts` at `0bd06f22`). The
+  closes count in `ws.closed_overflow`.
+- `set_default_fabric_label` with the label the server already holds, as
+  Home Assistant sends on every connect, no longer pushes the label to
+  every node again (matterjs-server #1227).
+
+### Changed
+
+- The matterjs-server pin of the `/ws` contract: `a7922e85` (1.5.5) →
+  `0bd06f22` (1.5.6-alpha.0-20261031-362f4cc). The API documentation is
+  unchanged between the two; the line citations into
+  `ControllerCommandHandler.ts` follow the two insertions of #1227.
+
 ## [0.4.6] - 2026-10-30
 
 Dependency release: go-fabric `v0.15.4`, go-fabric-ui `v0.2.8`.

@@ -92,6 +92,6 @@ go-licenses' classifier does not recognise and only logs.
 
 `protocol/testdata/compat/*.json` are the JSON examples of matterjs-server's
 `docs/websockets_api.md` (<https://github.com/matter-js/matterjs-server>,
-commit `a7922e85`), Copyright 2025-2026 Open Home Foundation, Apache License
+commit `0bd06f22`), Copyright 2025-2026 Open Home Foundation, Apache License
 2.0. They are the wire contract this server is compatible with; the README
 there names their origin.

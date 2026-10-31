@@ -406,7 +406,7 @@ type batchedResult struct {
 // cmdBatchedDeviceCommands invokes several commands on one node in one
 // InvokeRequest, in their order (client.Node.InvokeBatch, go-fabric
 // v0.12.1) — matterjs-server's #handleBatchedDeviceCommands
-// (WebSocketControllerHandler.ts:1821-1883, ControllerCommandHandler.ts:1826-1911):
+// (WebSocketControllerHandler.ts:1821-1883, ControllerCommandHandler.ts:1832-1917):
 // every entry is checked before anything is sent; more commands than the
 // node's MaxPathsPerInvoke are refused, so the batch is never split; one
 // command failing does not fail the others, a failed exchange fails the
@@ -517,7 +517,7 @@ func interactionTimeout(command string, raw *json.Number) (time.Duration, *proto
 // cmdSetAutoSubscription switches the server's own subscription to one
 // node on or off (client.Node.SetAutoSubscribe, go-fabric v0.12.1) — only
 // with --disable-auto-subscription, as matterjs-server
-// (ControllerCommandHandler.ts:2488-2562): enabling ends the node's
+// (ControllerCommandHandler.ts:2494-2568): enabling ends the node's
 // subscriptions opened with subscribe (each gets subscription_ended), and
 // subscribe to the node is refused while it is on. go-fabric persists the
 // choice in the node's settings, matterjs-server does not (report S3,

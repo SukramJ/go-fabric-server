@@ -22,7 +22,7 @@ import (
 
 // get_network_topology builds matterjs-server's NetworkTopology from the
 // node data (packages/ws-controller/src/controller/NetworkTopologyService.ts:304-430
-// and packages/ws-client/src/topology/topology-utils.ts at a7922e85): a
+// and packages/ws-client/src/topology/topology-utils.ts at 0bd06f22): a
 // node per commissioned (and test) node, Thread links from the neighbor
 // tables, unknown Thread neighbours, one pseudo-node per Wi-Fi access
 // point. What matterjs-server adds from a Thread border router registry

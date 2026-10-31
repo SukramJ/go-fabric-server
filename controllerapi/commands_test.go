@@ -272,6 +272,30 @@ func TestServerCommands(t *testing.T) {
 		if l, err := e.client.GetFabricLabel(ctx); err != nil || l != "Home" {
 			t.Fatalf("%q %v", l, err)
 		}
+		// The label the store and the fabric hold is not pushed again
+		// (Home Assistant sets it on every connect); a new one is.
+		pushes := e.api.LabelPushes()
+		if err := e.client.SetDefaultFabricLabel(ctx, "Home"); err != nil {
+			t.Fatal(err)
+		}
+		if n := e.api.LabelPushes(); n != pushes {
+			t.Fatalf("an unchanged label started %d pushes", n-pushes)
+		}
+		if err := e.client.SetDefaultFabricLabel(ctx, " Home "); err != nil {
+			t.Fatal(err)
+		}
+		if n := e.api.LabelPushes(); n != pushes {
+			t.Fatalf("the normalized unchanged label started %d pushes", n-pushes)
+		}
+		if err := e.client.SetDefaultFabricLabel(ctx, "Home2"); err != nil {
+			t.Fatal(err)
+		}
+		if n := e.api.LabelPushes(); n != pushes+1 {
+			t.Fatalf("a new label started %d pushes", n-pushes)
+		}
+		if err := e.client.SetDefaultFabricLabel(ctx, "Home"); err != nil {
+			t.Fatal(err)
+		}
 		// A second connection does not own the label.
 		c2 := e.dial(fsclient.Options{NoListen: true})
 		if err := c2.SetDefaultFabricLabel(ctx, "Other"); err != nil {

@@ -2,7 +2,7 @@
 
 The JSON examples of matterjs-server's `docs/websockets_api.md`
 (<https://github.com/matter-js/matterjs-server>, Apache-2.0, commit
-`a7922e85f4b94a5db94a1dbee1a02c685c2ec71d`, version 1.5.5), one file per
+`0bd06f222a3d51415980022c5f207705de57b8aa`, version 1.5.6-alpha.0-20261031-362f4cc), one file per
 fenced `json` block that parses, named `<command or event>.<kind>.json`
 after the heading above it; `kind` is `request`, `response`, `event` or
 `value` (a bare result). One example is adapted: `node_added.event.json`

@@ -27,6 +27,11 @@ func (s wsSocket) Write(ctx context.Context, frame []byte) error {
 	return s.c.Write(ctx, websocket.MessageText, frame)
 }
 
+// Ping sends a ping and waits for the pong; coder/websocket reads the pong
+// on the connection's reader, which the controller and bridge halves run
+// for the connection's whole life.
+func (s wsSocket) Ping(ctx context.Context) error { return s.c.Ping(ctx) }
+
 func (s wsSocket) Abort(string) { _ = s.c.CloseNow() }
 
 // Listen is a parsed --listen value.
