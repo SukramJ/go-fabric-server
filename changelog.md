@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-11-01
+
+Dependency release: go-fabric `v0.15.6`, go-fabric-ui `v0.2.9`.
+
+- go-fabric `v0.15.4` → `v0.15.6`: the camera's signals to a controller's
+  requestor (`camera.Provider.Offer`, `Answer`, `IceCandidates`, `End`;
+  go-fabric #351) and `camera.ErrPayloadTooLarge` (#356); a port's
+  `contract.StatusError` answers its own status instead of FAILURE through
+  the kit servers (#356); the colour conversions give the same values on
+  arm64 as on amd64 (the add-on's aarch64 image); `bridge.ConnectPeer`; the
+  device-side CASE initiator's address resolution logged at Debug; test and
+  fuzz fixes. `protocol/schema` regenerated from the `v0.15.6` snapshot;
+  nothing composed changes.
+- go-fabric-ui `v0.2.8` → `v0.2.9`: the response schemas of the surface
+  report are open to unknown fields again, so the web UI's client no longer
+  rejects the whole `GET /node/surface` answer when go-fabric adds a field
+  (go-fabric-ui #27); oapi-codegen runtime `v1.8.0`.
+
 ## [0.4.7] - 2026-10-31
 
 ### Added
