@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.9] - 2026-11-01
+
 ### Changed
 
 - The add-on's entry in Home Assistant's sidebar is titled "Fabric" (the
