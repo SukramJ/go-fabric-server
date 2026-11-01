@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The add-on's entry in Home Assistant's sidebar is titled "Fabric" (the
+  manifest's `panel_title`), as the go-*2mqtt add-ons name theirs; the
+  add-on itself keeps its name.
+
 ## [0.4.8] - 2026-11-01
 
 Dependency release: go-fabric `v0.15.6`, go-fabric-ui `v0.2.9`.
