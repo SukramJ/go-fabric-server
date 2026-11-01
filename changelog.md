@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The add-on image workflow refuses a tag whose version differs from
+  `addon/config.yaml` or `internal/version`, as the release workflow does;
+  a misplaced tag no longer publishes an add-on image under a version its
+  manifest contradicts.
+
 ## [0.4.9] - 2026-11-01
 
 ### Changed
