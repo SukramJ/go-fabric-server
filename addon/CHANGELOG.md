@@ -3,6 +3,11 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.9
+
+- The add-on's entry in the Home Assistant sidebar is titled "Fabric" instead
+  of the full add-on name, as the other go-* add-ons do.
+
 ## 0.4.8
 
 - Library updates (go-fabric 0.15.6, go-fabric-ui 0.2.9). The Surface tab
