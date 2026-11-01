@@ -3,6 +3,14 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.4.8
+
+- Library updates (go-fabric 0.15.6, go-fabric-ui 0.2.9). The Surface tab
+  keeps working when a newer go-fabric adds a field to the node's surface
+  report; a bridge host's refusal of a command answers its own status
+  instead of a plain failure; colour values are the same on aarch64 as on
+  amd64.
+
 ## 0.4.7
 
 - Pairing a device with a test Certification Declaration, such as a
