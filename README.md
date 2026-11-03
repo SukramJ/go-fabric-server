@@ -3,6 +3,7 @@
 [![ci](https://github.com/SukramJ/go-fabric-server/actions/workflows/ci.yml/badge.svg)](https://github.com/SukramJ/go-fabric-server/actions/workflows/ci.yml)
 [![codeql](https://github.com/SukramJ/go-fabric-server/actions/workflows/codeql.yml/badge.svg)](https://github.com/SukramJ/go-fabric-server/actions/workflows/codeql.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Open your Home Assistant instance and add this add-on repository.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FSukramJ%2Fgo-fabric-server)
 
 A stand-alone daemon on [go-fabric](https://github.com/SukramJ/go-fabric) with
 a WebSocket/JSON API in both Matter roles: a **controller server**

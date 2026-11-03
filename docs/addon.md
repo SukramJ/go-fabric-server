@@ -9,7 +9,8 @@ HA base image + bashio + the static binary).
 
 ## Installing
 
-1. **Settings → Add-ons → Add-on Store → ⋮ → Repositories**, add
+1. **Settings → Apps → Install app → ⋮ → Repositories** (formerly
+   *Settings → Add-ons → Add-on Store*), add
    `https://github.com/SukramJ/go-fabric-server`.
 2. Install **go-fabric-server**, stop the official **Matter Server**
    add-on if it runs (both use port 5580), start this one.
