@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/netip"
 	"sort"
 	"strconv"
@@ -244,8 +245,8 @@ func (s *Server) topologyChanged(t topology.Topology) {
 func testNodeImage(nodeID uint64, available, isBridge bool, attrs map[string]json.RawMessage) topology.Image {
 	img := topology.Image{NodeID: nodeID, Available: available, IsBridge: isBridge}
 	at := func(cl *schema.Cluster, a *schema.Attribute) json.RawMessage { return attrs[attrKey(0, cl.ID, a.ID)] }
-	if fm, ok := uintOf(attrs[attrKey(0, netCommissioning.ID, featureMapID)]); ok {
-		img.NetworkFeatures = netcommdef.Feature(fm) //nolint:gosec // a 32-bit FeatureMap
+	if fm, ok := uintOf(attrs[attrKey(0, netCommissioning.ID, featureMapID)]); ok && fm <= math.MaxUint32 {
+		img.NetworkFeatures = netcommdef.Feature(fm)
 	}
 	idK, connK := member(attrNetworks.Type, "networkId"), member(attrNetworks.Type, "connected")
 	for _, e := range entries(at(netCommissioning, attrNetworks)) {
@@ -257,15 +258,15 @@ func testNodeImage(nodeID uint64, available, isBridge bool, attrs map[string]jso
 	typeK, hwK := member(attrNetIfaces.Type, "type"), member(attrNetIfaces.Type, "hardwareAddress")
 	for _, e := range entries(at(generalDiag, attrNetIfaces)) {
 		var n generaldiagdef.NetworkInterface
-		if v, ok := uintOf(e[typeK]); ok {
-			n.Type = generaldiagdef.InterfaceTypeEnum(v) //nolint:gosec // an enum8
+		if v, ok := uintOf(e[typeK]); ok && v <= math.MaxUint8 {
+			n.Type = generaldiagdef.InterfaceTypeEnum(v)
 		}
 		n.HardwareAddress, _ = bytesOf(e[hwK])
 		img.GeneralDiagnostics.NetworkInterfaces = append(img.GeneralDiagnostics.NetworkInterfaces, n)
 	}
 	td := &img.ThreadNetworkDiagnostics
-	if v, ok := uintOf(at(threadDiag, attrRoutingRole)); ok {
-		td.RoutingRole = new(threaddiagdef.RoutingRoleEnum(v)) //nolint:gosec // an enum8
+	if v, ok := uintOf(at(threadDiag, attrRoutingRole)); ok && v <= math.MaxUint8 {
+		td.RoutingRole = new(threaddiagdef.RoutingRoleEnum(v))
 	}
 	var name string
 	if json.Unmarshal(at(threadDiag, attrThreadName), &name) == nil {
@@ -309,7 +310,10 @@ func neighborTable(raw json.RawMessage) []threaddiagdef.NeighborTableStruct {
 			nb.Rloc16 = uint16(v)
 		}
 		if v, ok := uintOf(e[lqiK]); ok {
-			nb.Lqi = uint8(min(v, 255)) //nolint:gosec // clamped
+			if v > math.MaxUint8 {
+				v = math.MaxUint8 // clamped, as before
+			}
+			nb.Lqi = uint8(v)
 		}
 		nb.AverageRssi.Value, nb.AverageRssi.Null = nullableInt8(e[avgK])
 		nb.LastRssi.Value, nb.LastRssi.Null = nullableInt8(e[lastK])
