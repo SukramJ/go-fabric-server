@@ -137,7 +137,8 @@ func wireTopology(t topology.Topology) networkTopology {
 		Nodes:       make([]topologyNode, 0, len(t.Nodes)),
 		Connections: make([]topologyConnection, 0, len(t.Connections)),
 	}
-	for _, n := range t.Nodes {
+	for i := range t.Nodes {
+		n := &t.Nodes[i]
 		w := topologyNode{
 			ID: n.ID, Kind: string(n.Kind), NetworkType: string(n.NetworkType), Role: string(n.Role),
 			NetworkName: n.NetworkName, SSID: n.SSID, BSSID: n.BSSID, IPAddresses: ipStrings(n.Addresses),
