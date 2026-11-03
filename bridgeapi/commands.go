@@ -463,7 +463,8 @@ func cmdNodeInfo(ctx context.Context, s *Server, _ *call) (any, *protocol.Error)
 	n := s.node.Load()
 	topo := n.Topology()
 	devs := make([]map[string]any, 0, len(topo.Devices))
-	for _, d := range topo.Devices {
+	for i := range topo.Devices {
+		d := &topo.Devices[i]
 		e := map[string]any{"endpoint": d.Endpoint, "device_type": d.DeviceType, "name": d.Name, "reachable": d.Reachable}
 		if d.Key != nil {
 			e["key"] = d.Key.String()
