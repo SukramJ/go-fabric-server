@@ -34,6 +34,7 @@ import (
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/controller/client"
+	"github.com/SukramJ/go-fabric/controller/topology"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -111,9 +112,10 @@ type Server struct {
 	// (testnodes.go); guarded by mu.
 	testNodes map[uint64]*testNode
 
-	// topoMu guards topoSig, the last network_topology_updated sent.
-	topoMu  sync.Mutex
-	topoSig string
+	// topoStop releases what Start registered on the topology service:
+	// the network_topology_updated subscriber and the test nodes'
+	// source; guarded by mu.
+	topoStop []func()
 
 	connSeq atomic.Uint64
 	labelMu sync.Mutex
@@ -128,7 +130,10 @@ type Server struct {
 	bg sync.WaitGroup
 }
 
-type backendRef struct{ b Backend }
+type backendRef struct {
+	b    Backend
+	topo *topology.Service
+}
 
 // New returns a server; it loads the settings under opts.StoragePath.
 func New(opts Options) (*Server, error) {
@@ -190,23 +195,33 @@ func (s *Server) Hooks(id string) client.Hooks {
 	return h
 }
 
-// Start binds the server to its controller: the node cache is built from
-// the registry's nodes (no events for them), and changes are followed from
-// then on.
-func (s *Server) Start(ctx context.Context, b Backend) error {
+// Start binds the server to its controller and to topo, the network graph
+// of that controller's nodes (go-fabric controller/topology, built with
+// topology.New over the same controller, its Changes installed on the
+// controller's configuration): the node cache is built from the
+// registry's nodes (no events for them), and changes are followed from
+// then on. get_network_topology answers from topo; the server adds the
+// imported test nodes to it as a source and sends its changes as
+// network_topology_updated until Shutdown. topo stays the caller's to
+// close, after Shutdown.
+func (s *Server) Start(ctx context.Context, b Backend, topo *topology.Service) error {
 	if b == nil {
 		return errors.New("controllerapi: Start needs a backend")
+	}
+	if topo == nil {
+		return errors.New("controllerapi: Start needs a topology service")
 	}
 	if !s.started.CompareAndSwap(false, true) {
 		return errors.New("controllerapi: already started")
 	}
-	s.backend.Store(&backendRef{b})
+	s.backend.Store(&backendRef{b: b, topo: topo})
 	s.mu.Lock()
 	for _, n := range b.Registry().Commissioned() {
 		if st := s.snapshot(n, nil); st != nil {
 			s.nodes[n.ID()] = st
 		}
 	}
+	s.topoStop = []func(){topo.OnChanged(s.topologyChanged), topo.AddSource(testNodeSource{s})}
 	s.mu.Unlock()
 	go s.loop()
 	if f := b.Fabric(); f != nil && f.CurrentLabel() != s.FabricLabel() {
@@ -218,6 +233,14 @@ func (s *Server) Start(ctx context.Context, b Backend) error {
 func (s *Server) b() Backend {
 	if r := s.backend.Load(); r != nil {
 		return r.b
+	}
+	return nil
+}
+
+// topo is the topology service Start bound; nil before.
+func (s *Server) topo() *topology.Service {
+	if r := s.backend.Load(); r != nil {
+		return r.topo
 	}
 	return nil
 }
@@ -247,6 +270,8 @@ func (s *Server) Shutdown(ctx context.Context) {
 		return
 	}
 	s.closing = true
+	stops := s.topoStop
+	s.topoStop = nil
 	frame := protocol.MustEncode(protocol.Event{Event: "server_shutdown", Data: struct{}{}})
 	conns := make([]*wsConn, 0, len(s.conns))
 	for c := range s.conns {
@@ -254,6 +279,11 @@ func (s *Server) Shutdown(ctx context.Context) {
 		conns = append(conns, c)
 	}
 	s.mu.Unlock()
+	// The topology subscriber and the test nodes' source go first: no
+	// network_topology_updated after server_shutdown.
+	for _, stop := range stops {
+		stop()
+	}
 	for _, c := range conns {
 		_ = c.send.Flush(ctx)
 		c.close(websocket.StatusGoingAway, "server shutting down")

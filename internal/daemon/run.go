@@ -27,6 +27,7 @@ import (
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
+	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/node"
 	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
 
@@ -249,24 +250,35 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			pageHooks = gofabric.NewHooks()
 			cfg.HooksFor = pageHooks.Wrap(cfg.HooksFor)
 		}
+		// The network graph of the nodes (go-fabric controller/topology,
+		// matterjs-server's NetworkTopologyService): built with or without
+		// --web, get_network_topology needs it. Its change hooks wrap the
+		// chain composed above, so both halves' hooks run first.
+		var changes topology.Changes
+		changes.Install(&cfg)
 		ctrl, err = controller.New(ctx, cfg)
 		if err != nil {
 			return fmt.Errorf("controller: %w", err)
 		}
+		topo := topology.New(ctrl, topology.Config{Changes: &changes})
 		defer func() {
-			// The pages' hooks stop their node_updated timers before the
-			// controller goes (gofabric.Hooks.Close, go-fabric-ui v0.2.0).
+			// The graph stops before the pages' hooks and the controller
+			// (Service.Close detaches it from the hooks and cancels a
+			// refresh in flight); the pages' hooks stop their
+			// node_updated timers and their topology subscription before
+			// the controller goes (gofabric.Hooks.Close).
+			topo.Close()
 			if pageHooks != nil {
 				pageHooks.Close()
 			}
 			_ = ctrl.Close(context.WithoutCancel(ctx))
 		}()
 		defer closeCentral()
-		if err := api.Start(ctx, ctrl); err != nil {
+		if err := api.Start(ctx, ctrl, topo); err != nil {
 			return err
 		}
 		if pageHooks != nil {
-			ctrlPages = controllerSource(ctrl, api, pageHooks, log)
+			ctrlPages = controllerSource(ctrl, topo, api, pageHooks, log)
 		}
 	}
 
@@ -371,7 +383,7 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 	// v0.1.2: the handler's Node.Observe), so only the half's observers go
 	// into the config.
 	cfg.Observers = br.Observers()
-	n, err := node.New(cfg) //nolint:contextcheck // the node's constructor takes no context
+	n, err := node.New(ctx, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("bridge node: %w", err)
 	}

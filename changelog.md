@@ -12,6 +12,32 @@ All notable changes to this project are documented here. The format follows
   `addon/config.yaml` or `internal/version`, as the release workflow does;
   a misplaced tag no longer publishes an add-on image under a version its
   manifest contradicts.
+- go-fabric `v0.15.6` → `v0.16.1-0.20261103161943-af164eb2aa1e` (main at
+  `af164eb2`, `controller/topology` with `Service.AddSource`) and
+  go-fabric-ui `v0.2.9` → `v0.3.1-0.20261103135546-2d326bdcf180` (main at
+  `2d326bdc`, its changelog's v0.4.1, contract 0.3.1): pseudo-versions
+  until both modules tag, the next release lifts them to the tags. The
+  build list follows them: `modernc.org/sqlite` 1.61.0, `modernc.org/libc`
+  1.79.0, `go-humanize` 1.1.0, `go-strftime` 1.1.0; `grandcat/zeroconf`
+  and `cenkalti/backoff` leave it (go-fabric's own DNS-SD responder).
+  `protocol/schema` regenerated (`GoFabricVersion` only).
+- The bridge half's `node_info` always carries `commissioning_window`
+  (`open`, `own` from go-fabric's `Node.Window`), `false`/`false` before
+  the node runs, where it was absent while the node had no window state.
+- The topology is go-fabric's `controller/topology`: `get_network_topology`,
+  `network_topology_updated` and the controller pages' `/controller/topology`
+  answer one service, rebuilt 2 s after the last node change (debounced)
+  and every 60 s, its `refresh` reading the diagnostics of the available
+  Thread and Wi-Fi nodes four at a time within 30 s, as matterjs-server;
+  the server's own build, its per-cache-pass update and its hash gate
+  are gone. The imported test nodes join the graph as a
+  `topology.Source`; they carry no `ip_addresses` now. The wire shape is
+  otherwise unchanged.
+- **Breaking for a host of `controllerapi`:** `Server.Start(ctx, backend)`
+  is `Start(ctx, backend, topo)`, `topo` the `*topology.Service` built
+  over the same controller (`topology.Changes.Install` on its
+  configuration before `controller.New`, `topology.New` after); the host
+  closes it after `Shutdown`.
 
 ## [0.4.9] - 2026-11-01
 

@@ -48,6 +48,10 @@ var facade = map[string]bool{
 	// The DCL client of get_vendor_names (brief S2 §2): the ledger's
 	// vendor records, as matterjs-server's vendor info service reads them.
 	"controller/dcl": true,
+	// The network graph of the controller's nodes (brief S §2): the
+	// service get_network_topology and the controller pages answer from
+	// (go-fabric-ui's gofabric.ControllerOptions.Topology takes it).
+	"controller/topology": true,
 	// The BLE central type of controller.PairOptions.BLE, and the Thread
 	// dataset codec the CJ report names as the dataset reader (go-fabric
 	// notes/briefs/reports/CJ.md, 1.13: then controller/thread.DecodeDataset;
@@ -205,6 +209,7 @@ func TestGuardRefuses(t *testing.T) {
 		test     bool
 	}{
 		{"controllerapi", "controller/client", false},
+		{"controllerapi", "controller/topology", false},
 		{"controllerapi", "cluster/spec/onoff", false},
 		{"controllerapi", "fabrictest", true},
 		{"bridgeapi", "cluster/spec/powersource", false},

@@ -16,6 +16,7 @@ import (
 	"github.com/SukramJ/go-fabric/clock"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
+	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
 
@@ -83,16 +84,20 @@ func newEnv(t *testing.T, opts bridgeapi.Options) *env {
 	// (fabrictest.Site.ControllerConfig, go-fabric v0.12.1).
 	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: logger()})
 	cfg.HooksFor = api.Hooks
+	var changes topology.Changes
+	changes.Install(&cfg)
 	ctrl, err := controller.New(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
+	topo := topology.New(ctrl, topology.Config{Changes: &changes, Clock: cfg.Clock})
 	t.Cleanup(func() {
 		cctx, ccancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer ccancel()
+		topo.Close()
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl); err != nil {
+	if err := api.Start(ctx, ctrl, topo); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.MuxWith(api, br, "", "test"))

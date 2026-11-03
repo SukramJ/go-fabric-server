@@ -304,7 +304,6 @@ func (s *Server) loop() {
 				s.refresh(id)
 			}
 		}
-		s.topologyUpdated()
 	}
 }
 

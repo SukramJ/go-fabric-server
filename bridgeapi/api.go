@@ -112,9 +112,9 @@ func New(opts Options) *Server {
 // them as node.Config.Observers before node.New.
 func (s *Server) Observers() node.Observers {
 	return node.Observers{
-		OnFabricAdded:      func(f node.FabricInfo) error { s.emit("fabric_added", fabricData(f)); return nil },
-		OnFabricRemoved:    func(f node.FabricInfo) error { s.emit("fabric_removed", fabricData(f)); return nil },
-		OnWindowTransition: func(w node.WindowSnapshot) error { s.emit("commissioning_window", windowData(w)); return nil },
+		OnFabricAdded:      func(f node.FabricInfo) { s.emit("fabric_added", fabricData(f)) },
+		OnFabricRemoved:    func(f node.FabricInfo) { s.emit("fabric_removed", fabricData(f)) },
+		OnWindowTransition: func(w node.WindowSnapshot) { s.emit("commissioning_window", windowData(w)) },
 	}
 }
 

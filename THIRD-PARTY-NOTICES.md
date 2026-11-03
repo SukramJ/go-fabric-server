@@ -77,9 +77,8 @@ golang.org/x/crypto (BSD-3-Clause, see
 [`licenses/LICENSE-golang-x-crypto.txt`](licenses/LICENSE-golang-x-crypto.txt)),
 the API's Noise transport.
 
-Through go-fabric: filippo.io/nistec (BSD-3-Clause), github.com/grandcat/zeroconf
-(MIT), github.com/miekg/dns (BSD-3-Clause), golang.org/x/net and
-golang.org/x/sys (BSD-3-Clause), github.com/cenkalti/backoff (MIT), and
+Through go-fabric: filippo.io/nistec (BSD-3-Clause), github.com/miekg/dns
+(BSD-3-Clause), golang.org/x/net and golang.org/x/sys (BSD-3-Clause), and
 modernc.org/sqlite (BSD-3-Clause; a direct dependency until S3, when the
 daemon moved to `controller.OpenDB`, see
 [`licenses/LICENSE-modernc-sqlite.txt`](licenses/LICENSE-modernc-sqlite.txt)) and
