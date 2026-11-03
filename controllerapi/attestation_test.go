@@ -21,10 +21,11 @@ func TestAttestationRefusesUntrustedTestCertificate(t *testing.T) {
 	production := attestation.TestStore()
 	production.AcceptTest = false
 	e := newEnv(t, envOptions{configure: func(c *controller.Config) { c.Attestation = production }})
-	qr, _, err := e.dev.Node().PairingCodes()
+	payload, err := e.dev.Node().SetupPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
+	qr := payload.QR
 	_, err = e.client.CommissionWithCode(e.ctx, qr, true)
 	pe := wantCode(t, err, protocol.NodeCommissionFailed, "test/development certificate")
 	if pe.Reason == nil || *pe.Reason != protocol.ReasonAttestationRejected {

@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/node"
 	"github.com/SukramJ/go-fabric/schema"
 	"github.com/SukramJ/go-fabric/surface"
@@ -19,7 +18,7 @@ import (
 // --bridge-spec-level and --bridge-profile. Mirrors go-fabric
 // examples/reference-bridge/surface.go:33 surfacePolicies (its
 // --extensions, --spec-level and --profile): every register ID must be
-// one go-fabric declares (device.AheadRows, node.AheadRows), the level
+// one go-fabric declares (node.AheadRows), the level
 // one of schema.Levels and every profile one of surface.Profiles; a typo
 // stops the daemon with the list of the known ones.
 func surfacePolicies(c Config) (surface.Policies, error) {
@@ -58,9 +57,10 @@ func surfacePolicies(c Config) (surface.Policies, error) {
 }
 
 // extensionList is the "Ahead of matter.js" register IDs go-fabric
-// declares (device.AheadRows, node.AheadRows), sorted, each once.
+// declares (node.AheadRows: the root servers' and the device layer's
+// rows), sorted, each once.
 func extensionList() []string {
-	known := slices.Concat(device.AheadRows(), node.AheadRows())
+	known := slices.Clone(node.AheadRows())
 	slices.Sort(known)
 	return slices.Compact(known)
 }

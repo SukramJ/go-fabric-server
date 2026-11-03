@@ -91,10 +91,13 @@ expansion of the JavaScript number matter.js decodes it into
 (`0.10000000149011612`): the shorter form is the device's value, and a
 client parses both to the same float32.
 
-**B19 — `get_network_topology` adds `ip_addresses`.** A `matter` node
-carries the node's known addresses (brief S3 §3); matterjs-server's node
+**B19 — `get_network_topology` adds `ip_addresses`.** A commissioned
+`matter` node carries the node's known addresses (brief S3 §3); matterjs-server's node
 has none (models.py:318-347): the topology page is where an operator looks
-for an address, and an old client ignores the key.
+for an address, and an old client ignores the key. An imported test node
+carries none: go-fabric's graph holds addresses as `netip.Addr`, which the
+placeholders matterjs-server answers for a test node
+(`TestNodeCommandHandler.ts:228-241`) are not (brief S §4).
 
 **B20 — BLE commissioning needs a reason to use BLE.** With an adapter,
 `commission_with_code` takes BLE only when the code does not rule it out

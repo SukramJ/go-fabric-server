@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/SukramJ/go-fabric/clock"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/ble"
+	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
@@ -78,21 +80,25 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	hooks := gofabric.NewHooks()
 	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: log})
 	cfg.HooksFor = hooks.Wrap(api.Hooks) // as Run wires them
+	var changes topology.Changes
+	changes.Install(&cfg)
 	ctrl, err := controller.New(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
+	topo := topology.New(ctrl, topology.Config{Changes: &changes, Clock: cfg.Clock})
 	t.Cleanup(func() {
 		cctx, ccancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer ccancel()
+		topo.Close()  // as Run closes it
 		hooks.Close() // as Run closes them
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl); err != nil {
+	if err := api.Start(ctx, ctrl, topo); err != nil {
 		t.Fatal(err)
 	}
 	ws := httptest.NewServer(Mux(api, "", "test"))
-	src := controllerSource(ctrl, api, hooks, log)
+	src := controllerSource(ctrl, topo, api, hooks, log)
 	h, err := webHandler(c, nil, src, fabricui.NewEvents(), log)
 	if err != nil {
 		t.Fatal(err)
@@ -203,10 +209,11 @@ func TestControllerPages(t *testing.T) {
 		t.Fatalf("status %+v", st)
 	}
 
-	qr, _, err := e.dev.Node().PairingCodes()
+	payload, err := e.dev.Node().SetupPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
+	qr := payload.QR
 	n, err := e.ws.CommissionWithCode(e.ctx, qr, true)
 	if err != nil {
 		t.Fatalf("commission_with_code: %v", err)
@@ -227,6 +234,21 @@ func TestControllerPages(t *testing.T) {
 		t.Fatalf("nodes %+v, want %s", list.Nodes, want)
 	}
 	e.json(http.MethodGet, "/controller/nodes/"+want, "", http.StatusOK, nil)
+
+	// The pages' graph is the one get_network_topology answers from
+	// (ControllerOptions.Topology): served, with the node as a peer of
+	// the controller.
+	type graphNode struct {
+		Kind      string `json:"kind"`
+		NodeIDHex string `json:"node_id_hex"`
+	}
+	var graph struct {
+		Nodes []graphNode `json:"nodes"`
+	}
+	e.json(http.MethodGet, "/controller/topology?refresh=true", "", http.StatusOK, &graph)
+	if !slices.Contains(graph.Nodes, graphNode{Kind: "peer", NodeIDHex: want}) {
+		t.Fatalf("topology %+v, want peer %s", graph, want)
+	}
 
 	// The pages' label is the half's: stored, read back over /ws.
 	e.json(http.MethodPut, "/controller/fabric/label", `{"label":"Pages"}`, http.StatusNoContent, nil)

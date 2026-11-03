@@ -150,7 +150,7 @@ time: the node has one author.
 | Role | controller only | controller and device side in one daemon |
 
 What matterjs-server does better for now: camera/WebRTC, Thread topology
-graphs, migrating old python-matter-server data, years of interop
+graphs with border routers and route tables, migrating old python-matter-server data, years of interop
 experience with Home Assistant.
 
 ### E.2 Better than before

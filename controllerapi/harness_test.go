@@ -16,6 +16,7 @@ import (
 	"github.com/SukramJ/go-fabric/clock"
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
 	"github.com/SukramJ/go-fabric/controller"
+	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
@@ -92,16 +93,20 @@ func newEnv(t *testing.T, o envOptions) *env {
 	if o.configure != nil {
 		o.configure(&cfg)
 	}
+	var changes topology.Changes
+	changes.Install(&cfg)
 	ctrl, err := controller.New(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
+	topo := topology.New(ctrl, topology.Config{Changes: &changes, Clock: cfg.Clock})
 	t.Cleanup(func() {
 		cctx, ccancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer ccancel()
+		topo.Close()
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl); err != nil {
+	if err := api.Start(ctx, ctrl, topo); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.Mux(api, o.token, "test"))
@@ -132,10 +137,11 @@ func (e *env) dial(o fsclient.Options) *fsclient.Client {
 // QR code and returns the node data.
 func (e *env) commission() fsclient.Node {
 	e.t.Helper()
-	qr, _, err := e.dev.Node().PairingCodes()
+	payload, err := e.dev.Node().SetupPayload()
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	qr := payload.QR
 	n, err := e.client.CommissionWithCode(e.ctx, qr, true)
 	if err != nil {
 		e.t.Fatalf("commission_with_code: %v", err)
