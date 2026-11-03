@@ -7,7 +7,8 @@ Assistant's Matter integration uses in place of the official Matter Server
 
 ## Installation
 
-1. In Home Assistant go to **Settings → Add-ons → Add-on Store**.
+1. In Home Assistant go to **Settings → Apps → Install app** (formerly
+   *Settings → Add-ons → Add-on Store*).
 2. Open the **⋮** menu → **Repositories** and add
    `https://github.com/SukramJ/go-fabric-server`.
 3. Stop the official **Matter Server** add-on if it runs, install and start
