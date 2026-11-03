@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SukramJ/go-fabric/controller/topology"
+
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
 
@@ -106,7 +108,7 @@ func cmdImportTestNode(_ context.Context, s *Server, c *call) (any, *protocol.Er
 		nodes = append(nodes, &n)
 	}
 	s.mu.Lock()
-	defer s.topologyUpdated() // after the unlock below
+	defer s.topologyNodesChanged() // after the unlock below
 	defer s.mu.Unlock()
 	next := testNodeStart
 	for id := range s.testNodes {
@@ -123,6 +125,38 @@ func cmdImportTestNode(_ context.Context, s *Server, c *call) (any, *protocol.Er
 		s.log.Info("fabricserver.test_node.imported", "node_id", n.NodeID, "attributes", len(n.Attributes))
 	}
 	return nil, nil
+}
+
+// testNodeSource is the imported test nodes as a source of the topology
+// service (go-fabric topology.Source): matterjs-server's #testNodeSource,
+// which its get_network_topology adds (WebSocketControllerHandler.ts:2220-2230,
+// TestNodeCommandHandler.ts at 0bd06f22). Its images are build inputs
+// only; Service.Refresh never reads a test node.
+type testNodeSource struct{ s *Server }
+
+// Images are the test nodes' images, by node id.
+func (src testNodeSource) Images() []topology.Image {
+	s := src.s
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	nodes := s.testNodeListLocked()
+	out := make([]topology.Image, 0, len(nodes))
+	for _, n := range nodes {
+		var avail, bridge bool
+		_ = json.Unmarshal(n.Available, &avail)
+		_ = json.Unmarshal(n.IsBridge, &bridge)
+		out = append(out, testNodeImage(n.NodeID, avail, bridge, n.Attributes))
+	}
+	return out
+}
+
+// topologyNodesChanged tells the topology service that the test nodes
+// changed (Service.Changed: a debounced rebuild, matterjs-server's
+// nodeAdded/nodeRemoved); the caller does not hold s.mu.
+func (s *Server) topologyNodesChanged() {
+	if t := s.topo(); t != nil {
+		t.Changed()
+	}
 }
 
 func present(raw json.RawMessage) bool {
@@ -248,7 +282,7 @@ var testCommands = map[string]func(s *Server, c *call, n *testNode) (any, *proto
 	},
 	"remove_node": func(s *Server, _ *call, n *testNode) (any, *protocol.Error) {
 		s.mu.Lock()
-		defer s.topologyUpdated() // after the unlock below
+		defer s.topologyNodesChanged() // after the unlock below
 		defer s.mu.Unlock()
 		delete(s.testNodes, n.NodeID)
 		frame := protocol.MustEncode(protocol.Event{Event: "node_removed", Data: n.NodeID})

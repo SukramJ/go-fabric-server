@@ -12,6 +12,7 @@ import (
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
 	"github.com/SukramJ/go-fabric/controller"
+	"github.com/SukramJ/go-fabric/controller/topology"
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )
@@ -21,13 +22,17 @@ import (
 // the daemon's controller, with the controller half's credential store,
 // pairing template and fabric label, so the pages and /ws see one list,
 // one policy and one label. hooks are the adapter's, wired into
-// controller.Config.HooksFor before controller.New.
-func controllerSource(ctrl *controller.Controller, api *controllerapi.Server, hooks *gofabric.Hooks, log *slog.Logger) fabricui.ControllerSource {
+// controller.Config.HooksFor before controller.New; topo is the graph
+// /ws's get_network_topology answers from too, so GET
+// /controller/topology and the pages' topology_changed show the same one
+// (hooks.Close releases the adapter's subscription to it).
+func controllerSource(ctrl *controller.Controller, topo *topology.Service, api *controllerapi.Server, hooks *gofabric.Hooks, log *slog.Logger) fabricui.ControllerSource {
 	src := gofabric.ControllerOf(ctrl, gofabric.ControllerOptions{
 		Hooks:       hooks,
 		Credentials: credentialStore{api},
 		Pair:        api.PairOptions(),
 		Logger:      log,
+		Topology:    topo,
 	})
 	return labelled{ControllerSource: src, api: api}
 }
