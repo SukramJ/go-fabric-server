@@ -310,10 +310,11 @@ func neighborTable(raw json.RawMessage) []threaddiagdef.NeighborTableStruct {
 			nb.Rloc16 = uint16(v)
 		}
 		if v, ok := uintOf(e[lqiK]); ok {
-			if v > math.MaxUint8 {
-				v = math.MaxUint8 // clamped, as before
+			lqi := uint8(math.MaxUint8) // clamped, as before
+			if v <= math.MaxUint8 {
+				lqi = uint8(v)
 			}
-			nb.Lqi = uint8(v)
+			nb.Lqi = lqi
 		}
 		nb.AverageRssi.Value, nb.AverageRssi.Null = nullableInt8(e[avgK])
 		nb.LastRssi.Value, nb.LastRssi.Null = nullableInt8(e[lastK])
