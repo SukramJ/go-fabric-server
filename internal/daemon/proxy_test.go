@@ -17,13 +17,10 @@ import (
 
 	"github.com/SukramJ/go-fabric/ble/esphome"
 	"github.com/SukramJ/go-fabric/ble/esphome/esphometest"
-	"github.com/SukramJ/go-fabric/bridge/bridgetest"
 	"github.com/SukramJ/go-fabric/contract"
 	"github.com/SukramJ/go-fabric/controller/ble"
-	"github.com/SukramJ/go-fabric/controller/ble/bletest"
 	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
-	"github.com/SukramJ/go-fabric/transport/btp"
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )
@@ -143,22 +140,12 @@ func (w *wifiDriver) ConnectNetwork(_ context.Context, ssid, credentials []byte)
 
 // proxyCentral is the daemon's central (esphome.NewCentral, as
 // newProxyCentral opens it) over go-fabric's fake proxy, with the
-// encryption key, in front of the site device's BLE side: its BTP sessions
-// are served by the device's bridge (go-fabric ble/esphome's
-// commission_test.go is the pattern).
+// encryption key, in front of the site device's BLE side
+// (fabrictest.Device.BLE: its BTP sessions are served by the device's
+// bridge; go-fabric ble/esphome's commission_test.go is the pattern).
 func proxyCentral(t *testing.T, dev *fabrictest.Device) ble.Central {
 	t.Helper()
-	p := &bletest.Peripheral{
-		Address: "C0:FF:EE:00:0B:1E", Discriminator: dev.Discriminator(), VendorID: 0xFFF1, ProductID: 0x8001,
-		Serve: func(conn *btp.Conn) (func([]byte), func()) {
-			srv, err := bridgetest.ServeConn(dev.Bridge(), conn)
-			if err != nil {
-				t.Error(err)
-				return nil, nil
-			}
-			return srv.Deliver, srv.Close
-		},
-	}
+	p := dev.BLE()
 	f, err := esphometest.New(esphometest.Options{Key: testKey}, p)
 	if err != nil {
 		t.Fatal(err)
@@ -179,7 +166,7 @@ func proxyCentral(t *testing.T, dev *fabrictest.Device) ble.Central {
 func TestCommissionThroughProxy(t *testing.T) {
 	drv := &wifiDriver{}
 	e := newPagesEnvWith(t, Config{WebAdmin: true}, func(cfg *node.Config) {
-		cfg.Network.WiFiCommissioning = node.WiFiCommissioning{Driver: drv}
+		fabrictest.UseWiFiCommissioning(cfg, drv)
 	}, func(dev *fabrictest.Device) ble.Central { return proxyCentral(t, dev) })
 
 	var info struct {
@@ -202,10 +189,11 @@ func TestCommissionThroughProxy(t *testing.T) {
 	if err := e.ws.Call(e.ctx, "set_wifi_credentials", map[string]any{"ssid": "lab", "credentials": "secret12"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	_, code, err := e.dev.Node().PairingCodes()
+	payload, err := e.dev.Node().SetupPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
+	code := payload.Manual
 	n, err := e.ws.CommissionWithCode(e.ctx, code, false)
 	if err != nil {
 		t.Fatalf("commission_with_code through the proxy: %v", err)

@@ -450,11 +450,11 @@ func cmdResult(_ context.Context, s *Server, c *call) (any, *protocol.Error) {
 }
 
 func cmdPairingCodes(_ context.Context, s *Server, _ *call) (any, *protocol.Error) {
-	qr, manual, err := s.node.Load().PairingCodes()
+	p, err := s.node.Load().SetupPayload()
 	if err != nil {
 		return nil, protocol.Errorf(protocol.UnknownError, "pairing_codes: %v", err)
 	}
-	return map[string]any{"qr_code": qr, "manual_code": manual}, nil
+	return map[string]any{"qr_code": p.QR, "manual_code": p.Manual}, nil
 }
 
 // cmdNodeInfo is the node as the controllers see it: the bridged devices,
@@ -479,9 +479,8 @@ func cmdNodeInfo(ctx context.Context, s *Server, _ *call) (any, *protocol.Error)
 		fabrics = append(fabrics, fabricData(f))
 	}
 	out := map[string]any{"aggregator_endpoint": topo.Aggregator, "devices": devs, "fabrics": fabrics}
-	if w := n.CommissioningWindow(); w != nil {
-		out["commissioning_window"] = map[string]any{"open": w.IsOpen(), "own": w.IsOwnWindow()}
-	}
+	w := n.Window()
+	out["commissioning_window"] = map[string]any{"open": w.Open, "own": w.Own}
 	if subs := n.Subscriptions(); subs != nil {
 		out["subscriptions"] = subs.Active()
 	}

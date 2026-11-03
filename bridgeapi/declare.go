@@ -155,11 +155,10 @@ func (s *Server) buildDevice(ctx context.Context, raw json.RawMessage, path stri
 		}
 		decls = append(decls, decl)
 	}
-	policies := s.opts.Surface
 	opts := device.Options{
 		StableKey: device.StringKey(d.Key), Name: d.Name, Vendor: d.Vendor,
 		DeviceAddress: d.DeviceAddress, ChannelAddress: d.ChannelAddress,
-		Surface: &policies,
+		Surface: s.opts.Surface,
 	}
 	dev, err := device.New(typ, opts, decls...)
 	// A device the specification level withholds runs on: device.New

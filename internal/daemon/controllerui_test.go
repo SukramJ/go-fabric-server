@@ -203,10 +203,11 @@ func TestControllerPages(t *testing.T) {
 		t.Fatalf("status %+v", st)
 	}
 
-	qr, _, err := e.dev.Node().PairingCodes()
+	payload, err := e.dev.Node().SetupPayload()
 	if err != nil {
 		t.Fatal(err)
 	}
+	qr := payload.QR
 	n, err := e.ws.CommissionWithCode(e.ctx, qr, true)
 	if err != nil {
 		t.Fatalf("commission_with_code: %v", err)

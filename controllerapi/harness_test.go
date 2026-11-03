@@ -132,10 +132,11 @@ func (e *env) dial(o fsclient.Options) *fsclient.Client {
 // QR code and returns the node data.
 func (e *env) commission() fsclient.Node {
 	e.t.Helper()
-	qr, _, err := e.dev.Node().PairingCodes()
+	payload, err := e.dev.Node().SetupPayload()
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	qr := payload.QR
 	n, err := e.client.CommissionWithCode(e.ctx, qr, true)
 	if err != nil {
 		e.t.Fatalf("commission_with_code: %v", err)

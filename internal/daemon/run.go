@@ -371,7 +371,7 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 	// v0.1.2: the handler's Node.Observe), so only the half's observers go
 	// into the config.
 	cfg.Observers = br.Observers()
-	n, err := node.New(cfg) //nolint:contextcheck // the node's constructor takes no context
+	n, err := node.New(ctx, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("bridge node: %w", err)
 	}
