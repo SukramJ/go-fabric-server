@@ -24,6 +24,20 @@ All notable changes to this project are documented here. The format follows
 - The bridge half's `node_info` always carries `commissioning_window`
   (`open`, `own` from go-fabric's `Node.Window`), `false`/`false` before
   the node runs, where it was absent while the node had no window state.
+- The topology is go-fabric's `controller/topology`: `get_network_topology`,
+  `network_topology_updated` and the controller pages' `/controller/topology`
+  answer one service, rebuilt 2 s after the last node change (debounced)
+  and every 60 s, its `refresh` reading the diagnostics of the available
+  Thread and Wi-Fi nodes four at a time within 30 s, as matterjs-server;
+  the server's own build, its per-cache-pass update and its hash gate
+  are gone. The imported test nodes join the graph as a
+  `topology.Source`; they carry no `ip_addresses` now. The wire shape is
+  otherwise unchanged.
+- **Breaking for a host of `controllerapi`:** `Server.Start(ctx, backend)`
+  is `Start(ctx, backend, topo)`, `topo` the `*topology.Service` built
+  over the same controller (`topology.Changes.Install` on its
+  configuration before `controller.New`, `topology.New` after); the host
+  closes it after `Shutdown`.
 
 ## [0.4.9] - 2026-11-01
 

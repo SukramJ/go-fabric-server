@@ -106,7 +106,7 @@ reported as `other` until go-fabric names an attestation rejection.
 | `set_node_binding` | implemented | the whole Binding list of `endpoint`; the same result shape |
 | `get_vendor_names` | implemented | the production DCL's vendor records, kept for a day; `filter_vendors` narrows them |
 | `get_icd_state`, `register_icd`, `resync_icd`, `unregister_icd` | implemented | go-fabric's ICD client; `IcdStateData` with every key; a multi-admin refusal is `IcdMultiAdmin` (100) with matterjs-server's JSON details |
-| `get_network_topology` | implemented | from the node data: Thread links from the neighbor tables, Wi-Fi access points, our `ip_addresses`; opts the connection in to `network_topology_updated` |
+| `get_network_topology` | implemented | go-fabric's `controller/topology` graph with the test nodes as a source: Thread links from the neighbor tables, Wi-Fi access points, our `ip_addresses`; opts the connection in to `network_topology_updated` |
 | `import_test_node` | implemented | a diagnostics dump's nodes as test nodes (ids from `0xFFFFFFFE00000000`), in memory, answered as matterjs-server's TestNodeCommandHandler answers |
 | `check_node_update`, `update_node`, `initiate_ota_upload` | waits for go-fabric | the OTA provider on the controller (milestone 5 phase 25) |
 | `get_thread_border_routers`, `get_thread_diagnostics` | waits for go-fabric | a Thread border router route (milestone 6, ADR 0027) |
@@ -135,18 +135,26 @@ lost on a restart, as in matterjs-server.
 ### The network topology
 
 `get_network_topology {refresh}` answers `{collected_at, nodes,
-connections}`: a node per commissioned and test node (`kind: "matter"`,
+connections}` from go-fabric's `controller/topology` service, which the
+daemon builds over its controller and the imported test nodes join as a
+source (matterjs-server's `NetworkTopologyService` and its test-node
+source): a node per commissioned and test node (`kind: "matter"`,
 `network_type` from the root's NetworkCommissioning FeatureMap, Thread
 before Wi-Fi before Ethernet), a Thread node's role, extended address,
 RLOC16, extended PAN id and network name, a Wi-Fi node's SSID and BSSID;
 one connection per pair of Thread nodes that see each other (each
 direction's LQI and RSSI, dead links dropped), unknown Thread neighbours as
 `thread_unknown` nodes, one `wifi_ap` node per BSSID with a link from each
-station. `refresh` reads the network diagnostics clusters of every
-available node first. The connection then gets `network_topology_updated`
-whenever the topology changes. What matterjs-server adds from a Thread
-border router registry and from route tables waits for go-fabric's
-milestone 6.
+station. `refresh` reads the network diagnostics of every available
+Thread and Wi-Fi node first, four at a time, 30 s at most; a refresh that
+fails answers the graph as it stands. The graph is rebuilt 2 s after the
+last node change (a report, a connection state, a commission, a removal,
+a test node imported or removed) and every 60 s, matterjs-server's
+defaults. The connection then gets `network_topology_updated` whenever a
+rebuild moved the graph (the latest one wins on a slow connection). The
+same graph serves the controller pages' `/controller/topology`. What
+matterjs-server adds from a Thread border router registry and from route
+tables is left out, in go-fabric too.
 
 ## Node data and values
 
@@ -210,8 +218,9 @@ Metrics: `ws.connections`, `ws.queued_bytes`, `ws.dropped`,
 Ignorable by a client that does not know them:
 
 - `capabilities` in `server_info`: the commands this server answers;
-- `ip_addresses` on a `matter` node of `get_network_topology`: the node's
-  known addresses;
+- `ip_addresses` on a commissioned `matter` node of
+  `get_network_topology`: the node's known addresses (a test node has
+  none);
 - `GET /schema`: the JSON Schema of the values;
 - `GET /health`: `{version, node_count, healthy}`;
 - the bearer token (see operations).

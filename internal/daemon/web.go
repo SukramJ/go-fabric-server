@@ -19,7 +19,9 @@ import (
 
 // webHandler is the pages of go-fabric-ui (v0.4.1, docs/embedding.md):
 // the node family over the bridge node with no Exposure (the host decides
-// what is exposed over /bridge), the controller family over ctrl, and the
+// what is exposed over /bridge), the controller family over ctrl (its
+// graph, /controller/topology, the topology service /ws's
+// get_network_topology answers from, controllerSource), and the
 // admin rule of the flags for both — a controller route marked admin
 // follows the same Options.Admin as a node page that writes. A nil node or
 // a nil ctrl serves that family as disabled.
