@@ -1,0 +1,40 @@
+# Nightly: the macOS test leg, the form of go-fabric's and go-fabric-ui's
+# nightly.yml. Linux and Windows carry the race detector on every pull
+# request (ci.yml). macOS is the second platform the daemon is developed
+# and consumed on, and the one whose networking differs where fabrictest's
+# end-to-end tests touch it — IPv6 UDP on loopback, multicast joins,
+# interface enumeration for DNS-SD. It runs nightly rather than per pull
+# request because the signal is a platform regression, which arrives on
+# the calendar (a runner image bump) at least as often as in a diff — and
+# because GitHub's hosted macOS arm64 pool is capacity-constrained: a
+# queued job that no runner acquires is cancelled after 15 minutes, and as
+# a required check it blocked pull requests (go-fabric-ui #40). A red
+# night is a signal, not a gate; it is read by hand.
+name: nightly
+
+on:
+  schedule:
+    - cron: "41 2 * * *" # daily 02:41 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.27.3"
+
+jobs:
+  test-macos:
+    name: test (macos-latest, race)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: go test
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race -count=1 -timeout=600s ./...

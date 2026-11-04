@@ -1,8 +1,8 @@
 # GitHub Actions CI for go-fabric-server, the form of the sibling
 # repositories (go-fabric, go-zendure2mqtt, go-ha2fabric): lint (go vet +
 # gofumpt + golangci-lint + go.mod tidiness), security (govulncheck +
-# go-licenses + the gitleaks history scan), test (the OS triplet, race
-# detector on), coverage (the per-package floors), fuzz-smoke (the JSON
+# go-licenses + the gitleaks history scan), test (Linux and Windows, race
+# detector on; macOS nightly), coverage (the per-package floors), fuzz-smoke (the JSON
 # decoders and paths), build (the daemon, the image, the release matrix),
 # compat-python (matterjs-server's python client at Home Assistant's pin
 # against the running daemon and a commissioned reference bridge; required
@@ -81,10 +81,19 @@ jobs:
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # macOS is not in this matrix: it runs nightly (nightly.yml), as in
+    # go-fabric and go-fabric-ui. GitHub's hosted macOS arm64 pool is
+    # capacity-constrained: a queued job no runner acquires is cancelled by
+    # GitHub after 15 minutes without a single step ("The job was not
+    # acquired by Runner of type hosted even after multiple attempts"),
+    # which as a required check blocked pull requests (go-fabric-ui #40,
+    # run 41700209461 here). The go test timeout prints a goroutine dump on
+    # a real hang; the job timeout is above it so the dump lands.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7.0.0
