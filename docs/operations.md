@@ -36,10 +36,12 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-extensions` | — | the features go-fabric implements ahead of matter.js that the bridge node serves, by register ID, `id[,id…]`: `BD-Thread-NetComm-ThreadVariant`, `BD-chip-Thermostat-Events`, `BD-chip-Thermostat-Schedules`, `BD-chip-TimeSynchronization-Features` at go-fabric v0.15.2 ([Surface policies](#surface-policies)); an unknown ID stops the start with the known ones |
 | `--bridge-spec-level` | the pin's (`1.6.1`) | the Matter specification level the bridge node composes at: `1.4`, `1.4.1`, `1.4.2`, `1.5.1`, `1.6.0`, `1.6.1` at go-fabric v0.15.2; another value stops the start with the list |
 | `--bridge-profile` | — | the controller profiles the bridge node composes for, `name[,name…]`: `alexa`, `apple-home`, `google-home`, `home-assistant`, `smartthings` at go-fabric v0.15.2; an unknown name, or two whose levels differ without `--bridge-spec-level`, stops the start |
+| `--bridge-node` | — | a device node beside the `--bridge-*` one, `key,listen=ADDR[,discriminator=N][,passcode=N][,vendor-id=N][,product-id=N][,label=TEXT]`; a field left out takes the `--bridge-*` flag's value, the label the key; repeatable, `;` separates entries in one value (the environment variable carries them all); needs `--bridge` ([Several device nodes](#several-device-nodes)) |
+| `--node-default` | `default` | the key of the default node: the one `/bridge` feeds and the pages list first |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
 | `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened |
 | `--bluetooth-proxy` | — | an ESPHome Bluetooth proxy `commission_with_code` may commission through, `host[:port][,key]` (port 6053; `key` the base64 API encryption key, none for a plaintext API); repeatable, the environment variable gives one; not with `--bluetooth-adapter`. go-fabric's `ble/esphome` central, pure Go, no adapter or D-Bus; the start fails when a proxy refuses (wrong or missing key, no active connections) or none answers ([Bluetooth through ESPHome proxies](#bluetooth-through-esphome-proxies)) |
-| `--web` | — | serve go-fabric-ui's pages on this address: the bridge node's with `--bridge`, the controller's with `--controller`; read-only unless `--web-admin` or `--web-admin-source` |
+| `--web` | — | serve go-fabric-ui's pages on this address: the device nodes' with `--bridge`, the controller's with `--controller`, the Operation page always; read-only unless `--web-admin` or `--web-admin-source` |
 | `--web-admin` | `false` | the pages may write, show the pairing code and use the controller's admin routes (the page's token mode) |
 | `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
@@ -57,6 +59,33 @@ attestation chain, so a controller may warn that it is uncertified; set
 `--bridge-passcode` and `--bridge-discriminator` before pairing for real.
 The declared devices are not stored by the server: the client declares
 them after every connect, and each keeps its endpoint number under its key.
+
+### Several device nodes
+
+The `--bridge-*` flags configure the node under the key `default`; a
+daemon configured as before runs that one node unchanged (store
+`bridge.db`, `/bridge`). Each `--bridge-node` entry adds one more, for
+example a second node on port 5541:
+
+```sh
+fabric-server --bridge --bridge-passcode 34567890 \
+  --bridge-node 'kitchen,listen=:5541,discriminator=3841,label=Kitchen'
+```
+
+Every node is a Matter node of its own: its UDP port (`listen`, required
+and unique), its discriminator (unique — a commissioner tells the nodes
+apart by it), its passcode, its fabrics, its mDNS advertisement, its store
+`bridge-<key>.db` and its SerialNumber `FSB-<key>`. The surface policies
+(`--bridge-extensions`, `--bridge-spec-level`, `--bridge-profile`) are the
+same for all. A client feeds a node at `/bridge/<key>` (`/bridge` is the
+default node, `--node-default`); which bridged device goes to which node is
+the client's decision. The key is the node's identity (`docs/by_design.md`
+B23): it must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,27}$`, must not be
+`default` or a page name of the node pages (`status`, `pair`, `fabrics`,
+`selection`, `endpoints`, `endpoint`, `surface`, `diagnostics`,
+`topology`), and renaming it starts a new, uncommissioned node. A
+misconfigured entry stops the start before any node runs. The Home
+Assistant add-on runs the one `--bridge-*` node only.
 
 ### Surface policies
 
@@ -112,6 +141,7 @@ Under `--storage-path` (created with mode 0700):
 | `fabric-server.db` (+ `-wal`, `-shm`) | the controller's SQLite database: our fabric and its CA, the paired nodes and their attribute images (go-fabric's stores) |
 | `server.json` (mode 0600) | the server's settings: the fabric label, the stored Wi-Fi credentials and Thread datasets |
 | `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys |
+| `bridge-<key>.db` | per `--bridge-node` entry: that node's store, the same content |
 
 Back up the whole directory with the daemon stopped (or with
 `sqlite3 fabric-server.db .backup`). Losing `fabric-server.db` loses the
@@ -120,8 +150,8 @@ fabric: every node must be commissioned again.
 ## Ports and network
 
 - The API: `--listen` (5580 in the image and the unit).
-- Matter: UDP on `--matter-listen` (the controller) and `--bridge-listen`
-  (the bridge node, 5540), IPv6 link-local and site addresses; DNS-SD on UDP
+- Matter: UDP on `--matter-listen` (the controller), `--bridge-listen`
+  (the bridge node, 5540) and each `--bridge-node` entry's `listen`, IPv6 link-local and site addresses; DNS-SD on UDP
   5353 (multicast). The host needs IPv6 and multicast on the interface
   the devices are on; in a container, use host networking.
 
@@ -173,20 +203,34 @@ into `systemctl edit fabric-server` as `Environment=FABRIC_SERVER_…` lines.
 
 slog text lines on stderr (journald, `docker logs`); the message keys follow
 go-fabric's convention (`fabricserver.*` for the server, `matter.*` for the
-stack).
+stack); a record of a `--bridge-node` node carries `node=<key>`. The same
+records go through go-fabric's log ring (`logring`, the newest 1000 in
+memory), which the pages' Operation page shows and streams. One level gates
+both: `--log-level` at start, then `set_loglevel` over `/ws` or the
+Operation page, each seen by the other's `get_loglevel`/level read; no log
+file is written (`file_loglevel` is `null`).
 
 ## The pages
 
-`--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, v0.2.1),
-both families in one handler:
+`--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
+0.5.0), both families and the Operation page in one handler:
 
-- **The node pages** for the bridge node of `--bridge`: status, pairing,
+- **The node pages** for every device node of `--bridge` and
+  `--bridge-node`, under a node selector that lists the default node first
+  (`GET /api/v1/nodes`, `/api/v1/nodes/<key>/…`): status, pairing,
   fabrics, the commissioning window, diagnostics. Without `--bridge` the
-  node family is shown as disabled. The host decides what is exposed over
-  `/bridge`, so the pages have no exposure selection.
+  node family is shown as disabled. The client decides what is exposed over
+  `/bridge`, so the pages have no exposure selection; the selection page
+  says so ("the server keeps no host item model; selection is the
+  client's").
+- **The Operation page**: the log level (the one `/ws` `set_loglevel`
+  moves; changing it is an admin route), the log ring and its stream, the
+  version, the go-fabric version and the uptime.
 - **The controller pages** for the controller half (`--controller`, on by
   default): the fabric, the commissioned nodes (attributes, commands, ACL,
-  bindings, ICD, fabrics, the commissioning window), commissioning by code
+  bindings, ICD, fabrics, the commissioning window, a ping — one Matter
+  read through go-fabric-ui's adapter, the method of `/ws` `ping_node`),
+  commissioning by code
   or from a discovery, the fabric label, the Wi-Fi and Thread credentials
   and software updates. With `--controller=false` the family is shown as
   disabled. The source is go-fabric-ui's adapter

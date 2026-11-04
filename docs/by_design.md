@@ -126,11 +126,12 @@ the two flags name different mechanisms, so neither silently wins.
 
 ## Bridge half
 
-**B11 — one bridge client at a time.** A second `/bridge` connection gets
-an error frame naming the holder (error 200) and the close status 4409
-(brief S2 §1.1): the daemon serves one node, and two authors of its topology
-would undo each other's declarations; a reconnecting host is served once the
-old connection is gone.
+**B11 — one bridge client at a time, per node.** A second connection to
+one node's `/bridge/<key>` (or `/bridge`) gets an error frame naming the
+holder (error 200) and the close status 4409 (brief S2 §1.1): two authors
+of a node's topology would undo each other's declarations; a reconnecting
+host is served once the old connection is gone. Clients of different nodes
+(brief S-U5 §2) do not exclude each other.
 
 **B12 — writes and commands reach the host only on opt-in.** Without
 `handle_writes`/`handle_commands` the kit applies a write and answers a
@@ -146,3 +147,13 @@ that restarts declares what it has, and the node
 forgets the endpoint numbers of what it no longer has without a second
 command; an unchanged device is left as it is, so its subscriptions and
 endpoint stay.
+
+**B23 — a device node's key is its configuration name.** The `--bridge-*`
+node is `default`, a `--bridge-node` entry's key is the name it is
+configured under (`internal/daemon/nodes.go` `bridgeNodes`), not an id
+derived from its store (issue #34, open question 1): the key is known
+before the node starts, the pages' routes (`/nodes/<key>`, go-fabric-ui
+`NodeEntry.Key`, "stable across restarts") and `/bridge/<key>` name it,
+it survives a factory reset of the store, and it names the store file
+(`bridge-<key>.db`), so renaming it is a new node — the one identity a
+configuration file can hold steady.

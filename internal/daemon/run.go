@@ -67,7 +67,14 @@ type Config struct {
 	BridgeExtensions string
 	BridgeSpecLevel  string
 	BridgeProfile    string
-	ShowVersion      bool
+	// BridgeNodes are the device nodes beside the --bridge-* one
+	// (--bridge-node, repeatable), each
+	// key,listen=ADDR[,discriminator=N][,passcode=N][,vendor-id=N][,product-id=N][,label=TEXT]
+	// (bridgeNodes); NodeDefault is the key of the default node
+	// (--node-default), empty the --bridge-* node's ("default").
+	BridgeNodes []string
+	NodeDefault string
+	ShowVersion bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
 	// shell or curl).
@@ -126,6 +133,8 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
 	fs.StringVar(&c.BridgeSpecLevel, "bridge-spec-level", "", "the specification level the bridge node composes at (default the pin's): "+levelList())
 	fs.StringVar(&c.BridgeProfile, "bridge-profile", "", "the controller profiles the bridge node composes for, name[,name...]: "+profileList())
+	fs.Var((*specList)(&c.BridgeNodes), "bridge-node", "a device node beside the --bridge-* one: key,listen=ADDR[,discriminator=N][,passcode=N][,vendor-id=N][,product-id=N][,label=TEXT]; a field left out takes the --bridge-* value, the label the key; repeatable (';' separates entries in one value); needs --bridge")
+	fs.StringVar(&c.NodeDefault, "node-default", "", "the key of the default node: /bridge and the pages' first node (default the --bridge-* node, \"default\")")
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
@@ -187,7 +196,8 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		return fmt.Errorf("--log-level %q, want critical, error, warning, notice, info or debug", c.LogLevel)
 	}
 	lvl.Set(l)
-	log := slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: lvl}))
+	log, ring := newLogger(stderr, lvl)
+	ops := operations{ring: ring, started: time.Now()}
 	listen, err := protocol.ParseListen(c.Listen)
 	if err != nil {
 		return err
@@ -282,18 +292,30 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		}
 	}
 
-	var br *bridgeapi.Server
-	var bridgeNode *node.Node
-	ev := fabricui.NewEvents()
-	if c.Bridge {
-		br, bridgeNode, err = startBridge(ctx, c, log)
+	// The device nodes, the default first, all validated before the
+	// first starts; each its own node, store, mDNS advertiser and bridge
+	// half (startBridge).
+	specs, err := bridgeNodes(c)
+	if err != nil {
+		return err
+	}
+	halves := make([]bridgeHalf, 0, len(specs))
+	defer func() {
+		// The last started stops first, as one defer per node would.
+		for i := len(halves) - 1; i >= 0; i-- {
+			_ = halves[i].node.Stop(context.WithoutCancel(ctx))
+		}
+	}()
+	for _, s := range specs {
+		br, n, err := startBridge(ctx, c, s, log)
 		if err != nil {
 			return err
 		}
-		defer func() { _ = bridgeNode.Stop(context.WithoutCancel(ctx)) }()
+		halves = append(halves, bridgeHalf{spec: s, node: n, srv: br})
 	}
+	ev := fabricui.NewEvents()
 	if c.Web != "" {
-		stop, err := serveWeb(ctx, c, bridgeNode, ctrlPages, ev, log)
+		stop, err := serveWeb(ctx, c, halves, ctrlPages, ev, ops, log)
 		if err != nil {
 			return err
 		}
@@ -304,7 +326,11 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	srv := &http.Server{Handler: MuxWith(api, br, c.Token, version.Version), ReadHeaderTimeout: 10 * time.Second}
+	mounts := make([]BridgeHalf, len(halves))
+	for i := range halves {
+		mounts[i] = BridgeHalf{Key: halves[i].spec.Key, Server: halves[i].srv}
+	}
+	srv := &http.Server{Handler: MuxNodes(api, mounts, c.Token, version.Version), ReadHeaderTimeout: 10 * time.Second}
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("fabricserver.listening", slog.String("listen", listen.String()))
@@ -320,8 +346,8 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if api != nil {
 		api.Shutdown(shutdown)
 	}
-	if br != nil {
-		br.Shutdown(shutdown)
+	for i := range halves {
+		halves[i].srv.Shutdown(shutdown)
 	}
 	_ = srv.Shutdown(shutdown)
 	if listen.Network == "unix" {
@@ -336,12 +362,16 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 // docs/guides/embed-in-a-daemon.md §2).
 var bridgeSalt = []byte("go-fabric-server bridge node")
 
-// bridgeConfig is the bridge node's configuration from the flags: its
-// commissioning identity, its store under --storage-path, the daemon's
-// logger, its surface policies (surfacePolicies).
-func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
+// bridgeConfig is a device node's configuration: its commissioning
+// identity from its spec (the --bridge-* flags or its --bridge-node
+// entry), its store under --storage-path, the daemon's logger, the
+// surface policies every node shares (surfacePolicies).
+func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 	// Widths only: node.New validates the values (Config.Validate).
-	if c.BridgePasscode > math.MaxUint32 || c.BridgeDiscriminator > math.MaxUint16 || c.BridgeVendorID > math.MaxUint16 || c.BridgeProductID > math.MaxUint16 {
+	if s.Passcode > math.MaxUint32 || s.Discriminator > math.MaxUint16 || s.VendorID > math.MaxUint16 || s.ProductID > math.MaxUint16 {
+		if s.Key != fabricui.DefaultNodeKey {
+			return node.Config{}, fmt.Errorf("--bridge-node %q: passcode, discriminator, vendor-id or product-id is wider than its field", s.Key)
+		}
 		return node.Config{}, errors.New("--bridge-passcode, --bridge-discriminator, --bridge-vendor-id or --bridge-product-id is wider than its field")
 	}
 	policies, err := surfacePolicies(c)
@@ -349,35 +379,38 @@ func bridgeConfig(c Config, log *slog.Logger) (node.Config, error) {
 		return node.Config{}, err
 	}
 	return node.Config{
-		Network: node.Network{Listen: c.BridgeListen},
+		Network: node.Network{Listen: s.Listen},
 		Commissioning: node.Commissioning{
-			Passcode: uint32(c.BridgePasscode), Discriminator: uint16(c.BridgeDiscriminator), //nolint:gosec // checked above
+			Passcode: uint32(s.Passcode), Discriminator: uint16(s.Discriminator), //nolint:gosec // checked above
 			PBKDFIterations: 1000, Salt: bridgeSalt,
 		},
-		ProductDescription: node.ProductDescription{VendorID: uint16(c.BridgeVendorID), ProductID: uint16(c.BridgeProductID)}, //nolint:gosec // checked above
+		ProductDescription: node.ProductDescription{VendorID: uint16(s.VendorID), ProductID: uint16(s.ProductID)}, //nolint:gosec // checked above
 		BasicInformation: node.BasicInformation{
-			VendorName: "go-fabric-server", ProductName: "fabric-server bridge", NodeLabel: c.BridgeLabel,
-			SerialNumber: "FABRIC-SERVER-BRIDGE", SoftwareVersionString: version.Version,
+			VendorName: "go-fabric-server", ProductName: "fabric-server bridge", NodeLabel: s.Label,
+			SerialNumber: s.Serial, SoftwareVersionString: version.Version,
 		},
-		Store:   node.Store{Path: filepath.Join(c.StoragePath, "bridge.db")},
+		Store:   node.Store{Path: filepath.Join(c.StoragePath, s.Store)},
 		Logger:  log,
 		Surface: policies,
 	}, nil
 }
 
-// startBridge builds the bridge node with the bridge half's observers,
+// startBridge builds one device node with its bridge half's observers,
 // starts it and binds the half to it.
-func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
-	cfg, err := bridgeConfig(c, log)
+func startBridge(ctx context.Context, c Config, s nodeSpec, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
+	if s.Key != fabricui.DefaultNodeKey {
+		log = log.With(slog.String("node", s.Key))
+	}
+	cfg, err := bridgeConfig(c, s, log)
 	if err != nil {
 		return nil, nil, err
 	}
 	br := bridgeapi.New(bridgeapi.Options{
 		Version: version.Version, GoFabricVersion: version.GoFabric(), ResultTimeout: c.BridgeResultTimeout,
-		Logger: log, Metrics: expvarmetrics.New("fabricserver.bridge."),
+		Logger: log, Metrics: expvarmetrics.New(bridgeMetricsPrefix(s.Key)),
 		// The node's policies: the half builds every declared device under
 		// them (node.ErrPolicyMismatch otherwise).
-		Surface: cfg.Surface,
+		Surface: cfg.Surface, Node: s.Key,
 	})
 	// The node pages' event stream observes the node itself (go-fabric-ui
 	// v0.1.2: the handler's Node.Observe), so only the half's observers go
@@ -385,11 +418,11 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 	cfg.Observers = br.Observers()
 	n, err := node.New(ctx, cfg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("bridge node: %w", err)
+		return nil, nil, fmt.Errorf("%s: %w", nodeName(s.Key), err)
 	}
 	if err := n.Start(ctx); err != nil {
 		_ = n.Stop(context.WithoutCancel(ctx))
-		return nil, nil, fmt.Errorf("bridge node: %w", err)
+		return nil, nil, fmt.Errorf("%s: %w", nodeName(s.Key), err)
 	}
 	if err := br.Start(ctx, n); err != nil {
 		_ = n.Stop(context.WithoutCancel(ctx))
@@ -400,6 +433,25 @@ func startBridge(ctx context.Context, c Config, log *slog.Logger) (*bridgeapi.Se
 	// admin on the node pages.
 	log.Info("fabricserver.bridge.ready")
 	return br, n, nil
+}
+
+// nodeName names a device node in a start error: "bridge node" for the
+// default node, as before several nodes, "bridge node <key>" for another.
+func nodeName(key string) string {
+	if key == fabricui.DefaultNodeKey {
+		return "bridge node"
+	}
+	return "bridge node " + key
+}
+
+// bridgeMetricsPrefix is a bridge half's expvar prefix: the default
+// node's as before several nodes, another's under its key (expvar names
+// are process-wide; one prefix would merge their counters).
+func bridgeMetricsPrefix(key string) string {
+	if key == fabricui.DefaultNodeKey {
+		return "fabricserver.bridge."
+	}
+	return "fabricserver.bridge." + key + "."
 }
 
 // probe is --health-check: GET url (with the token) and want 200.

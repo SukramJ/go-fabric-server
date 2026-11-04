@@ -40,6 +40,12 @@ type Options struct {
 	// HTTPClient dials the connection; nil is http.DefaultClient (or a Unix
 	// socket client for a "unix:" URL).
 	HTTPClient *http.Client
+	// Node is the key of the device node DialBridge connects to: the
+	// daemon serves each node at /bridge/<key> and its default node at
+	// /bridge as well. Set, "/<key>" is appended to the URL's path (to
+	// /bridge for a "unix:" URL); empty connects to the URL as given.
+	// Dial ignores it.
+	Node string
 }
 
 // Event is a server push.

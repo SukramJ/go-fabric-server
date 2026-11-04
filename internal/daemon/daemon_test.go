@@ -54,6 +54,10 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeExtensions: "BD-nope", StoragePath: t.TempDir()}, `--bridge-extensions: "BD-nope" is no extension go-fabric declares; known: `},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeSpecLevel: "1.5", StoragePath: t.TempDir()}, "--bridge-spec-level: "},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeProfile: "nope", StoragePath: t.TempDir()}, "--bridge-profile: "},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", BridgeNodes: []string{"second,listen=:5541"}, StoragePath: t.TempDir()}, "--bridge-node needs --bridge"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeNodes: []string{"second"}, StoragePath: t.TempDir()}, "listen= is required"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", NodeDefault: "second", StoragePath: t.TempDir()}, "--node-default needs --bridge"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, NodeDefault: "nope", StoragePath: t.TempDir()}, `--node-default "nope" is no configured node`},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "none", StoragePath: t.TempDir()}, "--trust"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", VendorID: 70000, StoragePath: t.TempDir()}, "--vendor-id"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "production", BluetoothAdapter: "0", StoragePath: t.TempDir()}, "--bluetooth-adapter 0: bluez: no such adapter"},
@@ -138,6 +142,9 @@ func TestRunBridge(t *testing.T) {
 		Listen: "unix:" + sock, LogLevel: "info", StoragePath: dir, Bridge: true,
 		BridgeListen: "[::1]:0", BridgePasscode: 20202021, BridgeDiscriminator: 3840,
 		BridgeVendorID: 0xFFF1, BridgeProductID: 0x8001, BridgeLabel: "test", BridgeResultTimeout: time.Second,
+		// A second device node beside it (--bridge-node): its own port,
+		// discriminator, store and /bridge/second.
+		BridgeNodes: []string{"second,listen=[::1]:0,discriminator=3841"},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -162,8 +169,20 @@ func TestRunBridge(t *testing.T) {
 	if _, err := b.Declare(rctx, map[string]any{"devices": []any{map[string]any{"key": "l", "type": "OnOffLight"}}}); err != nil {
 		t.Fatal(err)
 	}
-	if qr, manual, err := b.PairingCodes(rctx); err != nil || !strings.HasPrefix(qr, "MT:") || manual == "" {
+	qr, manual, err := b.PairingCodes(rctx)
+	if err != nil || !strings.HasPrefix(qr, "MT:") || manual == "" {
 		t.Fatalf("pairing codes %q %q %v", qr, manual, err)
+	}
+	second, err := fsclient.DialBridge(rctx, "unix:"+sock, fsclient.Options{Node: "second"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = second.Close() }()
+	if qr2, _, err := second.PairingCodes(rctx); err != nil || second.Info().Node != "second" || qr2 == qr {
+		t.Fatalf("second node %q %q %v", second.Info().Node, qr2, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "bridge-second.db")); err != nil {
+		t.Fatal(err)
 	}
 	cancel()
 	select {
@@ -212,7 +231,7 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatalf("source check: %v", err)
 	}
 	// The pages answer without a node: the family disabled.
-	h, err := webHandler(Config{}, nil, nil, nil, nil)
+	h, err := webHandler(Config{}, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +246,7 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatalf("shell %d", rec.Code)
 	}
 	// Behind the Ingress only the proxy is answered.
-	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil)
+	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

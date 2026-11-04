@@ -44,6 +44,10 @@ type pagesEnv struct {
 	pages  *httptest.Server
 	token  string
 	events chan fabricui.ControllerEvent
+	// log is the daemon's logger (newLogger over io.Discard), lvl its one
+	// level source: the half's LogLevel and the pages' Operations.
+	log *slog.Logger
+	lvl *slog.LevelVar
 }
 
 func newPagesEnv(t *testing.T, c Config) *pagesEnv {
@@ -58,8 +62,11 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
-	log := slog.New(slog.DiscardHandler)
-	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: log})
+	// The daemon's logger and level source, as Run builds them; the
+	// site keeps a silent one, so the ring holds the daemon's records.
+	lvl := new(slog.LevelVar)
+	log, ring := newLogger(io.Discard, lvl)
+	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: slog.New(slog.DiscardHandler)})
 	plug, err := device.NewOnOffPlugInUnit(device.Options{StableKey: device.StringKey("plug:1"), Name: "Plug"})
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +77,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		bleCentral = central(dev)
 	}
 	api, err := controllerapi.New(controllerapi.Options{
-		Version: "test", GoFabricVersion: "v-test", StoragePath: t.TempDir(), Logger: log,
+		Version: "test", GoFabricVersion: "v-test", StoragePath: t.TempDir(), Logger: log, LogLevel: lvl,
 		DefaultFabricLabel: c.DefaultFabricLabel,
 		BLE:                bleCentral,
 	})
@@ -78,7 +85,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		t.Fatal(err)
 	}
 	hooks := gofabric.NewHooks()
-	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: log})
+	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: slog.New(slog.DiscardHandler)})
 	cfg.HooksFor = hooks.Wrap(api.Hooks) // as Run wires them
 	var changes topology.Changes
 	changes.Install(&cfg)
@@ -99,7 +106,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	}
 	ws := httptest.NewServer(Mux(api, "", "test"))
 	src := controllerSource(ctrl, topo, api, hooks, log)
-	h, err := webHandler(c, nil, src, fabricui.NewEvents(), log)
+	h, err := webHandler(c, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +118,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		ws.Close()
 		pages.Close()
 	})
-	e := &pagesEnv{t: t, ctx: ctx, dev: dev, api: api, pages: pages, events: make(chan fabricui.ControllerEvent, 256)}
+	e := &pagesEnv{t: t, ctx: ctx, dev: dev, api: api, pages: pages, events: make(chan fabricui.ControllerEvent, 256), log: log, lvl: lvl}
 	e.ws, err = fsclient.Dial(ctx, "ws"+strings.TrimPrefix(ws.URL, "http")+"/ws", fsclient.Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -261,6 +268,27 @@ func TestControllerPages(t *testing.T) {
 	e.json(http.MethodGet, "/controller/status", "", http.StatusOK, &st)
 	if st.Label != "Pages" {
 		t.Fatalf("status label %q", st.Label)
+	}
+
+	// The pages' ping is go-fabric-ui's adapter's (ControllerNode.Ping,
+	// the daemon passes nothing), /ws ping_node the half's: both reach
+	// the node.
+	var ping struct {
+		Method    string `json:"method"`
+		Reachable bool   `json:"reachable"`
+	}
+	e.json(http.MethodPost, "/controller/nodes/"+want+"/ping", "", http.StatusOK, &ping)
+	if ping.Method != "matter-read" || !ping.Reachable {
+		t.Fatalf("pages ping %+v", ping)
+	}
+	addrs, err := e.ws.PingNode(e.ctx, n.NodeID)
+	if err != nil || len(addrs) == 0 {
+		t.Fatalf("ping_node %v %v", addrs, err)
+	}
+	for a, ok := range addrs {
+		if !ok {
+			t.Fatalf("ping_node: %s unreachable", a)
+		}
 	}
 
 	// The pages' decommission is remove_node: /ws hears node_removed.
