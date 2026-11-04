@@ -29,7 +29,7 @@ func TestSurfacePolicies(t *testing.T) {
 	if !slices.Equal(p.Extensions.IDs(), []string{"BD-chip-Thermostat-Events", "BD-chip-Thermostat-Schedules"}) || p.Level != "1.4.2" || !slices.Equal(p.Profiles, []string{"apple-home"}) {
 		t.Fatalf("%+v", p)
 	}
-	cfg, err := bridgeConfig(c, nil)
+	cfg, err := bridgeConfig(c, primaryNode(c), nil)
 	if err != nil || cfg.Surface.Digest() != p.Digest() {
 		t.Fatalf("bridgeConfig: %v", err)
 	}

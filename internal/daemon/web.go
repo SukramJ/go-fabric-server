@@ -14,21 +14,24 @@ import (
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric/node"
 )
 
-// webHandler is the pages of go-fabric-ui (v0.4.1, docs/embedding.md):
-// the node family over the bridge node with no Exposure (the host decides
-// what is exposed over /bridge), the controller family over ctrl (its
+// webHandler is the pages of go-fabric-ui (0.5.0, docs/embedding.md):
+// the node family over the device nodes, the default first
+// (Options.Nodes, nodeEntries), with no Exposure and its reason (the
+// client decides what is exposed over /bridge), the Operation page over
+// the daemon's log ring (ops), the controller family over ctrl (its
 // graph, /controller/topology, the topology service /ws's
 // get_network_topology answers from, controllerSource), and the
 // admin rule of the flags for both — a controller route marked admin
-// follows the same Options.Admin as a node page that writes. A nil node or
-// a nil ctrl serves that family as disabled.
-func webHandler(c Config, n *node.Node, ctrl fabricui.ControllerSource, ev *fabricui.Events, log *slog.Logger) (http.Handler, error) {
-	o := fabricui.Options{Events: ev, Logger: log, Controller: ctrl}
-	if n != nil {
-		o.Node = n
+// follows the same Options.Admin as a node page that writes. No node or
+// a nil ctrl serves that family as disabled, a nil ops no Operation page.
+// The controller node's ping is go-fabric-ui's own (its gofabric
+// adapter's ControllerNode.Ping); the daemon passes nothing for it.
+func webHandler(c Config, nodes []bridgeHalf, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (http.Handler, error) {
+	o := fabricui.Options{
+		Events: ev, Logger: log, Controller: ctrl, Operations: ops,
+		Nodes: nodeEntries(nodes), ExposureReason: exposureReason,
 	}
 	admin, err := webAdmin(c)
 	if err != nil {
@@ -80,8 +83,8 @@ func fromAddr(r *http.Request, src netip.Addr) bool {
 }
 
 // serveWeb serves the pages on --web until the returned stop.
-func serveWeb(ctx context.Context, c Config, n *node.Node, ctrl fabricui.ControllerSource, ev *fabricui.Events, log *slog.Logger) (func(), error) {
-	h, err := webHandler(c, n, ctrl, ev, log)
+func serveWeb(ctx context.Context, c Config, nodes []bridgeHalf, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (func(), error) {
+	h, err := webHandler(c, nodes, ctrl, ev, ops, log)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +98,7 @@ func serveWeb(ctx context.Context, c Config, n *node.Node, ctrl fabricui.Control
 			log.Error("fabricserver.web.serve", slog.Any("error", err))
 		}
 	}()
-	log.Info("fabricserver.web.listening", slog.String("listen", ln.Addr().String()), slog.Bool("admin", c.WebAdmin || c.WebAdminSource != ""), slog.Bool("node", n != nil), slog.Bool("controller", ctrl != nil))
+	log.Info("fabricserver.web.listening", slog.String("listen", ln.Addr().String()), slog.Bool("admin", c.WebAdmin || c.WebAdminSource != ""), slog.Int("nodes", len(nodes)), slog.Bool("controller", ctrl != nil))
 	return func() {
 		sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()

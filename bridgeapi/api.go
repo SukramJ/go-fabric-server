@@ -55,6 +55,11 @@ type Options struct {
 	// node's Aggregator refuses a device composed under other policies
 	// (go-fabric node.ErrPolicyMismatch). The zero value is no policy.
 	Surface surface.Policies
+	// Node is the key of the device node the server binds to, as the
+	// daemon names it (its --bridge-node entry, "default" for the
+	// --bridge-* node); server_info reports it as node, so a client sees
+	// which node it feeds. Empty reports "default".
+	Node string
 }
 
 // Server is the bridge half. Its methods are safe for concurrent use.

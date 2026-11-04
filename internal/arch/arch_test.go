@@ -52,6 +52,10 @@ var facade = map[string]bool{
 	// service get_network_topology and the controller pages answer from
 	// (go-fabric-ui's gofabric.ControllerOptions.Topology takes it).
 	"controller/topology": true,
+	// The daemon's log ring (brief S-U5 §3, go-fabric #393): the
+	// slog.Handler in front of the daemon's own, whose records, level and
+	// stream go-fabric-ui's Operations port reads.
+	"logring": true,
 	// The BLE central type of controller.PairOptions.BLE, and the Thread
 	// dataset codec the CJ report names as the dataset reader (go-fabric
 	// notes/briefs/reports/CJ.md, 1.13: then controller/thread.DecodeDataset;

@@ -4,6 +4,7 @@
 package bridgeapi
 
 import (
+	"cmp"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -25,6 +26,7 @@ type serverInfoData struct {
 	BridgeSchemaVersion int      `json:"bridge_schema_version"`
 	SDKVersion          string   `json:"sdk_version"`
 	Capabilities        []string `json:"capabilities"`
+	Node                string   `json:"node"`
 }
 
 func (s *Server) serverInfo() serverInfoData {
@@ -32,6 +34,7 @@ func (s *Server) serverInfo() serverInfoData {
 		BridgeSchemaVersion: BridgeSchemaVersion,
 		SDKVersion:          fmt.Sprintf("go-fabric-server/%s (go-fabric/%s)", s.opts.Version, s.opts.GoFabricVersion),
 		Capabilities:        Capabilities(),
+		Node:                cmp.Or(s.opts.Node, "default"),
 	}
 }
 
