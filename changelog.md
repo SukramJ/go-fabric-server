@@ -6,7 +6,37 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Several device nodes per daemon: each `--bridge-node
+  key,listen=ADDR[,discriminator=N][,passcode=N][,vendor-id=N][,product-id=N][,label=TEXT]`
+  runs one more Matter node beside the `--bridge-*` one (key `default`),
+  with its own port, discriminator, passcode, fabrics, mDNS advertisement
+  and store `bridge-<key>.db`; a client feeds it at `/bridge/<key>`
+  (`/bridge` is the default node, `--node-default`), `server_info` on
+  `/bridge` names the node (`node`), and the Go client dials one with
+  `client.Options.Node`. A daemon configured as before runs its one node
+  unchanged. The pages list every node in their node selector, the
+  default first.
+- The pages' Operation page (go-fabric-ui contract 0.5.0): the log level,
+  the log ring with its stream (go-fabric's `logring` in front of the
+  stderr handler) and the version and uptime. Its level and `/ws`
+  `get_loglevel`/`set_loglevel` are one source; `file_loglevel` stays
+  `null`.
+- The controller pages ping a node (go-fabric-ui's adapter, one Matter
+  read as `/ws` `ping_node`); the node pages' selection says why there is
+  none: "the server keeps no host item model; selection is the client's".
+
 ### Changed
+
+- go-fabric `v0.16.1-0.20261103161943-af164eb2aa1e` →
+  `v0.16.1-0.20261104200735-c2dc83da3d2a` (main at `c2dc83da`, `logring`)
+  and go-fabric-ui `v0.3.1-0.20261103135546-2d326bdcf180` →
+  `v0.3.1-0.20261104202028-11bd64b23b6a` (main at `11bd64b`, contract
+  0.5.0, wave U5a): pseudo-versions until both modules tag, the next release lifts
+  them to the tags; `protocol/schema` regenerated (`GoFabricVersion`
+  only).
+- `/health`'s `device_count` sums the devices of every device node.
 
 - The add-on's side panel is titled **Fabric Controller** (was `Fabric`,
   `panel_title` in `addon/config.yaml`), the role the add-on plays for Home

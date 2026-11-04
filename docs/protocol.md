@@ -101,7 +101,7 @@ reported as `other` until go-fabric names an attestation rejection.
 | `set_default_fabric_label`, `get_fabric_label` | implemented | trimmed, empty is `HomeAssistant`, at most 32 characters; stored and pushed to every connected node in the background |
 | `get_matter_fabrics`, `remove_matter_fabric` | implemented | |
 | `diagnostics` | implemented | `{info, nodes, events}`, the last 25 node events |
-| `get_loglevel`, `set_loglevel` | implemented | console level; `file_loglevel` is `null` |
+| `get_loglevel`, `set_loglevel` | implemented | console level — the daemon's one level source, shared with the pages' Operation page (`PUT /api/v1/operation/log/level`); `file_loglevel` stays `null`: no log file, the pages' log ring is in memory |
 | `set_acl_entry` | implemented | the whole ACL of our fabric in one write; a subject naming the node itself is left out; result `[{path: {endpoint_id, cluster_id, attribute_id}, status}]` |
 | `set_node_binding` | implemented | the whole Binding list of `endpoint`; the same result shape |
 | `get_vendor_names` | implemented | the production DCL's vendor records, kept for a day; `filter_vendors` narrows them |
@@ -265,7 +265,8 @@ Ignorable by a client that does not know them:
 
 The door for a host that is not written in Go: it declares devices by name,
 sends state deltas and answers what a controller asks of them. The daemon
-runs one bridge node (`--bridge`, see operations) and the half drives
+runs one bridge node per device node it is configured with (`--bridge`,
+`--bridge-node`, see operations), each with its own bridge half, and a half drives
 go-fabric's device kit one-to-one: a declaration is `device.New` with the
 typed `<cluster>def.Declare` of each cluster, a delta is the typed server's
 `Set`, a write veto is `OnWrite`, a host-answered command is
@@ -275,13 +276,20 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
 ## Connection
 
 - The same envelope, codec and send path as `/ws`, the same token rule.
+- **One path per device node.** `/bridge/<key>` feeds the node of that key
+  (`default` for the `--bridge-*` node, a `--bridge-node` entry's key for
+  another); `/bridge` feeds the default node (`--node-default`, else
+  `default`). An unconfigured key is 404. Which bridged device goes to which
+  node is the client's decision.
 - On connect the bare `server_info`: `{bridge_schema_version: 1,
-  sdk_version, capabilities}`. The bridge half's schema number counts on its
-  own, from 1.
-- **One bridge client at a time.** The node has one author. A second
+  sdk_version, capabilities, node}`; `node` is the key of the node the
+  connection feeds (additive, so the schema number stays 1). The bridge
+  half's schema number counts on its own, from 1.
+- **One bridge client at a time, per node.** A node has one author. A second
   connection gets one error frame, `{"error_code": 200, "details": "the
   bridge half has a client: bridge1 from 127.0.0.1:… since …"}`, and the
   close status 4409. The next client is served once the holder is gone.
+  Clients of different nodes do not exclude each other.
 - Events reach the client after its `start_listening` was answered;
   `server_shutdown` reaches it either way.
 

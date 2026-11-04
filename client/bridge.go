@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	neturl "net/url"
+	"strings"
 )
 
 // BridgeInfo is the bridge half's server_info.
@@ -14,6 +16,9 @@ type BridgeInfo struct {
 	BridgeSchemaVersion int      `json:"bridge_schema_version"`
 	SDKVersion          string   `json:"sdk_version"`
 	Capabilities        []string `json:"capabilities"`
+	// Node is the key of the device node this connection feeds
+	// ("default" for the daemon's --bridge-* node).
+	Node string `json:"node"`
 }
 
 // Bridge is a connection to the bridge half (/bridge).
@@ -37,7 +42,15 @@ type BridgedDevice struct {
 // answer is [Bridge.Devices]. A second client while one is connected gets
 // the server's refusal as a *protocol.Error.
 func DialBridge(ctx context.Context, url string, opts Options) (*Bridge, error) {
-	c, first, err := open(ctx, url, "/bridge", opts)
+	path := "/bridge"
+	if opts.Node != "" {
+		seg := "/" + neturl.PathEscape(opts.Node)
+		path += seg
+		if !strings.HasPrefix(url, "unix:") {
+			url += seg
+		}
+	}
+	c, first, err := open(ctx, url, path, opts)
 	if err != nil {
 		return nil, err
 	}

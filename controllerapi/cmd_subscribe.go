@@ -40,7 +40,10 @@ type ownedSub struct {
 	ended     bool
 }
 
-func (o *ownedSub) onReport(rep *client.Report) {
+// onReport is the subscription's Updated: it queues or sends the report
+// and never fails (go-fabric's Updated returns the caller's own
+// processing error; this one has none).
+func (o *ownedSub) onReport(rep *client.Report) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	switch {
@@ -51,6 +54,7 @@ func (o *ownedSub) onReport(rep *client.Report) {
 	default:
 		o.sendReportLocked(rep)
 	}
+	return nil
 }
 
 // sendReportLocked sends subscription_report, droppable under

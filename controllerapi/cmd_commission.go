@@ -220,7 +220,7 @@ func cmdCommissionOnNetwork(ctx context.Context, s *Server, c *call) (any, *prot
 		return nil, commissionError(controller.ErrNoDevice)
 	}
 	reg := s.b().Registry()
-	n, err := reg.ForDevice(pctx, *dev)
+	n, err := reg.ForDevice(pctx, *dev, "")
 	if err != nil {
 		return nil, commissionError(err)
 	}
