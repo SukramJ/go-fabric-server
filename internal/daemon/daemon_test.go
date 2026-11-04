@@ -56,6 +56,7 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeProfile: "nope", StoragePath: t.TempDir()}, "--bridge-profile: "},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", BridgeNodes: []string{"second,listen=:5541"}, StoragePath: t.TempDir()}, "--bridge-node needs --bridge"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeNodes: []string{"second"}, StoragePath: t.TempDir()}, "listen= is required"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", NodeDefault: "second", StoragePath: t.TempDir()}, "--node-default needs --bridge"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, NodeDefault: "nope", StoragePath: t.TempDir()}, `--node-default "nope" is no configured node`},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "none", StoragePath: t.TempDir()}, "--trust"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", VendorID: 70000, StoragePath: t.TempDir()}, "--vendor-id"},

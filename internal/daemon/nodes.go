@@ -121,8 +121,11 @@ func parseNodeSpec(entry string, primary nodeSpec) (nodeSpec, error) {
 // before any starts. Without --bridge there are none.
 func bridgeNodes(c Config) ([]nodeSpec, error) {
 	if !c.Bridge {
-		if len(c.BridgeNodes) > 0 {
+		switch {
+		case len(c.BridgeNodes) > 0:
 			return nil, errors.New("--bridge-node needs --bridge")
+		case c.NodeDefault != "" && c.NodeDefault != fabricui.DefaultNodeKey:
+			return nil, errors.New("--node-default needs --bridge")
 		}
 		return nil, nil
 	}
