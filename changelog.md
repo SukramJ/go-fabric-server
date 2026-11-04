@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The add-on's side panel is titled **Fabric Controller** (was `Fabric`,
+  `panel_title` in `addon/config.yaml`), the role the add-on plays for Home
+  Assistant's Matter integration; go-ha2fabric's panel is `Fabric Bridge`.
 - The add-on image workflow refuses a tag whose version differs from
   `addon/config.yaml` or `internal/version`, as the release workflow does;
   a misplaced tag no longer publishes an add-on image under a version its
