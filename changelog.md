@@ -32,8 +32,8 @@ All notable changes to this project are documented here. The format follows
 - go-fabric `v0.16.1-0.20261103161943-af164eb2aa1e` →
   `v0.16.1-0.20261104200735-c2dc83da3d2a` (main at `c2dc83da`, `logring`)
   and go-fabric-ui `v0.3.1-0.20261103135546-2d326bdcf180` →
-  `v0.3.1-0.20261104195957-2f4a922495ec` (`2f4a922`, contract 0.5.0, wave
-  U5a): pseudo-versions until both modules tag, the next release lifts
+  `v0.3.1-0.20261104202028-11bd64b23b6a` (main at `11bd64b`, contract
+  0.5.0, wave U5a): pseudo-versions until both modules tag, the next release lifts
   them to the tags; `protocol/schema` regenerated (`GoFabricVersion`
   only).
 - `/health`'s `device_count` sums the devices of every device node.

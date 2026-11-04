@@ -3,9 +3,8 @@
 Date 2026-11-04. Issue #34 (M9 U5, owner decisions F.1–F.4). Worktree
 `../go-fabric-server-su5`, branch `s/u5-operation`, on main e8bcd86. One
 pull request. **Model:** Opus. Pins: go-fabric `c2dc83da` (main, `logring`
-merged from #397); go-fabric-ui `2f4a922` (branch `u5/operation`, PR
-go-fabric-ui#42, provisional: re-pinned to its squash-merge commit before
-this pull request merges).
+merged from #397); go-fabric-ui `11bd64b` (main, U5a merged from
+go-fabric-ui#42; first built on its branch commit `2f4a922`, the same tree).
 
 ## 1 Bumps and migrations
 
