@@ -44,7 +44,7 @@ backup: cold
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:access-point-network
-panel_title: Fabric
+panel_title: Fabric Controller
 
 options:
   port: 5580
