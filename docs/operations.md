@@ -229,7 +229,8 @@ file is written (`file_loglevel` is `null`).
 - **The controller pages** for the controller half (`--controller`, on by
   default): the fabric, the commissioned nodes (attributes, commands, ACL,
   bindings, ICD, fabrics, the commissioning window, a ping — one Matter
-  read through go-fabric-ui's adapter, the method of `/ws` `ping_node`),
+  read through go-fabric-ui's adapter; `/ws` `ping_node` probes each
+  address instead),
   commissioning by code
   or from a discovery, the fabric label, the Wi-Fi and Thread credentials
   and software updates. With `--controller=false` the family is shown as

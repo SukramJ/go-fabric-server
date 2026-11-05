@@ -10,10 +10,13 @@ not deliberate is a question in a bundle report, not an entry here.
 ## Controller half
 
 **B1 — `ping_node` is a Matter read.** Each address of the node is
-answered with the outcome of a Matter read of the node, not of ICMP echoes
+probed with go-fabric's `client.Node.PingAddress` — an empty read over the
+held session sent to that address, nothing migrated (go-fabric
+`controller/client/ping.go:32-51` at `8feaa508`) — not with ICMP echoes
 (clone `packages/ws-controller/src/controller/ControllerCommandHandler.ts:2267-2306`;
 map 1795-1806): the daemon runs non-root in a distroless image, without the
-raw sockets an echo needs.
+raw sockets an echo needs; a node without a session is therefore
+unreachable on every address.
 
 **B2 — a missing `node_id` is `InvalidArguments` for every command.** A
 missing or non-numeric `node_id` answers error 8 everywhere; matterjs-server

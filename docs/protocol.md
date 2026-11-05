@@ -93,7 +93,7 @@ reported as `other` until go-fabric names an attestation rejection.
 | `enable_auto_subscription`, `disable_auto_subscription` | implemented | only with `--disable-auto-subscription` (`client.Node.SetAutoSubscribe`); enabling ends the node's `subscribe` subscriptions |
 | `remove_node` | implemented | `client.Registry.Decommission` |
 | `interview_node` | implemented | a full read without version filters |
-| `ping_node` | implemented | a Matter read instead of ICMP (see below) |
+| `ping_node` | implemented | each address probed with go-fabric's `client.Node.PingAddress` instead of ICMP (see below); `details` answers one result per address |
 | `get_node_ip_addresses` | implemented | from the node's record |
 | `open_commissioning_window` | implemented | an enhanced window (`client.Node.OpenCommissioningWindow`), `timeout` in seconds; `iteration`, `option`, `discriminator` accepted and not used, as matterjs-server |
 | `set_/remove_wifi_credentials`, `get_all_credentials` | implemented | secrets are write-only |
@@ -218,6 +218,11 @@ Metrics: `ws.connections`, `ws.queued_bytes`, `ws.dropped`,
 Ignorable by a client that does not know them:
 
 - `capabilities` in `server_info`: the commands this server answers;
+- `details: true` on `ping_node`: one result per address of the record
+  instead of `{ip: reachable}`, ordered by IP, then port —
+  `[{ip, port, reachable, round_trip_ms?, error?}]`, `round_trip_ms` the
+  answered attempt's round trip (fractional milliseconds), `error` the last
+  attempt's error when none answered (Go client: `PingNodeAddresses`);
 - `ip_addresses` on a commissioned `matter` node of
   `get_network_topology`: the node's known addresses (a test node has
   none);
@@ -227,8 +232,13 @@ Ignorable by a client that does not know them:
 
 ## Deliberate differences from matterjs-server
 
-- `ping_node` answers `{ip: reachable}` from a Matter read of the node, not
-  from ICMP echoes: the daemon runs without raw sockets.
+- `ping_node` answers `{ip: reachable}` from go-fabric's
+  `client.Node.PingAddress`, not from ICMP echoes: the daemon runs without
+  raw sockets. Each address of the node's record is probed in parallel, up
+  to `attempts` times, with an empty Matter read over the session the
+  server holds, sent to that address; nothing migrates. An IP is reachable
+  when any of its ports answered. A node without a session is unreachable
+  on every address, where an echo would not need one.
 - A missing or non-numeric `node_id` is `InvalidArguments` for every command
   (matterjs-server answers `UnknownError` for some), as python-matter-server
   does. A `node_id` of a class that can never name a node is
