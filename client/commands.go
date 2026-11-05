@@ -130,6 +130,28 @@ func (c *Client) PingNode(ctx context.Context, nodeID uint64) (map[string]bool, 
 	return call[map[string]bool](ctx, c, "ping_node", map[string]any{"node_id": nodeID})
 }
 
+// PingResult is one address's outcome of ping_node with details.
+type PingResult struct {
+	IP        string `json:"ip"`
+	Port      uint16 `json:"port"`
+	Reachable bool   `json:"reachable"`
+	// RoundTripMS is the answered attempt's round trip in milliseconds,
+	// nil when no attempt was answered.
+	RoundTripMS *float64 `json:"round_trip_ms"`
+	// Error is the last attempt's error, empty when reachable.
+	Error string `json:"error"`
+}
+
+// PingNodeAddresses is ping_node with details: one result per address of
+// the node, each probed up to attempts times (1 when attempts is 0).
+func (c *Client) PingNodeAddresses(ctx context.Context, nodeID uint64, attempts int) ([]PingResult, error) {
+	args := map[string]any{"node_id": nodeID, "details": true}
+	if attempts > 0 {
+		args["attempts"] = attempts
+	}
+	return call[[]PingResult](ctx, c, "ping_node", args)
+}
+
 // GetNodeIPAddresses is get_node_ip_addresses.
 func (c *Client) GetNodeIPAddresses(ctx context.Context, nodeID uint64) ([]string, error) {
 	return call[[]string](ctx, c, "get_node_ip_addresses", map[string]any{"node_id": nodeID})

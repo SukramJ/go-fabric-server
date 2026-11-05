@@ -123,6 +123,17 @@ func TestNodeCommands(t *testing.T) {
 			}
 		}
 	})
+	t.Run("ping_node details", func(t *testing.T) {
+		res, err := e.client.PingNodeAddresses(ctx, id, 2)
+		if err != nil || len(res) == 0 {
+			t.Fatalf("%+v %v", res, err)
+		}
+		for _, r := range res {
+			if !r.Reachable || r.RoundTripMS == nil || *r.RoundTripMS < 0 || r.Port == 0 || r.Error != "" {
+				t.Fatalf("%+v: want reachable with a round trip and a port", r)
+			}
+		}
+	})
 	t.Run("get_node_ip_addresses", func(t *testing.T) {
 		if _, err := e.client.GetNodeIPAddresses(ctx, id); err != nil {
 			t.Fatal(err)

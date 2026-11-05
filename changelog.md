@@ -24,8 +24,11 @@ All notable changes to this project are documented here. The format follows
   `get_loglevel`/`set_loglevel` are one source; `file_loglevel` stays
   `null`.
 - The controller pages ping a node (go-fabric-ui's adapter, one Matter
-  read as `/ws` `ping_node`); the node pages' selection says why there is
+  read); the node pages' selection says why there is
   none: "the server keeps no host item model; selection is the client's".
+- `/ws` `ping_node` takes `details: true` (an extension) and answers one
+  result per address — `[{ip, port, reachable, round_trip_ms?, error?}]`;
+  the Go client's `PingNodeAddresses`.
 
 ### Changed
 
@@ -37,6 +40,17 @@ All notable changes to this project are documented here. The format follows
   them to the tags; `protocol/schema` regenerated (`GoFabricVersion`
   only).
 - `/health`'s `device_count` sums the devices of every device node.
+- `/ws` `ping_node` probes every address of the node's record with
+  go-fabric's `client.Node.PingAddress` (go-fabric #398), in parallel and
+  up to `attempts` times each, and answers each IP with its own outcome;
+  before, one read through the session answered every address alike. A
+  node without a session falls back to that session-opening read, whose
+  outcome answers every address, as matterjs-server's ICMP ping needs no
+  session.
+- go-fabric `v0.16.1-0.20261104200735-c2dc83da3d2a` →
+  `v0.16.1-0.20261105055107-8feaa508792d` (main at `8feaa508`,
+  `Node.PingAddress`); `protocol/schema` regenerated (`GoFabricVersion`
+  only).
 
 - The add-on's side panel is titled **Fabric Controller** (was `Fabric`,
   `panel_title` in `addon/config.yaml`), the role the add-on plays for Home

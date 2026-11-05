@@ -273,12 +273,19 @@ var testCommands = map[string]func(s *Server, c *call, n *testNode) (any, *proto
 		return out, nil
 	},
 	"get_node_ip_addresses": func(*Server, *call, *testNode) (any, *protocol.Error) { return testNodeAddresses, nil },
-	"ping_node": func(*Server, *call, *testNode) (any, *protocol.Error) {
-		out := map[string]bool{}
-		for _, a := range testNodeAddresses {
-			out[a] = true
+	"ping_node": func(_ *Server, c *call, _ *testNode) (any, *protocol.Error) {
+		var a pingArgs
+		if err := c.args(&a); err != nil {
+			return nil, err
 		}
-		return out, nil
+		res := make([]pingResult, 0, len(testNodeAddresses))
+		for _, ip := range testNodeAddresses {
+			res = append(res, pingResult{IP: ip, Reachable: true})
+		}
+		if a.Details {
+			return res, nil
+		}
+		return pingMap(res), nil
 	},
 	"remove_node": func(s *Server, _ *call, n *testNode) (any, *protocol.Error) {
 		s.mu.Lock()
