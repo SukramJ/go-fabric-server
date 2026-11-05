@@ -175,15 +175,6 @@ func (r *nodeRegistry) startAll() {
 	r.publish()
 }
 
-// shutdownHalves sends server_shutdown to every registry node's client.
-func (r *nodeRegistry) shutdownHalves(ctx context.Context) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, h := range r.running {
-		h.srv.Shutdown(ctx)
-	}
-}
-
 // stopAll stops every running registry node, the last first.
 func (r *nodeRegistry) stopAll(ctx context.Context) {
 	r.mu.Lock()
@@ -245,7 +236,9 @@ func (r *nodeRegistry) Create(ctx context.Context, spec fabricui.NodeSpec) (fabr
 	if e.Discriminator, e.Passcode, err = r.allocCredentials(); err != nil {
 		return fabricui.NodeEntry{}, err
 	}
-	h, err := r.start(r.ctx, registrySpec(r.primary, &e))
+	// The node lives as long as the daemon, not as the request that
+	// created it.
+	h, err := r.start(r.ctx, registrySpec(r.primary, &e)) //nolint:contextcheck // the daemon's context, above
 	if err != nil {
 		_ = r.removeStore(e.Key)
 		return fabricui.NodeEntry{}, err
@@ -450,7 +443,7 @@ func udpFree(ctx context.Context, addr string) bool {
 // discriminator, a random passcode node.Config.Validate accepts), drawing
 // again while the discriminator is another node's: a commissioner tells
 // the nodes apart by it.
-func (r *nodeRegistry) allocCredentials() (uint16, uint32, error) {
+func (r *nodeRegistry) allocCredentials() (discriminator uint16, passcode uint32, err error) {
 	for range 64 {
 		c, err := node.NewCommissioningCredentials()
 		if err != nil {
