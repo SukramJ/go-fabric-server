@@ -150,31 +150,33 @@ func TestTwoNodes(t *testing.T) {
 	}
 
 	// /bridge is the default node's; /bridge/<key> each node's, so the
-	// default's is reachable under both (one client at a time per node).
+	// default's is reachable under both: with /bridge's client connected,
+	// /bridge/default is busy (one client at a time per node).
 	defClient, err := fsclient.DialBridge(ctx, base+"/bridge", fsclient.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = defClient.Close() })
 	if defClient.Info().Node != "default" {
 		t.Fatalf("/bridge feeds node %q", defClient.Info().Node)
 	}
-	_ = defClient.Close()
+	if _, err := fsclient.DialBridge(ctx, base+"/bridge", fsclient.Options{Node: "default"}); err == nil || !strings.Contains(err.Error(), "one bridge client at a time") {
+		t.Fatalf("/bridge/default beside /bridge's client: %v", err)
+	}
 	if code := httpStatus(t, srv.URL+"/bridge/nope"); code != http.StatusNotFound {
 		t.Fatalf("/bridge/nope: %d, want 404", code)
 	}
 	keys := []string{"default", "second"}
-	clients := map[string]*fsclient.Bridge{}
-	for _, key := range keys {
-		b, err := fsclient.DialBridge(ctx, base+"/bridge", fsclient.Options{Node: key})
-		if err != nil {
-			t.Fatalf("/bridge/%s: %v", key, err)
-		}
-		t.Cleanup(func() { _ = b.Close() })
-		if b.Info().Node != key {
-			t.Fatalf("/bridge/%s feeds node %q", key, b.Info().Node)
-		}
-		clients[key] = b
+	clients := map[string]*fsclient.Bridge{"default": defClient}
+	b, err := fsclient.DialBridge(ctx, base+"/bridge", fsclient.Options{Node: "second"})
+	if err != nil {
+		t.Fatalf("/bridge/second: %v", err)
 	}
+	t.Cleanup(func() { _ = b.Close() })
+	if b.Info().Node != "second" {
+		t.Fatalf("/bridge/second feeds node %q", b.Info().Node)
+	}
+	clients["second"] = b
 
 	// Each client declares into its own node and commissions it by its
 	// own code; neither commissioning touches the other node.
