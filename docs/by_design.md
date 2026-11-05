@@ -15,8 +15,12 @@ held session sent to that address, nothing migrated (go-fabric
 `controller/client/ping.go:32-51` at `8feaa508`) — not with ICMP echoes
 (clone `packages/ws-controller/src/controller/ControllerCommandHandler.ts:2267-2306`;
 map 1795-1806): the daemon runs non-root in a distroless image, without the
-raw sockets an echo needs; a node without a session is therefore
-unreachable on every address.
+raw sockets an echo needs. matterjs-server's `pingIp` is that ICMP echo,
+independent of any Matter session (`getNodeIpAddresses(nodeId, false)` →
+`pingIp(ip, 10, attempts)` per IP at clone `0bd06f2`), so a node without a
+session falls back to the session-opening `DataModelRevision` read, whose
+one outcome answers every address, instead of answering unreachable — the
+rule go-fabric-ui's ping follows too.
 
 **B2 — a missing `node_id` is `InvalidArguments` for every command.** A
 missing or non-numeric `node_id` answers error 8 everywhere; matterjs-server

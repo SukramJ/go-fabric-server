@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -195,6 +196,8 @@ type pingResult struct {
 	RoundTripMS *float64 `json:"round_trip_ms,omitempty"`
 	// Error is the last attempt's error; absent when reachable.
 	Error string `json:"error,omitempty"`
+	// err is Error's value, for the fallback's test of ErrNoSession.
+	err error
 }
 
 // pingAttemptTimeout bounds one attempt; go-fabric's ping caps its own
@@ -204,15 +207,22 @@ const pingAttemptTimeout = 10 * time.Second
 // pingFunc probes one address — client.Node.PingAddress.
 type pingFunc func(context.Context, netip.AddrPort) (time.Duration, error)
 
+// readFunc is one session-opening read of the node — the fallback.
+type readFunc func(context.Context) error
+
 // cmdPingNode probes each address of the node's record with go-fabric's
 // client.Node.PingAddress, all addresses in parallel, up to attempts
 // times each, as matterjs-server pings each address in parallel
 // (ControllerCommandHandler.ts:2267-2306). matterjs-server sends ICMP
-// echoes; a non-root daemon in a distroless image has no raw socket, so an
-// attempt is an empty Matter read over the session the server holds, sent
-// to that address (B1). The answer is matterjs-server's NodePingResult,
-// {ip: reachable} (ws-client models/model.ts:1889), an IP reachable when
-// any of its ports answered; with details, one pingResult per address.
+// echoes (pingIp), independent of any Matter session; a non-root daemon in
+// a distroless image has no raw socket, so an attempt is an empty Matter
+// read over the session the server holds, sent to that address (B1). A
+// node without a session therefore does not fail closed: the attempts fall
+// back to one session-opening read of DataModelRevision, whose outcome
+// answers every address (pingFallback). The answer is matterjs-server's
+// NodePingResult, {ip: reachable} (ws-client models/model.ts:1889), an IP
+// reachable when any of its ports answered; with details, one pingResult
+// per address.
 func cmdPingNode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a pingArgs
 	if err := c.args(&a); err != nil {
@@ -223,6 +233,12 @@ func cmdPingNode(ctx context.Context, s *Server, c *call) (any, *protocol.Error)
 		return nil, perr
 	}
 	res := pingAddresses(ctx, n.Record().Addresses, a.attempts(), pingAttemptTimeout, n.PingAddress)
+	res = pingFallback(ctx, res, a.attempts(), pingAttemptTimeout, func(ctx context.Context) error {
+		req := client.ReadRequest{IncludeKnownVersions: true}
+		req.Attributes = []client.AttributePath{client.AttributeAt(0, basicInformation.ID, attrDataModelRev.ID)}
+		_, err := n.Read(ctx, req)
+		return err
+	})
 	if a.Details {
 		return res, nil
 	}
@@ -270,16 +286,57 @@ func pingOne(ctx context.Context, ap netip.AddrPort, attempts int, timeout time.
 		rtt, err = ping(actx, ap)
 		cancel()
 		if err == nil {
-			ms := float64(rtt.Microseconds()) / 1000
-			r.Reachable, r.RoundTripMS = true, &ms
+			r.Reachable, r.RoundTripMS = true, roundTripMS(rtt)
 			return r
 		}
 		if ctx.Err() != nil || errors.Is(err, client.ErrNoSession) || errors.Is(err, client.ErrClosed) || errors.Is(err, client.ErrNotCommissioned) {
 			break
 		}
 	}
-	r.Error = err.Error()
+	r.Error, r.err = err.Error(), err
 	return r
+}
+
+// pingFallback answers every address with the outcome of read when a
+// result says the node holds no session (client.ErrNoSession — not
+// connected yet): matterjs-server's ICMP ping needs no session, so a
+// missing one is no unreachable address. read opens the session, as
+// ping_node did before PingAddress; it is tried up to attempts times, and
+// its round trip — on the server's clock — or its last error answers each
+// entry. Without such a result res is returned as it is; a closed or
+// uncommissioned node has no node to read and keeps its errors.
+func pingFallback(ctx context.Context, res []pingResult, attempts int, timeout time.Duration, read readFunc) []pingResult {
+	if !slices.ContainsFunc(res, func(r pingResult) bool { return errors.Is(r.err, client.ErrNoSession) }) {
+		return res
+	}
+	var err error
+	var rtt time.Duration
+	for range attempts {
+		actx, cancel := context.WithTimeout(ctx, timeout)
+		start := time.Now()
+		err = read(actx)
+		rtt = time.Since(start)
+		cancel()
+		if err == nil || ctx.Err() != nil {
+			break
+		}
+	}
+	for i := range res {
+		r := pingResult{IP: res[i].IP, Port: res[i].Port}
+		if err == nil {
+			r.Reachable, r.RoundTripMS = true, roundTripMS(rtt)
+		} else {
+			r.Error, r.err = err.Error(), err
+		}
+		res[i] = r
+	}
+	return res
+}
+
+// roundTripMS is d in fractional milliseconds.
+func roundTripMS(d time.Duration) *float64 {
+	ms := float64(d.Microseconds()) / 1000
+	return &ms
 }
 
 // pingMap folds results into matterjs-server's {ip: reachable}.

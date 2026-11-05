@@ -237,8 +237,16 @@ Ignorable by a client that does not know them:
   raw sockets. Each address of the node's record is probed in parallel, up
   to `attempts` times, with an empty Matter read over the session the
   server holds, sent to that address; nothing migrates. An IP is reachable
-  when any of its ports answered. A node without a session is unreachable
-  on every address, where an echo would not need one.
+  when any of its ports answered. matterjs-server's `pingIp` is an ICMP
+  echo, independent of any Matter session (clone
+  `packages/ws-controller/src/controller/ControllerCommandHandler.ts:2267-2306`
+  at `0bd06f2`: `getNodeIpAddresses(nodeId, false)`, then
+  `pingIp(ip, 10, attempts)` per IP; a connected node without an answered
+  ping is only logged), so a node without a session does not fail closed:
+  the server falls back to one session-opening read of
+  `DataModelRevision`, up to `attempts` times, and its outcome answers
+  every address (with `details`, the read's round trip, or its error). A
+  closed or uncommissioned node keeps its errors.
 - A missing or non-numeric `node_id` is `InvalidArguments` for every command
   (matterjs-server answers `UnknownError` for some), as python-matter-server
   does. A `node_id` of a class that can never name a node is

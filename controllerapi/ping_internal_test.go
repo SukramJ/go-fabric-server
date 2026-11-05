@@ -5,6 +5,7 @@ package controllerapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
 	"sync"
@@ -92,6 +93,55 @@ func TestPingAddressesNoSession(t *testing.T) {
 	res := pingAddresses(t.Context(), []client.NetworkAddress{netAddr(ap.String())}, 5, time.Second, f.ping)
 	if len(res) != 1 || res[0].Reachable || res[0].Error != client.ErrNoSession.Error() || f.calls[ap] != 1 {
 		t.Fatalf("results %+v, attempts %v", res, f.calls)
+	}
+}
+
+// No session: the session-opening read answers every address, reachable
+// with its round trip when it succeeds, its error when it fails.
+func TestPingFallbackNoSession(t *testing.T) {
+	addrs := []client.NetworkAddress{netAddr("[fd00::1]:5540"), netAddr("10.0.0.1:5540")}
+	reads := 0
+	ok := func(context.Context) error { reads++; return nil }
+	res := pingFallback(t.Context(), pingAddresses(t.Context(), addrs, 3, time.Second, (&fakePing{err: client.ErrNoSession}).ping), 3, time.Second, ok)
+	if len(res) != 2 || reads != 1 {
+		t.Fatalf("results %+v, reads %d, want 2 results from 1 read", res, reads)
+	}
+	for _, r := range res {
+		if !r.Reachable || r.RoundTripMS == nil || *r.RoundTripMS < 0 || r.Error != "" || r.Port != 5540 {
+			t.Fatalf("%+v: want reachable from the read", r)
+		}
+	}
+	if m := pingMap(res); len(m) != 2 || !m["fd00::1"] || !m["10.0.0.1"] {
+		t.Fatalf("map %v", m)
+	}
+
+	reads = 0
+	failed := errors.New("read failed")
+	bad := func(context.Context) error { reads++; return failed }
+	res = pingFallback(t.Context(), pingAddresses(t.Context(), addrs, 2, time.Second, (&fakePing{err: client.ErrNoSession}).ping), 2, time.Second, bad)
+	if reads != 2 {
+		t.Fatalf("reads %d, want the attempts", reads)
+	}
+	for _, r := range res {
+		if r.Reachable || r.RoundTripMS != nil || r.Error != failed.Error() {
+			t.Fatalf("%+v: want the read's error", r)
+		}
+	}
+	if m := pingMap(res); len(m) != 2 || m["fd00::1"] || m["10.0.0.1"] {
+		t.Fatalf("map %v", m)
+	}
+}
+
+// A silent address, a closed or an uncommissioned node is no missing
+// session: no read, the results stay.
+func TestPingFallbackOnlyForNoSession(t *testing.T) {
+	addrs := []client.NetworkAddress{netAddr("[fd00::1]:5540")}
+	for _, err := range []error{nil, client.ErrClosed, client.ErrNotCommissioned} {
+		read := func(context.Context) error { t.Fatalf("read after %v", err); return nil }
+		res := pingFallback(t.Context(), pingAddresses(t.Context(), addrs, 1, time.Second, (&fakePing{err: err}).ping), 1, time.Second, read)
+		if len(res) != 1 || res[0].Reachable || res[0].Error == "" {
+			t.Fatalf("%v: %+v", err, res)
+		}
 	}
 }
 

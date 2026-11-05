@@ -44,7 +44,9 @@ All notable changes to this project are documented here. The format follows
   go-fabric's `client.Node.PingAddress` (go-fabric #398), in parallel and
   up to `attempts` times each, and answers each IP with its own outcome;
   before, one read through the session answered every address alike. A
-  node without a session is unreachable on every address.
+  node without a session falls back to that session-opening read, whose
+  outcome answers every address, as matterjs-server's ICMP ping needs no
+  session.
 - go-fabric `v0.16.1-0.20261104200735-c2dc83da3d2a` →
   `v0.16.1-0.20261105055107-8feaa508792d` (main at `8feaa508`,
   `Node.PingAddress`); `protocol/schema` regenerated (`GoFabricVersion`
