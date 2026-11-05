@@ -106,7 +106,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	}
 	ws := httptest.NewServer(Mux(api, "", "test"))
 	src := controllerSource(ctrl, topo, api, hooks, log)
-	h, err := webHandler(c, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log)
+	h, err := webHandler(c, nil, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log)
 	if err != nil {
 		t.Fatal(err)
 	}

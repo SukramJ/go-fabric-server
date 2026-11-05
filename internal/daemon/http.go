@@ -35,27 +35,48 @@ func MuxWith(api *controllerapi.Server, br *bridgeapi.Server, token, version str
 	return MuxNodes(api, []BridgeHalf{{Key: fabricui.DefaultNodeKey, Server: br}}, token, version)
 }
 
-// MuxNodes is the server's HTTP surface: /ws (the controller half),
-// /bridge (the default node's bridge half, the first of bridges) and
-// /bridge/<key> (each node's, the default's too), GET /health, GET
-// /metrics (expvar), GET /schema (the generated JSON Schema of the
-// values), GET /schema/declaration (the bridge half's declaration); every
-// route behind the token when one is set. A nil api is not served, and
-// /health is healthy when every half served is; its device_count sums
-// the nodes'.
+// MuxNodes is the server's HTTP surface over a fixed set of bridge
+// halves, the default node's first; see [muxRoutes].
 func MuxNodes(api *controllerapi.Server, bridges []BridgeHalf, token, version string) http.Handler {
+	return muxRoutes(api, newBridgeRoutes(bridges...), token, version)
+}
+
+// muxRoutes is the server's HTTP surface: /ws (the controller half),
+// /bridge (the default node's bridge half, the first of bridges) and
+// /bridge/<key> (each node's, the default's too, looked up per request:
+// a registry node's appears when it is created and is gone, 404, once it
+// is deleted), GET /health, GET /metrics (expvar), GET /schema (the
+// generated JSON Schema of the values), GET /schema/declaration (the
+// bridge half's declaration); every route behind the token when one is
+// set. A nil api is not served, nor /bridge without a default half; /health
+// is healthy when every half served is, and its device_count sums the
+// nodes'.
+func muxRoutes(api *controllerapi.Server, bridges *bridgeRoutes, token, version string) http.Handler {
 	mux := http.NewServeMux()
 	if api != nil {
 		mux.Handle("/ws", api)
 	}
-	for i, b := range bridges {
-		if i == 0 {
-			mux.Handle("/bridge", b.Server)
-		}
-		mux.Handle("/bridge/"+b.Key, b.Server)
+	if bridges.get("") != nil {
+		mux.HandleFunc("/bridge", func(w http.ResponseWriter, r *http.Request) {
+			bridges.get("").ServeHTTP(w, r)
+		})
+		mux.HandleFunc("/bridge/{key}", func(w http.ResponseWriter, r *http.Request) {
+			key := r.PathValue("key")
+			if key == "" {
+				http.NotFound(w, r)
+				return
+			}
+			srv := bridges.get(key)
+			if srv == nil {
+				http.NotFound(w, r)
+				return
+			}
+			srv.ServeHTTP(w, r)
+		})
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
-		healthy, nodes := api != nil || len(bridges) > 0, 0
+		halves := bridges.all()
+		healthy, nodes := api != nil || len(halves) > 0, 0
 		body := map[string]any{"version": version}
 		if api != nil {
 			var ok bool
@@ -63,9 +84,9 @@ func MuxNodes(api *controllerapi.Server, bridges []BridgeHalf, token, version st
 			healthy = healthy && ok
 		}
 		body["node_count"] = nodes
-		if len(bridges) > 0 {
+		if len(halves) > 0 {
 			devices := 0
-			for _, b := range bridges {
+			for _, b := range halves {
 				ok, n := b.Server.Health()
 				healthy = healthy && ok
 				devices += n

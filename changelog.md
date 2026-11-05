@@ -6,6 +6,45 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Device nodes created in the pages (#42, go-fabric-ui contract 0.6.0):
+  the first node stays the configuration of the `--bridge-*` flags; every
+  further node is registry state in `nodes.json` under `--storage-path`
+  (`{"nodes": [{"key", "label", "listen", "discriminator", "passcode",
+  "created_at"}]}`, mode 0600), which an admin creates, renames and deletes
+  through the node selector (`POST /api/v1/nodes`, `PUT
+  /api/v1/nodes/<key>/label`, `DELETE /api/v1/nodes/<key>`). The daemon
+  allocates the key (a slug of the label), the next free UDP port after the
+  default node's, a random discriminator no other node holds and a random
+  valid passcode, starts the node and serves `/bridge/<key>` at once;
+  `server_info` names the node as before. Deleting a node is final: its
+  client receives `server_shutdown`, `/bridge/<key>` answers 404, the node
+  leaves every fabric (each controller that paired it loses it) and stops,
+  and its store `bridge-<key>.db` and its entry are deleted. Every registry
+  node starts with the daemon. `--node-limit` (default 8) caps the
+  registry. Each node's status page shows its configuration block,
+  `source` `configuration` (the `--bridge-*` flags) or `registry`, never the
+  passcode.
+
+### Changed
+
+- go-fabric-ui `v0.5.0` → `v0.6.0` (contract 0.6.0: the node registry,
+  per-node selection, the configuration block).
+
+### Removed
+
+- `--bridge-node` and `--node-default` (0.5.0), and `Config.BridgeNodes`
+  and `Config.NodeDefault`: one source for the node list — the first node
+  is configuration, every further node registry state. A daemon started
+  with either flag, or with `FABRIC_SERVER_BRIDGE_NODE` or
+  `FABRIC_SERVER_NODE_DEFAULT` set, refuses with a message naming the
+  pages. Migration: start with `--web` and `--web-admin` (or
+  `--web-admin-source`) and create each further node in the pages' node
+  selector ("Create node…"); it gets a new port, discriminator and passcode
+  and is paired again. The old nodes' stores (`bridge-<key>.db`) are left on
+  disk, never adopted, and can be deleted.
+
 ## [0.5.0] - 2026-11-05
 
 The milestone-9 release of the daemon: several device nodes per daemon, the operation and ping ports of go-fabric-ui 0.5.0, `logring`, on go-fabric v0.17.0 and go-fabric-ui v0.5.0.

@@ -125,6 +125,15 @@ decoded through go-fabric's generated typed `Patch` structs, and the
 generated JSON Schema of the declaration documents it. One bridge client at a
 time: the node has one author.
 
+Several device nodes (issues #34, #42; go-fabric-ui contract 0.6.0): the
+first node is configuration (`--bridge-*`, key `default`, `/bridge`); every
+further node is registry state in the daemon's store (`nodes.json`:
+key, label, listen, discriminator, passcode, created_at — go-ha2fabric's
+fields), created, renamed and deleted in the pages, each its own Matter
+node with its own store `bridge-<key>.db` and bridge half at
+`/bridge/<key>`, which appears at its creation and is gone at its deletion.
+One source for the node list: the 0.5.0 flag `--bridge-node` is removed.
+
 ## D — Bundles
 
 | Bundle | Content | Proof |

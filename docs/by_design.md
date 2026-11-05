@@ -156,12 +156,13 @@ forgets the endpoint numbers of what it no longer has without a second
 command; an unchanged device is left as it is, so its subscriptions and
 endpoint stay.
 
-**B23 — a device node's key is its configuration name.** The `--bridge-*`
-node is `default`, a `--bridge-node` entry's key is the name it is
-configured under (`internal/daemon/nodes.go` `bridgeNodes`), not an id
-derived from its store (issue #34, open question 1): the key is known
-before the node starts, the pages' routes (`/nodes/<key>`, go-fabric-ui
+**B23 — a device node's key is its registry name.** The `--bridge-*`
+node is `default`, a registry node's key is allocated once from its label
+when the pages create it and kept in `nodes.json`
+(`internal/daemon/registry.go` `allocKey`), not an id derived from its
+store (issue #34, open question 1; issue #42): the key is known before the
+node starts, the pages' routes (`/nodes/<key>`, go-fabric-ui
 `NodeEntry.Key`, "stable across restarts") and `/bridge/<key>` name it,
 it survives a factory reset of the store, and it names the store file
-(`bridge-<key>.db`), so renaming it is a new node — the one identity a
-configuration file can hold steady.
+(`bridge-<key>.db`), so a rename changes the label only — the one identity
+the registry can hold steady.
