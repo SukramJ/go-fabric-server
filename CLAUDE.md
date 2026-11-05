@@ -26,7 +26,8 @@ make vuln licenses secrets   # the security job
 - **go-fabric through its facades only.** `internal/arch` fails the build on
   an import below them; its allowlist names each exception with the report
   question it waits on. A facade gap is reported (go-fabric symbol, why), not
-  worked around here.
+  worked around here; the shape of that report is *Work that needs go-fabric*
+  below.
 - **No Matter knowledge of our own.** Ids, names, types come from
   `protocol/schema`, generated from go-fabric's `parity` snapshot by
   `internal/gen`; never hand-edit `tables_gen.go` or `schema.json`, and
@@ -44,6 +45,52 @@ make vuln licenses secrets   # the security job
 Go 1.27.3, `CGO_ENABLED=0`. Dependencies: go-fabric (and its ble/bluez and ble/esphome), coder/websocket,
 go-fabric-ui — every further one is a decision recorded in
 `THIRD-PARTY-NOTICES.md`.
+
+## The architecture standard
+
+Adopted on 2026-11-05 from go-fabric's `CLAUDE.md` (*The architecture
+standard*, set by the owner on 2026-10-20, in the owner's words:
+"hervorragende Architektur, zukunftsweisend, innovativ, herausragend"), which
+holds its whole family to it, this server included.
+
+- **Outstanding, not adequate.** Every layer is the best design we can state,
+  coherent with the others, and judged as API design: one shape, no
+  convenience seam. The smallest change is not by itself the best one.
+- **Forward-looking.** A decision is weighed against where Matter, the
+  ecosystems and the consumers are going, not only against today's need.
+  Going ahead of matterjs-server is allowed and recorded in
+  `docs/protocol.md`; copying a limitation is not.
+- **Better than others, better than before, the right cut.** Every concept
+  answers three questions in its own section: better than the comparison
+  targets (matterjs-server, matter.js, chip's apps)? better than the state
+  before? is the split between go-fabric, go-fabric-ui, this server and the
+  host right? A concept without that section is not finished.
+- **The check is stated, not assumed.** When a decision is put to the owner,
+  the recommendation says whether it is the best architecture and why. When
+  the owner's choice is not the best architecture in the assistant's
+  judgement, the assistant says so with its reasons before implementing; the
+  owner decides and the reasons are on record. A scope boundary that is a
+  decision is kept unless the owner reopens it.
+
+## Work that needs go-fabric
+
+Adopted on 2026-11-05 from go-fabric's `CLAUDE.md` (*Work that starts in a
+host*). This server is a host of go-fabric.
+
+- **Matter rules live in go-fabric.** A rule decided while working here (how
+  a server must behave, how a divergence is recorded) is written into
+  go-fabric's `CLAUDE.md` or `notes/parity/`, not only into this repository's
+  notes; this repository's documents point there.
+- **Implementation go-fabric needs is handed over in a go-fabric issue**,
+  complete enough to continue there without this session's context: why (this
+  server's need, in go-fabric's terms), the verified sources with `file:line`
+  at the pins (matter.js at `parity/schema.json` → `matter.sourceCommit`,
+  connectedhomeip at the harness commit), the scope and the port or facade
+  shape, the parity tests to port, the `by_design.md` row it adds, acceptance
+  criteria, what stays here, and the open questions.
+- **This server's follow-up** is a separate issue in this repository that
+  references the go-fabric one. This repository does not implement in
+  go-fabric from its own session.
 
 ## Which model does which work
 
