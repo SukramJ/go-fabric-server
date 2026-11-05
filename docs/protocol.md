@@ -238,7 +238,7 @@ Ignorable by a client that does not know them:
   to `attempts` times, with an empty Matter read over the session the
   server holds, sent to that address; nothing migrates. An IP is reachable
   when any of its ports answered. matterjs-server's `pingIp` is an ICMP
-  echo, independent of any Matter session (clone
+  echo (the system `ping`/`ping6`, `util/network.ts:19-37`), independent of any Matter session (clone
   `packages/ws-controller/src/controller/ControllerCommandHandler.ts:2267-2306`
   at `0bd06f2`: `getNodeIpAddresses(nodeId, false)`, then
   `pingIp(ip, 10, attempts)` per IP; a connected node without an answered
