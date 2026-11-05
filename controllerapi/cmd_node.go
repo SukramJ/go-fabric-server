@@ -5,8 +5,11 @@ package controllerapi
 
 import (
 	"context"
+	"errors"
+	"net/netip"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/SukramJ/go-fabric/controller/client"
@@ -164,16 +167,54 @@ func cmdGetNodeIPAddresses(_ context.Context, s *Server, c *call) (any, *protoco
 	return addresses(n, a.Scoped), nil
 }
 
-// cmdPingNode answers {ip: reachable} for each address of the node.
-// matterjs-server sends ICMP echoes (ControllerCommandHandler.ts:2267-2306);
-// a non-root daemon in a distroless image has no raw socket, so each
-// attempt is a Matter read of the node's DataModelRevision instead, and
-// every address carries its outcome (report S1, by_design candidate B3).
-func cmdPingNode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
-	var a struct {
-		nodeArg
-		Attempts *int `json:"attempts"`
+// pingArgs are ping_node's arguments: matterjs-server's node_id and
+// attempts (map 1795-1806), and the details extension.
+type pingArgs struct {
+	nodeArg
+	Attempts *int `json:"attempts"`
+	// Details answers one pingResult per address instead of
+	// matterjs-server's {ip: reachable} (an extension, docs/protocol.md).
+	Details bool `json:"details"`
+}
+
+// attempts is the attempts argument, 1 to 10, 1 when absent.
+func (a pingArgs) attempts() int {
+	if a.Attempts != nil && *a.Attempts > 0 {
+		return min(*a.Attempts, 10)
 	}
+	return 1
+}
+
+// pingResult is one address's outcome in ping_node's details.
+type pingResult struct {
+	IP        string `json:"ip"`
+	Port      uint16 `json:"port"`
+	Reachable bool   `json:"reachable"`
+	// RoundTripMS is the round trip of the answered attempt, in
+	// milliseconds; absent when no attempt was answered.
+	RoundTripMS *float64 `json:"round_trip_ms,omitempty"`
+	// Error is the last attempt's error; absent when reachable.
+	Error string `json:"error,omitempty"`
+}
+
+// pingAttemptTimeout bounds one attempt; go-fabric's ping caps its own
+// transmissions, so this only ends an attempt that would outlive them.
+const pingAttemptTimeout = 10 * time.Second
+
+// pingFunc probes one address — client.Node.PingAddress.
+type pingFunc func(context.Context, netip.AddrPort) (time.Duration, error)
+
+// cmdPingNode probes each address of the node's record with go-fabric's
+// client.Node.PingAddress, all addresses in parallel, up to attempts
+// times each, as matterjs-server pings each address in parallel
+// (ControllerCommandHandler.ts:2267-2306). matterjs-server sends ICMP
+// echoes; a non-root daemon in a distroless image has no raw socket, so an
+// attempt is an empty Matter read over the session the server holds, sent
+// to that address (B1). The answer is matterjs-server's NodePingResult,
+// {ip: reachable} (ws-client models/model.ts:1889), an IP reachable when
+// any of its ports answered; with details, one pingResult per address.
+func cmdPingNode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
+	var a pingArgs
 	if err := c.args(&a); err != nil {
 		return nil, err
 	}
@@ -181,27 +222,73 @@ func cmdPingNode(ctx context.Context, s *Server, c *call) (any, *protocol.Error)
 	if perr != nil {
 		return nil, perr
 	}
-	attempts := 1
-	if a.Attempts != nil && *a.Attempts > 0 {
-		attempts = min(*a.Attempts, 10)
+	res := pingAddresses(ctx, n.Record().Addresses, a.attempts(), pingAttemptTimeout, n.PingAddress)
+	if a.Details {
+		return res, nil
 	}
-	ok := false
+	return pingMap(res), nil
+}
+
+// pingAddresses probes each distinct address of addrs in parallel and
+// answers in the order of their IP strings (as get_node_ip_addresses),
+// then ports.
+func pingAddresses(ctx context.Context, addrs []client.NetworkAddress, attempts int, timeout time.Duration, ping pingFunc) []pingResult {
+	seen := map[netip.AddrPort]bool{}
+	targets := []netip.AddrPort{}
+	for _, a := range addrs {
+		ap := netip.AddrPortFrom(a.IP, a.Port)
+		if !seen[ap] {
+			seen[ap] = true
+			targets = append(targets, ap)
+		}
+	}
+	sort.Slice(targets, func(i, j int) bool {
+		si, sj := targets[i].Addr().String(), targets[j].Addr().String()
+		if si != sj {
+			return si < sj
+		}
+		return targets[i].Port() < targets[j].Port()
+	})
+	out := make([]pingResult, len(targets))
+	var wg sync.WaitGroup
+	for i, ap := range targets {
+		wg.Go(func() { out[i] = pingOne(ctx, ap, attempts, timeout, ping) })
+	}
+	wg.Wait()
+	return out
+}
+
+// pingOne probes ap until an attempt answers, at most attempts times. A
+// node without a session, a closed node or the end of ctx ends the
+// attempts early: a further attempt cannot answer.
+func pingOne(ctx context.Context, ap netip.AddrPort, attempts int, timeout time.Duration, ping pingFunc) pingResult {
+	r := pingResult{IP: ap.Addr().String(), Port: ap.Port()}
+	var err error
 	for range attempts {
-		req := client.ReadRequest{IncludeKnownVersions: true}
-		req.Attributes = []client.AttributePath{client.AttributeAt(0, basicInformation.ID, attrDataModelRev.ID)}
-		rctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		_, err := n.Read(rctx, req)
+		actx, cancel := context.WithTimeout(ctx, timeout)
+		var rtt time.Duration
+		rtt, err = ping(actx, ap)
 		cancel()
 		if err == nil {
-			ok = true
+			ms := float64(rtt.Microseconds()) / 1000
+			r.Reachable, r.RoundTripMS = true, &ms
+			return r
+		}
+		if ctx.Err() != nil || errors.Is(err, client.ErrNoSession) || errors.Is(err, client.ErrClosed) || errors.Is(err, client.ErrNotCommissioned) {
 			break
 		}
 	}
+	r.Error = err.Error()
+	return r
+}
+
+// pingMap folds results into matterjs-server's {ip: reachable}.
+func pingMap(res []pingResult) map[string]bool {
 	out := map[string]bool{}
-	for _, ip := range addresses(n, true) {
-		out[ip] = ok
+	for _, r := range res {
+		out[r.IP] = out[r.IP] || r.Reachable
 	}
-	return out, nil
+	return out
 }
 
 // --- fabrics ---

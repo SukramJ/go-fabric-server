@@ -164,6 +164,12 @@ func TestImportTestNode(t *testing.T) {
 	if ips, err := e.client.CallRaw(ctx, "get_node_ip_addresses", map[string]any{"node_id": id}); err != nil || string(ips) != `["0.0.0.0","0000:1111:2222:3333:4444"]` {
 		t.Fatalf("ip addresses %s %v", ips, err)
 	}
+	if res, err := e.client.CallRaw(ctx, "ping_node", map[string]any{"node_id": id}); err != nil || string(res) != `{"0.0.0.0":true,"0000:1111:2222:3333:4444":true}` {
+		t.Fatalf("ping_node %s %v", res, err)
+	}
+	if res, err := e.client.PingNodeAddresses(ctx, id, 0); err != nil || len(res) != 2 || !res[0].Reachable || res[1].IP != "0000:1111:2222:3333:4444" {
+		t.Fatalf("ping_node details %+v %v", res, err)
+	}
 	if err := e.client.Call(ctx, "interview_node", map[string]any{"node_id": id}, nil); err != nil {
 		t.Fatal(err)
 	}
