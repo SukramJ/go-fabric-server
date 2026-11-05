@@ -51,6 +51,10 @@ All notable changes to this project are documented here. The format follows
   `v0.16.1-0.20261105055107-8feaa508792d` (main at `8feaa508`,
   `Node.PingAddress`); `protocol/schema` regenerated (`GoFabricVersion`
   only).
+- go-fabric `v0.16.1-0.20261105055107-8feaa508792d` → `v0.17.0` (the tag
+  of milestones 8 and 9; nothing moved since `8feaa508` but the TBRM golden
+  and the harness image); `protocol/schema` regenerated (`GoFabricVersion`
+  only). go-fabric-ui stays at its pseudo-version until it tags.
 
 - The add-on's side panel is titled **Fabric Controller** (was `Fabric`,
   `panel_title` in `addon/config.yaml`), the role the add-on plays for Home
