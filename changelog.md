@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-05
+
+The milestone-9 release of the daemon: several device nodes per daemon, the operation and ping ports of go-fabric-ui 0.5.0, `logring`, on go-fabric v0.17.0 and go-fabric-ui v0.5.0.
+
 ### Added
 
 - Several device nodes per daemon: each `--bridge-node
@@ -54,7 +58,9 @@ All notable changes to this project are documented here. The format follows
 - go-fabric `v0.16.1-0.20261105055107-8feaa508792d` → `v0.17.0` (the tag
   of milestones 8 and 9; nothing moved since `8feaa508` but the TBRM golden
   and the harness image); `protocol/schema` regenerated (`GoFabricVersion`
-  only). go-fabric-ui stays at its pseudo-version until it tags.
+  only).
+- go-fabric-ui `v0.3.1-0.20261104202028-11bd64b23b6a` → `v0.5.0` (the tag of
+  milestone 9: U4 device details, U5 operation; contract 0.5.0).
 
 - The add-on's side panel is titled **Fabric Controller** (was `Fabric`,
   `panel_title` in `addon/config.yaml`), the role the add-on plays for Home
