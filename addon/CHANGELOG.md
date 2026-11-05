@@ -3,6 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.5.0
+
+- Several device nodes per daemon (`--bridge-node`), the Operation page with
+  the log stream and level, the ping measured per address, and the node
+  selector of the Fabric Controller panel (go-fabric-ui 0.5.0, go-fabric
+  v0.17.0).
+
 ## 0.4.9
 
 - The add-on's entry in the Home Assistant sidebar is titled "Fabric" instead
