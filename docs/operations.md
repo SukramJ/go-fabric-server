@@ -47,6 +47,23 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
 | `--version` | — | print the version and exit |
 
+### The controller's vendor id on paired devices
+
+Commissioning writes the fabric's vendor id to the device, and every other
+controller of that device can read it. By default it is `0xFFF1`, a CSA test
+vendor id, so other ecosystems see this server as a test controller: Apple
+Home has been seen to list it as another paired controller named
+"Matter Test". This is expected. The fabric label is a separate value, which
+Home Assistant sets to its location name. That the name comes from the vendor
+id is inferred from these values; Apple Home's naming is not documented here
+and has not been verified.
+
+A different name needs a vendor id of your own, assigned by the CSA. The other
+test ids, `0xFFF2` to `0xFFF4`, are test vendors as well, and another vendor's
+id must not be used. `--vendor-id` only applies when the fabric is first
+created: an existing fabric keeps its id, and devices already paired keep the
+id they were given, so changing it means a new fabric and pairing again.
+
 ## The bridge node
 
 With `--bridge` the daemon runs a Matter bridge node besides (or, with
