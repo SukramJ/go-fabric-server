@@ -67,13 +67,10 @@ type Config struct {
 	BridgeExtensions string
 	BridgeSpecLevel  string
 	BridgeProfile    string
-	// BridgeNodes are the device nodes beside the --bridge-* one
-	// (--bridge-node, repeatable), each
-	// key,listen=ADDR[,discriminator=N][,passcode=N][,vendor-id=N][,product-id=N][,label=TEXT]
-	// (bridgeNodes); NodeDefault is the key of the default node
-	// (--node-default), empty the --bridge-* node's ("default").
-	BridgeNodes []string
-	NodeDefault string
+	// NodeLimit is the most device nodes the pages may create beside the
+	// --bridge-* one (--node-limit): the node registry's (nodes.json)
+	// cap.
+	NodeLimit   int
 	ShowVersion bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
@@ -100,6 +97,14 @@ type Config struct {
 	WebAdmin       bool
 	WebAdminSource string
 }
+
+// The migrations of the flags the node registry replaced (go-fabric-ui
+// contract 0.6.0: the first node is configuration, every further node is
+// registry state created in the pages).
+const (
+	removedBridgeNode  = "--bridge-node: create further device nodes in the pages (--web with --web-admin or --web-admin-source, the node selector's \"Create node…\"); each keeps its own port, discriminator, passcode and store"
+	removedNodeDefault = "--node-default: the default node is the --bridge-* one; create further device nodes in the pages (--web, the node selector's \"Create node…\")"
+)
 
 // env returns the environment variable name of a flag.
 func env(flagName string) string {
@@ -133,8 +138,9 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
 	fs.StringVar(&c.BridgeSpecLevel, "bridge-spec-level", "", "the specification level the bridge node composes at (default the pin's): "+levelList())
 	fs.StringVar(&c.BridgeProfile, "bridge-profile", "", "the controller profiles the bridge node composes for, name[,name...]: "+profileList())
-	fs.Var((*specList)(&c.BridgeNodes), "bridge-node", "a device node beside the --bridge-* one: key,listen=ADDR[,discriminator=N][,passcode=N][,vendor-id=N][,product-id=N][,label=TEXT]; a field left out takes the --bridge-* value, the label the key; repeatable (';' separates entries in one value); needs --bridge")
-	fs.StringVar(&c.NodeDefault, "node-default", "", "the key of the default node: /bridge and the pages' first node (default the --bridge-* node, \"default\")")
+	fs.IntVar(&c.NodeLimit, "node-limit", defaultNodeLimit, "the most device nodes the pages may create beside the --bridge-* one (the node registry, nodes.json)")
+	fs.Var(removedFlag(removedBridgeNode), "bridge-node", "removed: "+removedBridgeNode)
+	fs.Var(removedFlag(removedNodeDefault), "node-default", "removed: "+removedNodeDefault)
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
@@ -292,30 +298,44 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		}
 	}
 
-	// The device nodes, the default first, all validated before the
-	// first starts; each its own node, store, mDNS advertiser and bridge
-	// half (startBridge).
-	specs, err := bridgeNodes(c)
-	if err != nil {
-		return err
-	}
-	halves := make([]bridgeHalf, 0, len(specs))
-	defer func() {
-		// The last started stops first, as one defer per node would.
-		for i := len(halves) - 1; i >= 0; i-- {
-			_ = halves[i].node.Stop(context.WithoutCancel(ctx))
+	// The device nodes: the default one of the --bridge-* flags, then
+	// the node registry's (nodes.json), each its own node, store, mDNS
+	// advertiser and bridge half (startBridge). The registry's nodes stop
+	// before the default one.
+	var def *bridgeHalf
+	var reg *nodeRegistry
+	routes := newBridgeRoutes()
+	if c.Bridge {
+		if c.NodeLimit < 0 {
+			return fmt.Errorf("--node-limit %d is negative", c.NodeLimit)
 		}
-	}()
-	for _, s := range specs {
-		br, n, err := startBridge(ctx, c, s, log)
+		spec := primaryNode(c)
+		br, n, err := startBridge(ctx, c, spec, log)
 		if err != nil {
 			return err
 		}
-		halves = append(halves, bridgeHalf{spec: s, node: n, srv: br})
+		defer func() { _ = n.Stop(context.WithoutCancel(ctx)) }()
+		def = &bridgeHalf{spec: spec, node: n, srv: br}
+		routes.add(BridgeHalf{Key: spec.Key, Server: br})
+		reg, err = openRegistry(ctx, registryOptions{
+			dir: c.StoragePath, limit: c.NodeLimit, primary: spec, routes: routes, log: log,
+			start: func(ctx context.Context, s nodeSpec) (bridgeHalf, error) {
+				br, n, err := startBridge(ctx, c, s, log)
+				if err != nil {
+					return bridgeHalf{}, err
+				}
+				return bridgeHalf{spec: s, node: n, srv: br}, nil
+			},
+		})
+		if err != nil {
+			return err
+		}
+		reg.startAll()
+		defer reg.stopAll(context.WithoutCancel(ctx))
 	}
 	ev := fabricui.NewEvents()
 	if c.Web != "" {
-		stop, err := serveWeb(ctx, c, halves, ctrlPages, ev, ops, log)
+		stop, err := serveWeb(ctx, c, def, reg, ctrlPages, ev, ops, log)
 		if err != nil {
 			return err
 		}
@@ -326,11 +346,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	mounts := make([]BridgeHalf, len(halves))
-	for i := range halves {
-		mounts[i] = BridgeHalf{Key: halves[i].spec.Key, Server: halves[i].srv}
-	}
-	srv := &http.Server{Handler: MuxNodes(api, mounts, c.Token, version.Version), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: muxRoutes(api, routes, c.Token, version.Version), ReadHeaderTimeout: 10 * time.Second}
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("fabricserver.listening", slog.String("listen", listen.String()))
@@ -346,8 +362,8 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if api != nil {
 		api.Shutdown(shutdown)
 	}
-	for i := range halves {
-		halves[i].srv.Shutdown(shutdown)
+	for _, h := range routes.all() {
+		h.Server.Shutdown(shutdown)
 	}
 	_ = srv.Shutdown(shutdown)
 	if listen.Network == "unix" {
@@ -362,16 +378,19 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 // docs/guides/embed-in-a-daemon.md §2).
 var bridgeSalt = []byte("go-fabric-server bridge node")
 
+// The BasicInformation names of every device node.
+const (
+	bridgeVendorName  = "go-fabric-server"
+	bridgeProductName = "fabric-server bridge"
+)
+
 // bridgeConfig is a device node's configuration: its commissioning
-// identity from its spec (the --bridge-* flags or its --bridge-node
-// entry), its store under --storage-path, the daemon's logger, the
+// identity from its spec (the --bridge-* flags or its registry entry),
+// its store under --storage-path, the daemon's logger, the
 // surface policies every node shares (surfacePolicies).
 func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 	// Widths only: node.New validates the values (Config.Validate).
 	if s.Passcode > math.MaxUint32 || s.Discriminator > math.MaxUint16 || s.VendorID > math.MaxUint16 || s.ProductID > math.MaxUint16 {
-		if s.Key != fabricui.DefaultNodeKey {
-			return node.Config{}, fmt.Errorf("--bridge-node %q: passcode, discriminator, vendor-id or product-id is wider than its field", s.Key)
-		}
 		return node.Config{}, errors.New("--bridge-passcode, --bridge-discriminator, --bridge-vendor-id or --bridge-product-id is wider than its field")
 	}
 	policies, err := surfacePolicies(c)
@@ -386,7 +405,7 @@ func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 		},
 		ProductDescription: node.ProductDescription{VendorID: uint16(s.VendorID), ProductID: uint16(s.ProductID)}, //nolint:gosec // checked above
 		BasicInformation: node.BasicInformation{
-			VendorName: "go-fabric-server", ProductName: "fabric-server bridge", NodeLabel: s.Label,
+			VendorName: bridgeVendorName, ProductName: bridgeProductName, NodeLabel: s.Label,
 			SerialNumber: s.Serial, SoftwareVersionString: version.Version,
 		},
 		Store:   node.Store{Path: filepath.Join(c.StoragePath, s.Store)},

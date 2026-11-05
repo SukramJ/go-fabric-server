@@ -56,8 +56,8 @@ type Options struct {
 	// (go-fabric node.ErrPolicyMismatch). The zero value is no policy.
 	Surface surface.Policies
 	// Node is the key of the device node the server binds to, as the
-	// daemon names it (its --bridge-node entry, "default" for the
-	// --bridge-* node); server_info reports it as node, so a client sees
+	// daemon names it (its registry key, "default" for the --bridge-*
+	// node); server_info reports it as node, so a client sees
 	// which node it feeds. Empty reports "default".
 	Node string
 }

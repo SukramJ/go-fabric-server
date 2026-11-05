@@ -283,8 +283,8 @@ Ignorable by a client that does not know them:
 
 The door for a host that is not written in Go: it declares devices by name,
 sends state deltas and answers what a controller asks of them. The daemon
-runs one bridge node per device node it is configured with (`--bridge`,
-`--bridge-node`, see operations), each with its own bridge half, and a half drives
+runs one bridge node per device node — the `--bridge-*` one and each node
+of its registry, created in the pages (see operations) — each with its own bridge half, and a half drives
 go-fabric's device kit one-to-one: a declaration is `device.New` with the
 typed `<cluster>def.Declare` of each cluster, a delta is the typed server's
 `Set`, a write veto is `OnWrite`, a host-answered command is
@@ -295,9 +295,10 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
 
 - The same envelope, codec and send path as `/ws`, the same token rule.
 - **One path per device node.** `/bridge/<key>` feeds the node of that key
-  (`default` for the `--bridge-*` node, a `--bridge-node` entry's key for
-  another); `/bridge` feeds the default node (`--node-default`, else
-  `default`). An unconfigured key is 404. Which bridged device goes to which
+  (`default` for the `--bridge-*` node, a registry node's key for another);
+  `/bridge` feeds the default node. A registry node's path answers from its
+  creation in the pages to its deletion; an unknown key is 404, and a
+  connected client of a node that is deleted receives `server_shutdown`. Which bridged device goes to which
   node is the client's decision.
 - On connect the bare `server_info`: `{bridge_schema_version: 1,
   sdk_version, capabilities, node}`; `node` is the key of the node the
