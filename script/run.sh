@@ -26,9 +26,14 @@ export FABRIC_SERVER_BRIDGE_LISTEN=":$(bashio::config 'bridge_port')"
 # --bridge-extensions and --bridge-profile, the level into
 # --bridge-spec-level; the daemon refuses an unknown value with the known
 # ones.
+#
+# bashio::config prints a list one entry per line with no newline after the
+# last (printf "%s", bashio lib/config.sh), and read fails on that last line
+# although it has filled the variable: every loop over a list here keeps
+# reading while the variable is non-empty, or the last entry is lost (#45).
 join_list() {
     local out="" item
-    while IFS= read -r item; do
+    while IFS= read -r item || [ -n "${item}" ]; do
         [ -n "${item}" ] || continue
         out="${out:+${out},}${item}"
     done < <(bashio::config "$1")
@@ -53,14 +58,21 @@ export FABRIC_SERVER_WEB_ADMIN_SOURCE="172.30.32.2"
 
 # --- BLE commissioning through ESPHome Bluetooth proxies ---
 # One --bluetooth-proxy per entry (host[:port][,key]); the keys stay out of
-# the log.
+# the log, the count goes in, so a list that did not arrive is visible.
 args=()
+proxies=0
 if bashio::config.has_value 'bluetooth_proxies'; then
-    while IFS= read -r proxy; do
+    while IFS= read -r proxy || [ -n "${proxy}" ]; do
         [ -n "${proxy}" ] || continue
         args+=(--bluetooth-proxy "${proxy}")
+        proxies=$((proxies + 1))
         bashio::log.info "Bluetooth proxy ${proxy%%,*}"
     done < <(bashio::config 'bluetooth_proxies')
+fi
+if [ "${proxies}" -eq 0 ]; then
+    bashio::log.info "No Bluetooth proxies configured; BLE commissioning is off."
+else
+    bashio::log.info "Bluetooth proxies: ${proxies}"
 fi
 
 bashio::log.info "API on ws://${FABRIC_SERVER_LISTEN}/ws, store /data; node pages through Ingress."
