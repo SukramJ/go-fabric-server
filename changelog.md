@@ -45,6 +45,16 @@ All notable changes to this project are documented here. The format follows
   and is paired again. The old nodes' stores (`bridge-<key>.db`) are left on
   disk, never adopted, and can be deleted.
 
+### Fixed
+
+- Add-on: the last entry of every list option was dropped, so a single
+  `bluetooth_proxies` entry never reached the daemon (`capabilities.ble`
+  stayed `false`) and a single `surface_extensions` or `surface_profiles`
+  entry was passed as an empty value (#45, broken since 0.4.1). `run.sh`
+  read bashio's list output with `while read`, which loses a last line that
+  has no newline after it. The add-on now logs how many Bluetooth proxies it
+  passes, or that none are configured.
+
 ## [0.5.0] - 2026-11-05
 
 The milestone-9 release of the daemon: several device nodes per daemon, the operation and ping ports of go-fabric-ui 0.5.0, `logring`, on go-fabric v0.17.0 and go-fabric-ui v0.5.0.
