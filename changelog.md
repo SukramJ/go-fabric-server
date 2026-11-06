@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-06
+
+Device nodes created in the pages from a registry, on go-fabric-ui v0.6.0 (`--bridge-node` and `--node-default` removed), and the add-on's list options passed in full, so ESPHome Bluetooth proxies work.
+
 ### Added
 
 - Device nodes created in the pages (#42, go-fabric-ui contract 0.6.0):
