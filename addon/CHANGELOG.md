@@ -3,6 +3,16 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.6.0
+
+- Bluetooth proxies work: a single `bluetooth_proxies` entry was never
+  passed to the server since 0.4.1, and with several the last one was lost;
+  the same held for `surface_extensions` and `surface_profiles`. The log now
+  says how many proxies the add-on uses.
+- Device nodes are created, renamed and deleted in the Fabric Controller
+  panel (go-fabric-ui 0.6.0). The add-on never set `--bridge-node`, so
+  nothing changes for an existing installation.
+
 ## 0.5.0
 
 - Several device nodes per daemon (`--bridge-node`), the Operation page with
