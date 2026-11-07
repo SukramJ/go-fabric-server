@@ -3,6 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.6.1
+
+- Library updates (go-fabric 0.18.0, go-fabric-ui 0.6.1). Nothing to do for
+  an existing installation: the server never ran an OTA provider, so
+  go-fabric's migration of the controller's former second node leaves its
+  database untouched.
+
 ## 0.6.0
 
 - Bluetooth proxies work: a single `bluetooth_proxies` entry was never

@@ -6,6 +6,36 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-07
+
+Dependency release: go-fabric `v0.18.0`, go-fabric-ui `v0.6.1`.
+
+### Changed
+
+- go-fabric `v0.17.0` → `v0.18.0` (milestone 10 phases 36–39, the matter.js
+  pin lift 862ad75f → db021da0). `protocol/schema` regenerated from the
+  `v0.18.0` snapshot: the go-fabric version and the matter.js source commit
+  move, no table changes. What this server sees of the breaks: none of the
+  removed symbols was used — `controller.OwnNode`, `node/controllernode` and
+  `OTAConfig.StartNode`/`Listen`/`Advertiser`/`ProductID` (the controller's
+  second node; the OTA provider is the controller itself at
+  `controller.OTAProviderEndpoint`, `softwareupdate.Config.ProviderNodeID`
+  is RootNodeID), `CommissionOptions.CaseAuthenticatedTags` and
+  `Record.CaseAuthenticatedTags` (no CAT field on the wire), and
+  `transport/tcp`'s `MaxPayloadSize` (not set here; a session now sends at
+  most the MAX_TCP_MESSAGE_SIZE its peer announced). The daemon never
+  configured an OTA provider, so the own-node migration has nothing to move
+  in `fabric-server.db`; `check_node_update`, `update_node` and
+  `initiate_ota_upload` stay stubs. The controller side of cameras
+  (`Config.Camera`, `Controller.CameraRequestor`) and groups
+  (`Controller.Groups`, `SetGroupKey`, `Config.GroupTransport`) is new in
+  go-fabric and not composed: the `camera_*` commands stay "not planned",
+  and no protocol field changes meaning.
+- go-fabric-ui `v0.6.0` → `v0.6.1`: on go-fabric `v0.18.0`; no removed
+  symbol was used there.
+- golang.org/x/net `v0.61.0` → `v0.62.0` (indirect, required by go-fabric
+  `v0.18.0`).
+
 ## [0.6.0] - 2026-11-06
 
 Device nodes created in the pages from a registry, on go-fabric-ui v0.6.0 (`--bridge-node` and `--node-default` removed), and the add-on's list options passed in full, so ESPHome Bluetooth proxies work.
