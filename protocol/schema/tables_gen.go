@@ -5,11 +5,11 @@ package schema
 // Provenance of the tables.
 const (
 	// GoFabricVersion is the go-fabric module the tables were generated from.
-	GoFabricVersion = "v0.17.0"
+	GoFabricVersion = "v0.18.0"
 	// MatterRevision is the Matter revision of the snapshot.
 	MatterRevision = "1.6.1"
 	// SourceCommit is the matter.js commit the snapshot was extracted at.
-	SourceCommit = "862ad75f4d3c7ab528b8a3954168146082cad8a6"
+	SourceCommit = "db021da06bafe6766cd1a05d505cea03b9ec5081"
 )
 
 var clusters = []*Cluster{

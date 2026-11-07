@@ -1,10 +1,10 @@
 filippo.io/nistec v0.0.4 h1:F14ZHT5htWlMnQVPndX9ro9arf56cBhQxq4LnDI491s=
 filippo.io/nistec v0.0.4/go.mod h1:PK/lw8I1gQT4hUML4QGaqljwdDaFcMyFKSXN7kjrtKI=
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
-github.com/SukramJ/go-fabric v0.17.0 h1:cpL4vAY5MCmORxEcWbhO+3fTB7NYDq9THaaQbsXRpFo=
-github.com/SukramJ/go-fabric v0.17.0/go.mod h1:LJLBunZoV4JltugNtn+6XNXo77n7Iiy8mfru3HjMYIg=
-github.com/SukramJ/go-fabric-ui v0.6.0 h1:5ZcbalZs7pwTN/i8oIYbmv5wfYM/1Fb9RXlHw/hKUJ4=
-github.com/SukramJ/go-fabric-ui v0.6.0/go.mod h1:2xQggsUXfCd9QQ+j/OmVbt+iWLyWj67eOUeJyV1KvJM=
+github.com/SukramJ/go-fabric v0.18.0 h1:sXzNKPDMhVotac0V7TV4zba0VfUt77jFmBwqz2foaZQ=
+github.com/SukramJ/go-fabric v0.18.0/go.mod h1:mD3lhrm2QpWXZBagyFtIJ0FlBUapbKVhlYyU6CP0iOA=
+github.com/SukramJ/go-fabric-ui v0.6.1 h1:6rQGdwwj1HpM/JQcbyrWl//w2XnP7JHU90uqbuakpOk=
+github.com/SukramJ/go-fabric-ui v0.6.1/go.mod h1:GRkCIeBPetSWGigbzZ+/Ucv+i4F3LIvHOLbJGHhi5aE=
 github.com/SukramJ/go-fabric/ble/bluez v0.12.1 h1:qkWyd9gz7+WVDWBw202G0W5ATm44KnOKVB2Wlyy1a9w=
 github.com/SukramJ/go-fabric/ble/bluez v0.12.1/go.mod h1:pQZkiCwPEWG5rhNMtq1faHp0rNPB/YaWKyo6OvtlNkU=
 github.com/SukramJ/go-fabric/ble/esphome v0.13.10 h1:rlxxIsfcGW4tvK4TUlX3BIHCXCRDHgdI08/ZmISDN54=
@@ -60,8 +60,8 @@ golang.org/x/crypto v0.58.0/go.mod h1:Xh+kl5A+M0gMiWDytH2Hhr5Z7WbNCpv/eB/EFgfSk+
 golang.org/x/mod v0.42.0 h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg=
 golang.org/x/mod v0.42.0/go.mod h1:u5fzIrRInkL8MaO1cbRkUHT64v303YIT5KEqpNr7jRs=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
-golang.org/x/net v0.61.0 h1:RR+6j/BTBCrggOLugxa+66R8FvoN6MHlzDlZIbN9YFw=
-golang.org/x/net v0.61.0/go.mod h1:WgDCOTH8iwtB66T4/GfI94AHo/hhdb7Hah9NDseQfiI=
+golang.org/x/net v0.62.0 h1:18ELalfM5+XNRwzM2nYqXsZQ9ByS1uhj2O/U7+5jqRY=
+golang.org/x/net v0.62.0/go.mod h1:WgDCOTH8iwtB66T4/GfI94AHo/hhdb7Hah9NDseQfiI=
 golang.org/x/sync v0.24.0 h1:iqiDrGoDgyuvAKrhLQthUEzU/R378N78gXbBjxed7oA=
 golang.org/x/sync v0.24.0/go.mod h1:sUUOizhqBxiL6pEWpqNLUiaJn1ShEbZ6BBqskPbjZm0=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
