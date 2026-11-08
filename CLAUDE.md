@@ -105,8 +105,9 @@ names.
 
 | Work | Model |
 | --- | --- |
-| Analysis, planning, briefs, reviews; anything written into `docs/protocol.md`, `docs/by_design.md`, `CONCEPT.md`, a report's *Decisions* or *Questions*, or a comment citing a matterjs-server or go-fabric line; a facade-gap report to go-fabric; rebases and family bumps where go-fabric or go-fabric-ui may have moved under the change; the commissioning and ACL commands (`controllerapi/cmd_commission.go`, `cmd_acl.go`) and the daemon's HTTP surface (`internal/daemon/http.go`, `web.go`) | **Fable** (the default for this repo) |
+| Analysis, planning, briefs; anything written into `docs/protocol.md`, `docs/by_design.md`, `CONCEPT.md`, a report's *Decisions* or *Questions*, or a comment citing a matterjs-server or go-fabric line; a facade-gap report to go-fabric; rebases and family bumps where go-fabric or go-fabric-ui may have moved under the change; the commissioning and ACL commands (`controllerapi/cmd_commission.go`, `cmd_acl.go`) and the daemon's HTTP surface (`internal/daemon/http.go`, `web.go`) | **Fable** (the default for this repo) |
 | Implementation of a finished brief with guards behind it: a command whose wire shape the read map already fixes, the add-on and its docs, a `changelog.md` entry for a finished diff, the bundle report in the fixed shape | **Opus** (also what fast mode runs on) |
+| **Review of a wave's pull request, split (owner decision 2026-11-08, go-fabric #456).** The code review — correctness, concurrency, error paths, tests, the fixed report shape — is **Opus**. On top of it **Fable** reads, bounded: every new citation line against the pinned source (matterjs-server at its pin, go-fabric at its tag), every line that enters `docs/protocol.md`, `docs/by_design.md` or `CONCEPT.md`, the commissioning, ACL and HTTP paths of the first row, and the brief's decisions against matterjs-server — the behavioural gaps a code review does not see. The load-bearing claims of the Opus review are verified before they reach the implementer. | **Opus**, then **Fable** |
 | Work a test or generator checks immediately: `make generate`, `gofumpt`, regenerating a ratchet, adding a test to an existing pattern, running `make compat-python`; search and first reading of matterjs-server, go-fabric or this tree whose result a stronger model or the owner reads again | **Sonnet**, including as the model of a delegated search subagent |
 
 Sonnet never writes a fact about matterjs-server or go-fabric into the repo,
@@ -152,6 +153,18 @@ below are what keeps that from doubling.
   scripted call with asserted anchors, not a chain of interactive edits; a
   generated file (`tables_gen.go`, `schema.json`, `clusters_gen.go`) is
   regenerated, never patched.
+- **Agents read what the brief names.** An implementing agent gets the
+  file list and the pinned sources in the brief, reads those, and reports
+  in the fixed shape; it does not survey the tree. The brief is copied to
+  `notes/briefs/` in the bundle's first commit. One agent per brief; two
+  agents only on disjoint paths.
+- **Push, pull request and tag are the session's own calls.** An
+  implementing agent works locally — branch, commits, guards — and reports;
+  the owner's session reads the diff, pushes, opens the pull request with
+  auto-merge and tags after CI. A delegated push, pull request or tag is
+  refused by the auto-mode classifier ("Create Public Surface",
+  2026-11-07), and the review above sits between the agent's report and the
+  push anyway.
 - **Agents read what the brief names.** An implementing agent gets the
   file list and the pinned sources (go-fabric tag, matterjs-server clone
   commit) in the brief, reads those, and reports in the fixed shape; it
