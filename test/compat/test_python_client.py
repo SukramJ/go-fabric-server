@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2026 SukramJ.
-"""The python-client compatibility job (brief S3 §4).
+"""The python-client compatibility job (brief S3 §4, S8 §7).
 
 matterjs-server's python client at the version Home Assistant's Matter
-integration pins (matter-python-client==1.4.0, core 2026.10.3) against a
-running fabric-server: the calls the integration makes after connect, and
-the commands of schema 14 the 1.4.0 client has no method for, sent through
-its generic send_command. FABRIC_SERVER_URL names the server; with
-FABRIC_SERVER_BRIDGE_DISCRIMINATOR and FABRIC_SERVER_BRIDGE_PASSCODE a
-commissionable device is on the network and is commissioned first.
+integration pins (matter-python-client==1.5.5, core 2026.11.0) against a
+running fabric-server: the calls the integration makes after connect, the
+camera commands its camera platform calls, and the commands of schema 14
+the client has no method for, sent through its generic send_command.
+FABRIC_SERVER_URL names the server; with FABRIC_SERVER_BRIDGE_DISCRIMINATOR
+and FABRIC_SERVER_BRIDGE_PASSCODE a commissionable device with a simulated
+camera is on the network and is commissioned first.
 """
 
 from __future__ import annotations
@@ -130,6 +131,45 @@ async def test_not_implemented(client):
 
 
 @pytest.mark.asyncio
+async def test_camera_on_a_missing_node(client):
+    """A camera command on a node the server does not hold."""
+    with pytest.raises(NodeNotExists):
+        await client.camera_get_capabilities(4242, 1)
+
+
+# The offer of the camera leg: one H.264 video section the client only
+# receives on.
+CAMERA_OFFER = (
+    "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n"
+    "m=video 9 UDP/TLS/RTP/SAVPF 96\r\na=rtpmap:96 H264/90000\r\na=recvonly\r\n"
+)
+
+# CameraAvStreamManagement, as the attribute paths of the node data name it.
+AVSM_CLUSTER = 0x0551
+
+
+async def camera_leg(client, node_id, attributes):
+    """The camera platform's calls on the simulated camera: capabilities, a
+    JPEG snapshot, a live view with an offer and a key, a stop by the key."""
+    endpoints = sorted({int(path.split("/")[0]) for path in attributes if int(path.split("/")[1]) == AVSM_CLUSTER})
+    assert endpoints, "the reference bridge serves no camera"
+    endpoint = endpoints[0]
+    caps = await client.camera_get_capabilities(node_id, endpoint)
+    assert caps.features is not None
+    assert caps.limits.supported_stream_usages
+    snap = await client.camera_snapshot(node_id, endpoint, codec="JPEG")
+    assert snap.codec == "JPEG"
+    assert snap.data
+    started = await client.camera_start_stream(
+        node_id, endpoint, "LiveView", sdp=CAMERA_OFFER, client_session_key="compat-live"
+    )
+    assert started.mode == "provide_offer"
+    assert started.video is not None
+    stopped = await client.camera_stop_stream(node_id, endpoint, client_session_key="compat-live")
+    assert stopped.ended is True
+
+
+@pytest.mark.asyncio
 async def test_event_subscription(client):
     """subscribe_events: a server_info_updated reaches the callback."""
     got = asyncio.get_running_loop().create_future()
@@ -161,7 +201,7 @@ async def test_commission_a_device(client):
 
     unsubscribe = client.subscribe_events(on_added, EventType.NODE_ADDED)
     try:
-        # The 1.4.0 client's commission_on_network takes no filter; the
+        # Sent generically for the raw node data the camera leg reads; the
         # filter by long discriminator keeps the job to its own device.
         data = await client.send_command(
             "commission_on_network",
@@ -186,6 +226,7 @@ async def test_commission_a_device(client):
     assert any(n.node_id == node_id for n in topology.nodes)
     icd = await client.get_icd_state(node_id)
     assert icd.supported is False
+    await camera_leg(client, node_id, data["attributes"])
     window = await client.open_commissioning_window(node_id)
     assert window.setup_pin_code > 0
     assert window.setup_qr_code.startswith("MT:")

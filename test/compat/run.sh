@@ -12,7 +12,9 @@
 # PYTHON is an interpreter with test/compat/requirements.txt installed
 # (pip install --require-hashes -r test/compat/requirements.txt). With
 # COMPAT_BRIDGE=1 the reference bridge of the go-fabric version in go.mod
-# is built from the module cache and commissioned by the test.
+# is built from the module cache and commissioned by the test, with its
+# simulated camera (--camera-sim, snapshots from a test pattern) on TCP,
+# which the camera's offers need (brief S8 §7).
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -35,7 +37,8 @@ if [[ "${COMPAT_BRIDGE:-0}" == 1 ]]; then
 	gofabric=$(go list -m -f '{{.Version}}' github.com/SukramJ/go-fabric)
 	GOBIN="$work" CGO_ENABLED=0 go install "github.com/SukramJ/go-fabric/examples/reference-bridge@$gofabric"
 	export FABRIC_SERVER_BRIDGE_PASSCODE=20202024 FABRIC_SERVER_BRIDGE_DISCRIMINATOR=3333
-	"$work/reference-bridge" --db "$work/bridge.db" --listen ":$(free_port)" --tcp false \
+	"$work/reference-bridge" --db "$work/bridge.db" --listen ":$(free_port)" --tcp true \
+		--camera-sim --camera-test-videosrc \
 		--passcode "$FABRIC_SERVER_BRIDGE_PASSCODE" --discriminator "$FABRIC_SERVER_BRIDGE_DISCRIMINATOR" \
 		--log-level warn >"$work/bridge.log" 2>&1 &
 	pids+=($!)

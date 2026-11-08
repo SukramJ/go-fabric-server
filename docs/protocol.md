@@ -23,7 +23,7 @@ The test `controllerapi/compat_internal_test.go` holds the server's types
 against matterjs-server's documented examples
 (`protocol/testdata/compat/`) and against the shapes of its python client
 (`protocol/testdata/compat/python/`); the CI job `compat-python` runs the
-python client Home Assistant pins (`matter-python-client==1.4.0`) against
+python client Home Assistant pins (`matter-python-client==1.5.5`) against
 the daemon and a commissioned device ([compat.md](compat.md)).
 
 ## Envelope
