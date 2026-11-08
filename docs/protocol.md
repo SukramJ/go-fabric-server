@@ -17,8 +17,7 @@ python-matter-server that Home Assistant's Matter integration speaks:
   ones as matterjs-server answers them, the rest with `InvalidCommand` (9)
   and a `details` that names the go-fabric route it waits for (`needs the
   OTA provider on go-fabric's controller (milestone 5 phase 25 …)`, `needs
-  a Thread border router route in go-fabric (milestone 6, ADR 0027 …)`) or
-  says it is not planned (camera and WebRTC).
+  a Thread border router route in go-fabric (milestone 6, ADR 0027 …)`).
 
 The test `controllerapi/compat_internal_test.go` holds the server's types
 against matterjs-server's documented examples
@@ -66,12 +65,25 @@ exactly; send ids as integer literals, never in exponent form.
 | 7 | SDKStackError | `read_attribute` without any value |
 | 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form; on `/bridge`, a declaration the kit or the node's surface policies refuse (an ahead-of-matter.js feature not enabled, naming the register IDs and `--bridge-extensions`) — a device type the specification level withholds is no refusal, `declare` names it in `withheld` |
 | 9 | InvalidCommand | an unknown or not yet implemented command |
-| 6, 10, 11, 100-103 | VersionMismatch, UpdateCheckError, UpdateError, IcdMultiAdmin, OtaUploadError, Camera… | defined, not raised yet |
+| 100 | IcdMultiAdmin | `register_icd` refused for a node with administrators of other vendors, with matterjs-server's JSON details |
+| 102 | CameraStreamIncompatible | the camera, the offer or the request rules the stream out; `details` the JSON `{message, reason, track?, feature?, device, requested, bound?, device_status?}` in matterjs-server's key order (types.ts:274-301) |
+| 103 | CameraResourceExhausted | the camera has no capacity; `details` `{message, allocated, max_concurrent_encoders?, max_encoded_pixel_rate?}` (types.ts:303-315) |
+| 104 | CameraStreamInUse | `camera_release_stream` refused while the stream is referenced; `details` `{message, stream_id, reference_count?}` (types.ts:317-324) |
+| 105 | CameraNotSupported | the endpoint lacks the camera clusters; `details` `{message, missing_clusters}` (types.ts:335-341) |
+| 106 | CameraPrivacyMode | a privacy switch forbids the session or the snapshot; `details` `{message, modes, device_status}` (types.ts:326-333) |
+| 6, 10, 11, 101 | VersionMismatch, UpdateCheckError, UpdateError, OtaUploadError | defined, not raised yet |
 | 200 | BridgeClientConnected | `/bridge` only: a second bridge client (our own code) |
 
 `reason` (commissioning): `not-discovered`, `passcode-mismatch`,
 `invalid-payload`, `timeout`, `other`. `attestation-rejected` is defined but
 reported as `other` until go-fabric names an attestation rejection.
+
+The camera citations on this page are matterjs-server at `0bd06f2`:
+"docs" is its `docs/websockets_api.md`, `types.ts`
+`packages/ws-controller/src/types/WebSocketMessageTypes.ts`, `wireNames.ts`
+`packages/ws-controller/src/camera/wireNames.ts`,
+`startingSessionSignalling.ts`
+`packages/ws-controller/src/server/startingSessionSignalling.ts`.
 
 ## Commands
 
@@ -110,7 +122,10 @@ reported as `other` until go-fabric names an attestation rejection.
 | `import_test_node` | implemented | a diagnostics dump's nodes as test nodes (ids from `0xFFFFFFFE00000000`), in memory, answered as matterjs-server's TestNodeCommandHandler answers |
 | `check_node_update`, `update_node`, `initiate_ota_upload` | waits for go-fabric | the OTA provider on the controller (milestone 5 phase 25) |
 | `get_thread_border_routers`, `get_thread_diagnostics` | waits for go-fabric | a Thread border router route (milestone 6, ADR 0027) |
-| `camera_*`, `send_webrtc_provider_command` | never | camera and WebRTC are out of scope |
+| `camera_get_capabilities`, `camera_snapshot`, `camera_release_stream` | implemented | go-fabric `controller/camera`'s `Capabilities`, `Snapshot`, `ReleaseStream`; the codecs in matterjs-server's SDP spellings (`H264`, `H265`, `H266`, `AV1`, `OPUS`, `AAC`, `JPEG`, `HEIC`, wireNames.ts:16-31), the usages and talkback modes the enum's member names; strict arguments: an unknown key is 8 naming it and the accepted keys (docs:1835-1841) |
+| `camera_start_stream`, `camera_stop_stream` | implemented | `StartStream` with the connection as the session's owner and `client_session_key` its key; `StopSession` by id or `StopByKey` by the connection's key (a running start is cancelled); every range and limit is go-fabric's |
+| `camera_provide_answer`, `camera_provide_ice_candidates` | implemented | by id on the provider's raw route (`Provider.Send`), the id need not be one this server opened; by key to the connection's session, queued while its start is unanswered (at most 64) and sent after the response |
+| `send_webrtc_provider_command` | implemented | `Provider.Send`: go-fabric matches the payload's keys, checks it against the cluster's model, fills the originating endpoint and registers an offer's session with the controller's requestor; the response is rendered as `device_command` renders one. `device_command` `EndSession` on a WebRTC provider goes through `Provider.EndSession`, so the camera service's records go with it |
 
 The controller pages of `--web` call the same operations: their
 decommission is `remove_node`, and their credential list is the store of
@@ -196,6 +211,31 @@ shapes. The values of a node's first report after a start or a commissioning
 are not sent as `attribute_updated`; the node becomes available in a
 `node_updated`.
 
+The camera's events (schema 14) are not tied to `start_listening`; a
+connection opts in by the commands it issues, before they run:
+
+- `webrtc_callback` (`{event_type, webrtc_session_id, node_id, endpoint_id,
+  fabric_index, client_session_key?, data}`): a session opened with
+  `camera_start_stream` signals to the connection that opened it and no
+  other, its key on every event; the response naming the session goes out
+  before the session's first event (docs:1408, :2255-2259). A session
+  nobody owns — opened on the raw route — reaches every connection that
+  issued `camera_start_stream`, `camera_provide_answer`,
+  `camera_provide_ice_candidates` or `send_webrtc_provider_command`, without
+  a key (docs:2261-2269).
+- `camera_session_ended` (`{node_id, endpoint_id, webrtc_session_id, cause,
+  reason?, client_session_key?}`): to the session's owner, held while its
+  start is unanswered and after the session's last `webrtc_callback`; a
+  session nobody owns to every connection that issued a `camera_*` command
+  (`send_webrtc_provider_command` does not count, docs:2294). Three endings
+  send nothing (docs:2296-2305): the requester's own `camera_stop_stream`
+  or `device_command` `EndSession`, the owner's connection closing (its
+  sessions end on the camera), the server shutting down. An end of a
+  session whose start failed is dropped: the client never learned its id.
+- `camera_stream_evicted` (`{node_id, endpoint_id, kind, stream_id}`): to
+  every connection that issued a `camera_*` command, the requester included
+  (docs:2326).
+
 ## Delivery to slow clients
 
 The send path is matterjs-server's: frames go to the socket at once until the
@@ -231,6 +271,17 @@ Ignorable by a client that does not know them:
 - the bearer token (see operations).
 
 ## Deliberate differences from matterjs-server
+
+- `camera_provide_ice_candidates` by key while the start runs: the queued
+  candidates go to the camera in one go-fabric `Session.ProvideICECandidates`
+  after the response, which go-fabric splits into messages that fit
+  (`controller/camera/session.go:186-258` at v0.18.0), and every queued
+  command is answered with that call's one outcome; matterjs-server answers
+  each command with the first failure among the sends that carried its
+  candidates (startingSessionSignalling.ts:178-227). Each request runs on a
+  goroutine of its own, so two such commands sent back to back queue in the
+  order they are handled, which can differ from the order they arrived
+  (docs:1682 keeps the arrival order).
 
 - `ping_node` answers `{ip: reachable}` from go-fabric's
   `client.Node.PingAddress`, not from ICMP echoes: the daemon runs without

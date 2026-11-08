@@ -6,6 +6,35 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The camera API of schema 14 on `/ws`, on go-fabric's `controller/camera`
+  (brief S8, issue #40): `camera_get_capabilities`, `camera_start_stream`,
+  `camera_stop_stream`, `camera_snapshot`, `camera_release_stream`,
+  `camera_provide_answer`, `camera_provide_ice_candidates` and
+  `send_webrtc_provider_command`, in matterjs-server's shapes. A session
+  belongs to the connection that started it: its `webrtc_callback` events
+  follow the start's response and reach only that connection, a
+  `client_session_key` names it in place of the id, and candidates sent by
+  key while the start runs wait for it (at most 64). The events
+  `webrtc_callback`, `camera_session_ended` and `camera_stream_evicted`
+  reach the connections that issued a camera command. `device_command`
+  `EndSession` on a WebRTC provider ends the session's records too.
+- The error codes 104 `CameraStreamInUse`, 105 `CameraNotSupported` and 106
+  `CameraPrivacyMode`; 102 and 103 are raised now, all five with
+  matterjs-server's JSON details.
+- `controllerapi.Services{Topology, Camera}`: `Server.Start` takes the
+  controller's services in one struct (was `Start(ctx, b, topo)`), and
+  `Server.CameraObserver` is the camera service's observer.
+
+### Changed
+
+- The controller serves a Camera Controller endpoint (endpoint 1) and opens
+  outgoing Matter TCP to a peer that serves it, falling back to UDP; there
+  is no flag, as matterjs-server composes its camera controller always.
+- `server_info.capabilities` lists the eight camera commands; they no longer
+  answer `InvalidCommand` ("not planned").
+
 ## [0.6.2] - 2026-11-08
 
 ### Added

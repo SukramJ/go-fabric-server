@@ -13,7 +13,9 @@ decides and this file is corrected.
   (schema 14, the python-matter-server contract), so that Home Assistant's
   Matter integration uses it as a drop-in; and (b) a **device-side server**
   with a remote API (declaration, state deltas, commands) for hosts that are
-  not written in Go. Camera/WebRTC is excluded.
+  not written in Go. The controller side of cameras is included since S8
+  (owner, 2026-11-05; go-fabric #410): the `camera_*` commands on go-fabric's
+  `controller/camera`.
 - **Order (0.5):** the server core first (protocol, daemon, in-process tests),
   then go-hamapping, then go-ha2fabric. Go programs embed go-fabric in process
   (0.2); the server is the door for everyone else.
@@ -96,7 +98,12 @@ the two are separate composition roots in go-fabric (`controller.New`,
   pure cache operation and moves to S3.
 - **With M6 (S3):** the Thread commands (`get_thread_border_routers`,
   `get_thread_diagnostics`, `get_network_topology`).
-- **Never:** camera/WebRTC, a BLE proxy endpoint.
+- **With go-fabric v0.18.0 (S8):** the camera commands (`camera_get_capabilities`,
+  `camera_start_stream`, `camera_stop_stream`, `camera_snapshot`,
+  `camera_release_stream`, `camera_provide_answer`,
+  `camera_provide_ice_candidates`, `send_webrtc_provider_command`) and their
+  events, on go-fabric's `controller/camera` (brief S8).
+- **Never:** a BLE proxy endpoint.
 - **Values:** `attributes` keyed `"endpoint/cluster/attribute"` in decimal;
   matterjs-server's conversion rules (read map §2.2-2.5). Planned additions,
   ignorable by old clients: `attribute_names` in the node data and a
@@ -158,7 +165,7 @@ One source for the node list: the 0.5.0 flag `--bridge-node` is removed.
 | Backpressure | good (coalesce, never-drop, close) | taken over, made visible with metrics |
 | Role | controller only | controller and device side in one daemon |
 
-What matterjs-server does better for now: camera/WebRTC, Thread topology
+What matterjs-server does better for now: Thread topology
 graphs with border routers and route tables, migrating old python-matter-server data, years of interop
 experience with Home Assistant.
 
