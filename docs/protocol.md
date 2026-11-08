@@ -80,10 +80,13 @@ reported as `other` until go-fabric names an attestation rejection.
 
 The camera citations on this page are matterjs-server at `0bd06f2`:
 "docs" is its `docs/websockets_api.md`, `types.ts`
-`packages/ws-controller/src/types/WebSocketMessageTypes.ts`, `wireNames.ts`
-`packages/ws-controller/src/camera/wireNames.ts`,
+`packages/ws-controller/src/types/WebSocketMessageTypes.ts`, `wireNames.ts`,
+`cameraCommands.ts`, `cameraFieldRanges.ts` and `wireArgumentChecks.ts`
+`packages/ws-controller/src/camera/`, `handler.ts`
+`packages/ws-controller/src/server/WebSocketControllerHandler.ts`,
 `startingSessionSignalling.ts`
-`packages/ws-controller/src/server/startingSessionSignalling.ts`.
+`packages/ws-controller/src/server/startingSessionSignalling.ts`,
+`ControllerNode.ts` `packages/ws-controller/src/controller/ControllerNode.ts`.
 
 ## Commands
 
@@ -215,7 +218,8 @@ The camera's events (schema 14) are not tied to `start_listening`; a
 connection opts in by the commands it issues, before they run:
 
 - `webrtc_callback` (`{event_type, webrtc_session_id, node_id, endpoint_id,
-  fabric_index, client_session_key?, data}`): a session opened with
+  fabric_index, data, client_session_key?}`, the key last as handler.ts:786
+  spreads it after the data): a session opened with
   `camera_start_stream` signals to the connection that opened it and no
   other, its key on every event; the response naming the session goes out
   before the session's first event (docs:1408, :2255-2259). A session
@@ -278,10 +282,24 @@ Ignorable by a client that does not know them:
   (`controller/camera/session.go:186-258` at v0.18.0), and every queued
   command is answered with that call's one outcome; matterjs-server answers
   each command with the first failure among the sends that carried its
-  candidates (startingSessionSignalling.ts:178-227). Each request runs on a
-  goroutine of its own, so two such commands sent back to back queue in the
-  order they are handled, which can differ from the order they arrived
-  (docs:1682 keeps the arrival order).
+  candidates (startingSessionSignalling.ts:178-227). The queue keeps the
+  arrival order (docs:1682): a connection reads its next frame once the
+  previous one registered its start or its keyed candidates.
+- A stated numeric hint of `0` (`video.min_frame_rate: 0`, …) is accepted as
+  unstated: go-fabric's bounds are plain integers with 0 for unstated
+  (`controller/camera/session.go:66`, `:473-478` at v0.18.0), and the server
+  checks no range of its own. matterjs-server refuses it with error 8
+  (cameraCommands.ts:115-118, :378-382; wireArgumentChecks.ts:24-35; the
+  floors cameraFieldRanges.ts:46-55, the model's "1 to maxFrameRate",
+  go-fabric `cluster/spec/cameraavstreammanagement/definition_gen.go:640`).
+  Raised with go-fabric (`docs/reports/S8.md`).
+- A backend started without a camera service (`controllerapi.Services.Camera`
+  nil) leaves the eight camera commands out of `capabilities` and answers
+  them `InvalidCommand` naming the missing service. matterjs-server composes
+  its camera controller endpoint unconditionally (ControllerNode.ts:147) and
+  reaches its camera streams on every camera command (handler.ts:714,
+  :2005, :2018, :2048, :2059, :2077); the daemon always composes the service
+  (`internal/daemon/run.go:285-317`), so the state is a test backend's only.
 
 - `ping_node` answers `{ip: reachable}` from go-fabric's
   `client.Node.PingAddress`, not from ICMP echoes: the daemon runs without
