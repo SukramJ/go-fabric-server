@@ -16,6 +16,7 @@ import (
 	"github.com/SukramJ/go-fabric/clock"
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
 	"github.com/SukramJ/go-fabric/controller"
+	"github.com/SukramJ/go-fabric/controller/camera"
 	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
@@ -37,6 +38,10 @@ type env struct {
 	ctx    context.Context
 	client *fsclient.Client
 	ctrl   *controller.Controller
+	cam    *camera.Service
+	// camera is the site's camera and port, with envOptions.camera.
+	camera *device.Camera
+	port   *cameraPort
 }
 
 type envOptions struct {
@@ -46,6 +51,10 @@ type envOptions struct {
 	noDial bool
 	// configure edits the controller's configuration.
 	configure func(*controller.Config)
+	// camera adds a camera beside the light (newTestCamera): the site
+	// runs on loopback sockets then, since the camera's offers need the
+	// device's TCP.
+	camera bool
 }
 
 func logger() *slog.Logger {
@@ -59,13 +68,24 @@ func newEnv(t *testing.T, o envOptions) *env {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
-	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: logger()})
+	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: logger(), Loopback: o.camera})
 	light, err := device.NewOnOffLight(device.Options{StableKey: device.StringKey("light:1"), Name: "light"},
 		onoffdef.Declare{Initial: onoffdef.Patch{OnOff: new(false)}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dev := site.AddDevice(fabrictest.Topology{Bridged: []node.Endpoint{light}})
+	top := fabrictest.Topology{Bridged: []node.Endpoint{light}}
+	var (
+		cam  *device.Camera
+		port *cameraPort
+	)
+	if o.camera {
+		port = newCameraPort()
+		cam = newTestCamera(t, port)
+		top.Bridged = append(top.Bridged, cam)
+		top.Configure = func(cfg *node.Config) { cfg.Network.TCP = node.TCPConfig{Incoming: true} }
+	}
+	dev := site.AddDevice(top)
 	if o.server.Version == "" {
 		o.server.Version = "test"
 	}
@@ -87,7 +107,8 @@ func newEnv(t *testing.T, o envOptions) *env {
 	}
 	// The daemon's own composition on the site (go-fabric v0.12.1,
 	// Site.ControllerConfig): controller.New with the site's network,
-	// DNS-SD and clock, the server's hooks per node.
+	// DNS-SD and clock, the server's hooks per node, the camera side with
+	// outgoing TCP and the cameras' reports (brief S8 §1).
 	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: logger()})
 	cfg.HooksFor = api.Hooks
 	if o.configure != nil {
@@ -95,18 +116,27 @@ func newEnv(t *testing.T, o envOptions) *env {
 	}
 	var changes topology.Changes
 	changes.Install(&cfg)
+	cfg.Camera = &controller.CameraConfig{}
+	cfg.TCP = controller.TCPConfig{Outgoing: true}
+	var reports camera.Reports
+	reports.Install(&cfg)
 	ctrl, err := controller.New(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	topo := topology.New(ctrl, topology.Config{Changes: &changes, Clock: cfg.Clock})
+	svc, err := camera.New(ctx, ctrl, camera.Config{Reports: &reports, Observer: api.CameraObserver(), Logger: logger()})
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		cctx, ccancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer ccancel()
+		_ = svc.Close(cctx)
 		topo.Close()
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl, topo); err != nil {
+	if err := api.Start(ctx, ctrl, controllerapi.Services{Topology: topo, Camera: svc}); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.Mux(api, o.token, "test"))
@@ -116,7 +146,7 @@ func newEnv(t *testing.T, o envOptions) *env {
 		api.Shutdown(sctx)
 		srv.Close()
 	})
-	e := &env{t: t, site: site, light: light, dev: dev, api: api, ctrl: ctrl, url: "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws", ctx: ctx}
+	e := &env{t: t, site: site, light: light, dev: dev, api: api, ctrl: ctrl, cam: svc, camera: cam, port: port, url: "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws", ctx: ctx}
 	if !o.noDial {
 		e.client = e.dial(fsclient.Options{Token: o.token})
 	}

@@ -101,7 +101,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		hooks.Close() // as Run closes them
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl, topo); err != nil {
+	if err := api.Start(ctx, ctrl, controllerapi.Services{Topology: topo}); err != nil {
 		t.Fatal(err)
 	}
 	ws := httptest.NewServer(Mux(api, "", "test"))

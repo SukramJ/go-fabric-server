@@ -113,7 +113,7 @@ func TestTwoNodes(t *testing.T) {
 		topo.Close()
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl, topo); err != nil {
+	if err := api.Start(ctx, ctrl, controllerapi.Services{Topology: topo}); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(muxRoutes(api, routes, "", "test"))
