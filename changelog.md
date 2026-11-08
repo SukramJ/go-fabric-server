@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Erase a device node from the pages (#50): the fabrics page's Erase
+  (admin, go-fabric-ui's `POST …/maintenance/erase`) removes every fabric,
+  erases the node's store and endpoint records and brings the node back in
+  place — same key, port, discriminator and passcode, a new UniqueID,
+  uncommissioned — for the `--bridge-*` node and each registry node. The
+  bridge client receives `server_shutdown` and dials the same path back.
+  A new node that fails to start keeps the daemon up and shows as the
+  warning `node_restart_failed` on every status page; Erase again retries.
+
 ### Changed
 
 - go-fabric-ui `v0.6.1` → `v0.7.1` (contracts 0.7.0 and 0.7.1, on go-fabric

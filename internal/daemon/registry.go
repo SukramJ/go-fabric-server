@@ -50,7 +50,7 @@ type registryData struct {
 
 // startFunc builds and starts one device node with its bridge half
 // (startBridge in the daemon; a test's site device in multinode_test.go).
-type startFunc func(ctx context.Context, s nodeSpec) (bridgeHalf, error)
+type startFunc func(ctx context.Context, s nodeSpec) (liveNode, error)
 
 // nodeRegistry is fabricui.NodeRegistry over nodes.json (go-fabric-ui
 // contract 0.6.0): the device nodes beside the default node, which the
@@ -60,13 +60,12 @@ type startFunc func(ctx context.Context, s nodeSpec) (bridgeHalf, error)
 // discriminator, its passcode, its store bridge-<key>.db — and its bridge
 // half is served at /bridge/<key> from its creation to its deletion.
 type nodeRegistry struct {
-	ctx     context.Context // the daemon's: the nodes' lifetime
+	// The lifecycle starts, erases and ends the registry's nodes, as it
+	// does the default node's.
+	*nodeLifecycle
 	dir     string
 	limit   int
 	primary nodeSpec
-	start   startFunc
-	routes  *bridgeRoutes
-	log     *slog.Logger
 	// probe reports whether a UDP address can be bound, for the port
 	// allocation; a variable for the tests.
 	probe func(ctx context.Context, addr string) bool
@@ -84,18 +83,16 @@ type registryOptions struct {
 	dir     string
 	limit   int
 	primary nodeSpec
-	start   startFunc
-	routes  *bridgeRoutes
-	log     *slog.Logger
+	life    *nodeLifecycle
 }
 
 // openRegistry reads nodes.json under dir (none is an empty registry);
 // an entry that is malformed — an invalid or duplicated key, a
 // discriminator or port another node holds — stops the start, naming the
 // file.
-func openRegistry(ctx context.Context, o registryOptions) (*nodeRegistry, error) {
+func openRegistry(o registryOptions) (*nodeRegistry, error) {
 	r := &nodeRegistry{
-		ctx: ctx, dir: o.dir, limit: o.limit, primary: o.primary, start: o.start, routes: o.routes, log: o.log,
+		nodeLifecycle: o.life, dir: o.dir, limit: o.limit, primary: o.primary,
 		probe: udpFree, running: map[string]*bridgeHalf{},
 	}
 	path := filepath.Join(o.dir, registryFile)
@@ -164,24 +161,24 @@ func (r *nodeRegistry) startAll() {
 	defer r.mu.Unlock()
 	for i := range r.entries {
 		e := &r.entries[i]
-		h, err := r.start(r.ctx, registrySpec(r.primary, e))
+		h, err := r.startHalf(registrySpec(r.primary, e))
 		if err != nil {
 			r.log.Error("fabricserver.registry.start_failed", slog.String("node", e.Key), slog.Any("error", err))
 			continue
 		}
-		r.running[e.Key] = &h
-		r.routes.add(BridgeHalf{Key: e.Key, Server: h.srv})
+		r.running[e.Key] = h
 	}
 	r.publish()
 }
 
-// stopAll stops every running registry node, the last first.
+// stopAll stops every running registry node, the last first: each
+// half's current node, the one an erase brought back if any.
 func (r *nodeRegistry) stopAll(ctx context.Context) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for i := len(r.entries) - 1; i >= 0; i-- {
 		if h := r.running[r.entries[i].Key]; h != nil {
-			_ = h.node.Stop(ctx)
+			h.stop(ctx)
 		}
 	}
 	clear(r.running)
@@ -198,8 +195,12 @@ func (r *nodeRegistry) publish() {
 	for i := range r.entries {
 		e := &r.entries[i]
 		ne := fabricui.NodeEntry{Key: e.Key, Label: e.Label, Kind: "bridge", Config: r.config(e)}
+		// A running node's source is its half's switch, the same value
+		// across an erase, so the pages keep its handler
+		// (fabricui.NodeSwitch); a node that failed to start is listed
+		// without one, to be deleted.
 		if h := r.running[e.Key]; h != nil {
-			ne.Source = h.node
+			ne.Source, ne.Erase = h.sw, r.eraser(h)
 		}
 		out = append(out, ne)
 	}
@@ -237,22 +238,20 @@ func (r *nodeRegistry) Create(ctx context.Context, spec fabricui.NodeSpec) (fabr
 		return fabricui.NodeEntry{}, err
 	}
 	// The node lives as long as the daemon, not as the request that
-	// created it.
-	h, err := r.start(r.ctx, registrySpec(r.primary, &e)) //nolint:contextcheck // the daemon's context, above
+	// created it (startHalf starts it on the daemon's context).
+	h, err := r.startHalf(registrySpec(r.primary, &e))
 	if err != nil {
 		_ = r.removeStore(e.Key)
 		return fabricui.NodeEntry{}, err
 	}
 	entries := append(slices.Clone(r.entries), e)
 	if err := r.save(entries); err != nil {
-		h.srv.Shutdown(ctx)
-		_ = h.node.Stop(context.WithoutCancel(ctx))
+		r.end(context.WithoutCancel(ctx), h, false)
 		_ = r.removeStore(e.Key)
 		return fabricui.NodeEntry{}, err
 	}
 	r.entries = entries
-	r.running[e.Key] = &h
-	r.routes.add(BridgeHalf{Key: e.Key, Server: h.srv})
+	r.running[e.Key] = h
 	r.publish()
 	r.log.Info("fabricserver.registry.created", slog.String("node", e.Key), slog.String("listen", e.Listen))
 	return (*r.list.Load())[len(r.entries)-1], nil
@@ -298,12 +297,7 @@ func (r *nodeRegistry) Delete(ctx context.Context, key string) error {
 		return fmt.Errorf("node registry: no node %q", key)
 	}
 	if h := r.running[key]; h != nil {
-		r.routes.remove(key)
-		h.srv.Shutdown(ctx)
-		if err := h.node.FactoryReset(ctx); err != nil {
-			r.log.Warn("fabricserver.registry.reset_failed", slog.String("node", key), slog.Any("error", err))
-			_ = h.node.Stop(ctx)
-		}
+		r.end(ctx, h, true)
 		delete(r.running, key)
 	}
 	entries := slices.Delete(slices.Clone(r.entries), i, i+1)

@@ -121,6 +121,31 @@ every fabric it holds (go-fabric's `node.FactoryReset`: each controller
 that paired it loses it) and stops, and its store files and its entry are
 deleted.
 
+#### Erasing a node
+
+The fabrics page of every device node — the `--bridge-*` one and each
+registry node, the add-on's one node included — offers **Erase** to an
+admin, behind two confirmations (`POST /api/v1/node/maintenance/erase`,
+`/api/v1/nodes/<key>/maintenance/erase`, body `{"confirm":"erase-node"}`).
+It returns the node to its factory state and brings it back in place:
+
+- every fabric is removed (go-fabric's `node.FactoryReset`: every
+  controller that paired the node loses it), the node stops, and its store
+  and endpoint records are erased;
+- a new node starts on the erased store under the same key, port,
+  discriminator and passcode, uncommissioned and with a new UniqueID; the
+  pages follow it (they poll the status until it answers again);
+- the bridge client receives `server_shutdown`, dials the same path back
+  and declares again — the endpoint numbers are assigned anew;
+- the node's expvar counters continue the old node's (one prefix per key).
+
+The log says `fabricserver.node.erased` with `node=<key>`. When the erase
+itself fails (`fabricserver.node.erase_failed`) nothing is restarted. When
+the new node does not start (`fabricserver.node.restart_failed`) the daemon
+stays up: every status page carries the warning `node_restart_failed`
+naming the key, **Erase** again retries the start, and a restart of the
+daemon also brings the node back (its store is erased).
+
 The registry is `nodes.json` under `--storage-path` ([Files](#files)).
 The Home Assistant add-on runs the one `--bridge-*` node only.
 
@@ -183,7 +208,7 @@ Under `--storage-path` (created with mode 0700):
 | --- | --- |
 | `fabric-server.db` (+ `-wal`, `-shm`) | the controller's SQLite database: our fabric and its CA, the paired nodes and their attribute images (go-fabric's stores) |
 | `server.json` (mode 0600) | the server's settings: the fabric label, the stored Wi-Fi credentials and Thread datasets |
-| `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys |
+| `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys; an erase in the pages empties it and keeps the file |
 | `nodes.json` (mode 0600) | with `--bridge`: the node registry, `{"nodes": [{"key", "label", "listen", "discriminator", "passcode", "created_at"}]}` — the nodes created in the pages, in their order; it holds their passcodes |
 | `bridge-<key>.db` | per registry node: that node's store, the same content |
 
@@ -257,7 +282,7 @@ file is written (`file_loglevel` is `null`).
 ## The pages
 
 `--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
-0.6.0), both families and the Operation page in one handler:
+0.7.1), both families and the Operation page in one handler:
 
 - **The node pages** for every device node — the `--bridge-*` one and the
   registry's — under a node selector that lists the default node first
@@ -266,7 +291,8 @@ file is written (`file_loglevel` is `null`).
   `--bridge-*` node, `registry` for the others; never the passcode),
   pairing, fabrics, the commissioning window, diagnostics; an admin
   creates, renames and deletes the registry's nodes there
-  ([Several device nodes](#several-device-nodes)). Without `--bridge` the
+  ([Several device nodes](#several-device-nodes)) and erases any node in
+  place ([Erasing a node](#erasing-a-node)). Without `--bridge` the
   node family is shown as disabled. The client decides what is exposed over
   `/bridge`, so the pages have no exposure selection; the selection page
   says so ("the server keeps no host item model; selection is the

@@ -16,11 +16,13 @@ import (
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 )
 
-// webHandler is the pages of go-fabric-ui (0.6.0, docs/embedding.md):
+// webHandler is the pages of go-fabric-ui (0.7.1, docs/embedding.md):
 // the node family over the device nodes — the default node of the
 // --bridge-* flags (Options.Node, its configuration block
 // Options.NodeConfig) and the node registry beside it (Options.Registry:
-// the nodes the pages create, rename and delete) —, with no Exposure and
+// the nodes the pages create, rename and delete), each erased in place by
+// life (Options.Erase, NodeEntry.Erase) and a failed restart after an
+// erase its warning (Options.Warnings) —, with no Exposure and
 // its reason (the client decides what is exposed over /bridge), the Operation page over
 // the daemon's log ring (ops), the controller family over ctrl (its
 // graph, /controller/topology, the topology service /ws's
@@ -30,17 +32,23 @@ import (
 // a nil ctrl serves that family as disabled, a nil ops no Operation page.
 // The controller node's ping is go-fabric-ui's own (its gofabric
 // adapter's ControllerNode.Ping); the daemon passes nothing for it.
-func webHandler(c Config, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (http.Handler, error) {
+func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (http.Handler, error) {
 	o := fabricui.Options{
 		Events: ev, Logger: log, Controller: ctrl, Operations: ops,
 		ExposureReason: exposureReason,
 	}
 	if def != nil {
-		o.Node = def.node
+		// The pages read the half's switch, never a bare *node.Node, so
+		// they follow the node an erase brings back (fabricui.NodeSwitch).
+		o.Node = def.sw
 		o.NodeConfig = defaultNodeConfig(def.spec)
+		o.Erase = life.eraser(def)
 		if reg != nil {
 			o.Registry = reg
 		}
+	}
+	if life != nil {
+		o.Warnings = life.warnings
 	}
 	admin, err := webAdmin(c)
 	if err != nil {
@@ -108,8 +116,8 @@ func fromAddr(r *http.Request, src netip.Addr) bool {
 }
 
 // serveWeb serves the pages on --web until the returned stop.
-func serveWeb(ctx context.Context, c Config, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (func(), error) {
-	h, err := webHandler(c, def, reg, ctrl, ev, ops, log)
+func serveWeb(ctx context.Context, c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (func(), error) {
+	h, err := webHandler(c, life, def, reg, ctrl, ev, ops, log)
 	if err != nil {
 		return nil, err
 	}

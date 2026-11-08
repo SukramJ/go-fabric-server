@@ -36,8 +36,10 @@ import (
 // muxRoutes; the registry node's /bridge/<key> appears with its creation,
 // each node is fed through its own route, advertises under its own
 // discriminator and is commissioned on its own by the controller half's
-// commission_with_code; the pages list both, rename the registry node and
-// delete it, and its route is gone. The site builds the nodes (a node.New
+// commission_with_code; the pages list both, rename the registry node,
+// erase each node in place (#50: its fabric gone, the controller's node
+// gone, a new node behind the same route and source) and delete the
+// registry node, and its route is gone. The site builds the nodes (a node.New
 // of the daemon's own cannot join a site, bridgeapi's harness), through
 // the registry's start seam; Run's own nodes are TestRunRegistry's.
 func TestTwoNodes(t *testing.T) {
@@ -45,9 +47,14 @@ func TestTwoNodes(t *testing.T) {
 	t.Cleanup(cancel)
 	log := slog.New(slog.DiscardHandler)
 	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: log})
+	// started records every start, an erase's included.
+	type startedNode struct {
+		spec nodeSpec
+		liveNode
+	}
 	var halvesMu sync.Mutex
-	var halves []bridgeHalf
-	start := func(ctx context.Context, s nodeSpec) (bridgeHalf, error) {
+	var halves []startedNode
+	start := func(ctx context.Context, s nodeSpec) (liveNode, error) {
 		br := bridgeapi.New(bridgeapi.Options{Version: "test", GoFabricVersion: "v-test", Logger: log, SubscriptionPoll: 50 * time.Millisecond, Node: s.Key})
 		dev := site.AddDevice(fabrictest.Topology{Configure: func(cfg *node.Config) {
 			cfg.Observers = br.Observers()
@@ -55,30 +62,31 @@ func TestTwoNodes(t *testing.T) {
 			cfg.BasicInformation.NodeLabel = s.Label
 		}})
 		if dev.Discriminator() != uint16(s.Discriminator) { //nolint:gosec // a 12-bit value
-			return bridgeHalf{}, fmt.Errorf("node %s advertises discriminator %d", s.Key, dev.Discriminator())
+			return liveNode{}, fmt.Errorf("node %s advertises discriminator %d", s.Key, dev.Discriminator())
 		}
 		if err := br.Start(ctx, dev.Node()); err != nil {
-			return bridgeHalf{}, err
+			return liveNode{}, err
 		}
-		h := bridgeHalf{spec: s, node: dev.Node(), srv: br}
+		run := liveNode{node: dev.Node(), srv: br}
 		halvesMu.Lock()
-		halves = append(halves, h)
+		halves = append(halves, startedNode{spec: s, liveNode: run})
 		halvesMu.Unlock()
-		return h, nil
+		return run, nil
 	}
-	started := func() []bridgeHalf {
+	started := func() []startedNode {
 		halvesMu.Lock()
 		defer halvesMu.Unlock()
 		return slices.Clone(halves)
 	}
 	primary := nodeSpec{Key: "default", Listen: "[::1]:0", Label: "fabric-server bridge", Discriminator: 3840, VendorID: 0xFFF1, ProductID: 0x8001, Store: "bridge.db"}
-	def, err := start(ctx, primary)
+	routes := newBridgeRoutes()
+	life := newNodeLifecycle(ctx, start, routes, log)
+	def, err := life.startHalf(primary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	routes := newBridgeRoutes(BridgeHalf{Key: "default", Server: def.srv})
 	dir := t.TempDir()
-	reg, err := openRegistry(ctx, registryOptions{dir: dir, limit: 1, primary: primary, start: start, routes: routes, log: log})
+	reg, err := openRegistry(registryOptions{dir: dir, limit: 1, primary: primary, life: life})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +117,7 @@ func TestTwoNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(muxRoutes(api, routes, "", "test"))
-	pagesH, err := webHandler(Config{WebAdmin: true}, &def, reg, nil, fabricui.NewEvents(), nil, log)
+	pagesH, err := webHandler(Config{WebAdmin: true}, life, def, reg, nil, fabricui.NewEvents(), nil, log)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,6 +258,60 @@ func TestTwoNodes(t *testing.T) {
 		t.Fatalf("GET /node/status %+v", st)
 	}
 
+	// Erase (#50): each node's pages offer it with no warning; a wrong
+	// word is refused; the erase removes the node's fabric, the controller
+	// loses the node, and the same route serves a new node — its old
+	// client got server_shutdown, a new one dials it — under the same key.
+	for _, key := range keys {
+		status := pages.URL + fabricui.DefaultPrefix + map[string]string{"default": "/node", "second": "/nodes/second"}[key]
+		var es struct {
+			Erase       bool            `json:"erase"`
+			Warnings    json.RawMessage `json:"warnings"`
+			FabricCount int             `json:"fabric_count"`
+		}
+		getJSON(t, status+"/status", &es)
+		if !es.Erase || string(es.Warnings) != "[]" || es.FabricCount != 1 {
+			t.Fatalf("%s status before the erase: %+v %s", key, es, es.Warnings)
+		}
+		if code := pageWrite(t, http.MethodPost, status+"/maintenance/erase", token, `{"confirm":"erase"}`, nil); code != http.StatusBadRequest {
+			t.Fatalf("%s erase with the wrong word: %d, want 400", key, code)
+		}
+		before := len(started())
+		old := started()[slices.IndexFunc(started(), func(o startedNode) bool { return o.spec.Key == key })]
+		if code := pageWrite(t, http.MethodPost, status+"/maintenance/erase", token, `{"confirm":"erase-node"}`, nil); code != http.StatusNoContent {
+			t.Fatalf("%s erase: %d, want 204", key, code)
+		}
+		awaitShutdown(ctx, t, clients[key])
+		if len(started()) != before+1 {
+			t.Fatalf("%s: the erase started %d nodes", key, len(started())-before)
+		}
+		fresh := started()[before]
+		if fresh.spec.Key != key || fresh.node == old.node || fresh.srv == old.srv {
+			t.Fatalf("%s: the erase brought back %s, the same node %v", key, fresh.spec.Key, fresh.node == old.node)
+		}
+		if fabrics, err := fresh.node.FabricInfos(ctx); err != nil || len(fabrics) != 0 {
+			t.Fatalf("%s: the new node has %d fabrics: %v", key, len(fabrics), err)
+		}
+		getJSON(t, status+"/status", &es)
+		if !es.Erase || string(es.Warnings) != "[]" || es.FabricCount != 0 {
+			t.Fatalf("%s status after the erase: %+v %s", key, es, es.Warnings)
+		}
+		awaitNodeGone(ctx, t, ws, ids[key])
+		opts := fsclient.Options{}
+		if key != "default" {
+			opts.Node = key
+		}
+		nb, err := fsclient.DialBridge(ctx, base+"/bridge", opts)
+		if err != nil {
+			t.Fatalf("%s: dial after the erase: %v", key, err)
+		}
+		t.Cleanup(func() { _ = nb.Close() })
+		if nb.Info().Node != key {
+			t.Fatalf("%s: the new half feeds node %q", key, nb.Info().Node)
+		}
+		clients[key] = nb
+	}
+
 	// Delete: the node leaves every fabric and stops, its client is shut
 	// down, /bridge/second is gone and so is its entry.
 	if code := pageWrite(t, http.MethodDelete, pages.URL+fabricui.DefaultPrefix+"/nodes/default", token, "", nil); code != http.StatusConflict {
@@ -266,8 +328,29 @@ func TestTwoNodes(t *testing.T) {
 	if len(list.Nodes) != 1 || len(reg.List()) != 0 {
 		t.Fatalf("GET /nodes after the deletion %+v", list)
 	}
-	if fabrics, err := started()[0].node.FabricInfos(ctx); err != nil || len(fabrics) != 1 {
-		t.Fatalf("the default node keeps its fabric: %d %v", len(fabrics), err)
+	// The default node, erased before, runs on: its store answers.
+	if fabrics, err := def.live().node.FabricInfos(ctx); err != nil || len(fabrics) != 0 || routes.get("") != def.live().srv {
+		t.Fatalf("the default node after the deletion: %d %v", len(fabrics), err)
+	}
+}
+
+// awaitNodeGone waits until the controller's get_nodes no longer lists
+// id.
+func awaitNodeGone(ctx context.Context, t *testing.T, ws *fsclient.Client, id uint64) {
+	t.Helper()
+	for {
+		nodes, err := ws.GetNodes(ctx, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.ContainsFunc(nodes, func(n fsclient.Node) bool { return n.NodeID == id }) {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("get_nodes still lists node %d after its erase", id)
+		case <-time.After(50 * time.Millisecond):
+		}
 	}
 }
 

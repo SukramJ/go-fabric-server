@@ -298,7 +298,10 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
   (`default` for the `--bridge-*` node, a registry node's key for another);
   `/bridge` feeds the default node. A registry node's path answers from its
   creation in the pages to its deletion; an unknown key is 404, and a
-  connected client of a node that is deleted receives `server_shutdown`. Which bridged device goes to which
+  connected client of a node that is deleted receives `server_shutdown`.
+  An erase in the pages sends `server_shutdown` too; the same path
+  answers again once the new node runs (uncommissioned, its endpoints
+  assigned anew on the next `declare`). Which bridged device goes to which
   node is the client's decision.
 - On connect the bare `server_info`: `{bridge_schema_version: 1,
   sdk_version, capabilities, node}`; `node` is the key of the node the
