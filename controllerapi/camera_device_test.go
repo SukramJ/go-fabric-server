@@ -10,14 +10,14 @@ import (
 
 	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
 	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
+	"github.com/SukramJ/go-fabric/contract"
 	"github.com/SukramJ/go-fabric/device"
 )
 
 // newTestCamera is the site's camera, built as go-fabric's acceptance
 // camera is (controller/camera/service_fabrictest_test.go:410-445): H.264
 // up to 1920x1080 at 30 fps, one allocated live-view stream, a second
-// stream the camera still references (a release is refused with
-// INVALID_IN_STATE), a JPEG snapshot capability, and the provider and the
+// stream the port refuses to release (VideoStreamDeallocate), a JPEG snapshot capability, and the provider and the
 // encoders on port — def types only (brief S8 §2, §8).
 func newTestCamera(t *testing.T, port *cameraPort) *device.Camera {
 	t.Helper()
@@ -32,7 +32,7 @@ func newTestCamera(t *testing.T, port *cameraPort) *device.Camera {
 		VideoStreamId: 2, StreamUsage: csdef.StreamUsageRecording, VideoCodec: csdef.VideoCodecH264,
 		MinFrameRate: 15, MaxFrameRate: 15,
 		MinResolution: csdef.VideoResolutionStruct{Width: 640, Height: 480}, MaxResolution: csdef.VideoResolutionStruct{Width: 640, Height: 480},
-		MinBitRate: 100_000, MaxBitRate: 500_000, KeyFrameInterval: 4000, WatermarkEnabled: &off, OsdEnabled: &off, ReferenceCount: 1,
+		MinBitRate: 100_000, MaxBitRate: 500_000, KeyFrameInterval: 4000, WatermarkEnabled: &off, OsdEnabled: &off,
 	}}
 	points := []csdef.RateDistortionTradeOffPointsStruct{{Codec: csdef.VideoCodecH264, Resolution: csdef.VideoResolutionStruct{Width: 640, Height: 480}, MinBitRate: 100_000}}
 	sensor := csdef.VideoSensorParamsStruct{SensorWidth: 1920, SensorHeight: 1080, MaxFps: 30}
@@ -142,7 +142,14 @@ func (p *cameraPort) VideoStreamAllocated(context.Context, csdef.VideoStreamStru
 
 func (p *cameraPort) VideoStreamModify(context.Context, uint16, *bool, *bool) error { return nil }
 
-func (p *cameraPort) VideoStreamDeallocate(context.Context, uint16) error { return nil }
+// VideoStreamDeallocate refuses stream 2 as a camera that still
+// references it does, with INVALID_IN_STATE (0xCB, Matter Core §8.10.1).
+func (p *cameraPort) VideoStreamDeallocate(_ context.Context, id uint16) error {
+	if id == 2 {
+		return contract.StatusError{Status: 0xCB, Message: "stream 2 is in use"}
+	}
+	return nil
+}
 
 func (p *cameraPort) AudioStreamAllocate(context.Context, csdef.AudioStreamStruct) (uint16, error) {
 	return p.newID(), nil

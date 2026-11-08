@@ -642,19 +642,19 @@ func (a *cameraArgs) raw(key string) json.RawMessage { return a.fields[key] }
 // target is the node_id and the endpoint_id every camera command takes;
 // the node is looked up by the handler once every argument is checked.
 func (a *cameraArgs) target() (*protocol.Uint64, uint16, *protocol.Error) {
-	var id *protocol.Uint64
-	if raw := a.raw("node_id"); raw != nil {
-		var v protocol.Uint64
-		if err := json.Unmarshal(raw, &v); err != nil {
-			return nil, 0, protocol.Errorf(protocol.InvalidArguments, "%s requires a numeric node_id: %v", a.command, err)
-		}
-		id = &v
+	raw := a.raw("node_id")
+	if raw == nil {
+		return nil, 0, invalidArgs(a.command, "node_id is required")
+	}
+	var id protocol.Uint64
+	if err := json.Unmarshal(raw, &id); err != nil {
+		return nil, 0, protocol.Errorf(protocol.InvalidArguments, "%s requires a numeric node_id: %v", a.command, err)
 	}
 	ep, ok := uintOfJSON(a.raw("endpoint_id"), 0xFFFE)
 	if !ok {
 		return nil, 0, protocol.Errorf(protocol.InvalidArguments, "%s requires endpoint_id to be an integer between 0 and 0xFFFE", a.command)
 	}
-	return id, uint16(ep), nil //nolint:gosec // G115: at most 0xFFFE
+	return &id, uint16(ep), nil //nolint:gosec // G115: at most 0xFFFE
 }
 
 // uintOfJSON reads a JSON integer between 0 and maxValue: a number that

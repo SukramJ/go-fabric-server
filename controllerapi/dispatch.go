@@ -77,6 +77,11 @@ func init() {
 		"resync_icd":                    cmdResyncICD,
 		"get_network_topology":          cmdGetNetworkTopology,
 		"import_test_node":              cmdImportTestNode,
+		"camera_get_capabilities":       cmdCameraGetCapabilities,
+		"camera_snapshot":               cmdCameraSnapshot,
+		"camera_release_stream":         cmdCameraReleaseStream,
+		"camera_stop_stream":            cmdCameraStopStream,
+		"camera_provide_answer":         cmdCameraProvideAnswer,
 	}
 }
 
@@ -88,12 +93,7 @@ var planned = map[string]string{
 	"initiate_ota_upload":           otaRoute,
 	"get_thread_border_routers":     threadRoute,
 	"get_thread_diagnostics":        threadRoute,
-	"camera_get_capabilities":       "never",
 	"camera_start_stream":           "never",
-	"camera_stop_stream":            "never",
-	"camera_snapshot":               "never",
-	"camera_release_stream":         "never",
-	"camera_provide_answer":         "never",
 	"camera_provide_ice_candidates": "never",
 	"send_webrtc_provider_command":  "never",
 }
@@ -104,15 +104,21 @@ const (
 	threadRoute = "a Thread border router route in go-fabric (milestone 6, ADR 0027: the OTBR client and ThreadNetworkDiagnostics)"
 )
 
-// gap is the answer of a command whose route go-fabric's controller
-// facade does not offer: InvalidCommand naming what is missing. Such a
-// command is not in capabilities. None is left since go-fabric v0.12.1;
-// the hook stays for the next.
+// gap is the answer of a command whose route the backend does not offer:
+// InvalidCommand naming what is missing. Such a command is not in
+// capabilities. go-fabric's controller facade has no gap left since
+// v0.12.1; a backend started without a camera service
+// (Services.Camera) does not offer the camera commands.
 type gap struct {
 	needs string
 }
 
-func (s *Server) gapOf(string) *gap { return nil }
+func (s *Server) gapOf(command string) *gap {
+	if cameraCommands[command] && s.cameraService() == nil {
+		return &gap{needs: "a camera service (controllerapi.Services.Camera), which this backend was started without"}
+	}
+	return nil
+}
 
 // Capabilities are the commands this server answers, sorted — the
 // capabilities list of server_info (concept v8 C.1, our extension).
@@ -171,7 +177,7 @@ func (s *Server) dispatch(ctx context.Context, c *call) (result any, err *protoc
 		return nil, protocol.Errorf(protocol.InvalidCommand, "Unknown command: %s", c.req.Command)
 	}
 	if g := s.gapOf(c.req.Command); g != nil {
-		return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; needs %s in go-fabric", s.opts.Version, g.needs)
+		return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; needs %s", s.opts.Version, g.needs)
 	}
 	if tn, ok, perr := s.testNodeFor(c); ok {
 		if perr != nil {

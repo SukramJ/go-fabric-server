@@ -265,6 +265,15 @@ func (s *Server) topo() *topology.Service {
 	return nil
 }
 
+// cameraService is the camera service Start bound; nil before, and for
+// a backend without one.
+func (s *Server) cameraService() *camera.Service {
+	if r := s.backend.Load(); r != nil {
+		return r.cam
+	}
+	return nil
+}
+
 // NodeCount is the number of commissioned nodes the server knows.
 func (s *Server) NodeCount() int {
 	s.mu.Lock()
