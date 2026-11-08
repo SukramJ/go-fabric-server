@@ -139,12 +139,15 @@ It returns the node to its factory state and brings it back in place:
   and declares again — the endpoint numbers are assigned anew;
 - the node's expvar counters continue the old node's (one prefix per key).
 
-The log says `fabricserver.node.erased` with `node=<key>`. When the erase
-itself fails (`fabricserver.node.erase_failed`) nothing is restarted. When
-the new node does not start (`fabricserver.node.restart_failed`) the daemon
-stays up: every status page carries the warning `node_restart_failed`
-naming the key, **Erase** again retries the start, and a restart of the
-daemon also brings the node back (its store is erased).
+The log says `fabricserver.node.erased` with `node=<key>`. Either failure
+keeps the daemon up, and every status page carries a warning naming the
+key until an erase succeeds: when the erase itself fails
+(`fabricserver.node.erase_failed`, warning `node_erase_failed`) nothing is
+restarted; when the new node does not start
+(`fabricserver.node.restart_failed`, warning `node_restart_failed`) the
+pages read the stopped node. **Erase** again retries both, and after a
+failed restart a restart of the daemon also brings the node back (its
+store is erased).
 
 The registry is `nodes.json` under `--storage-path` ([Files](#files)).
 The Home Assistant add-on runs the one `--bridge-*` node only.

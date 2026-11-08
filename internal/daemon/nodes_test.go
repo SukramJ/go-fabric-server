@@ -258,6 +258,22 @@ func TestEraseRestartFailed(t *testing.T) {
 		t.Fatal("the restart did not serve the new node")
 	}
 
+	// A failed FactoryReset is the half's warning as well, by its own
+	// code; a failure of the other kind is a new sighting.
+	h.fail(eraseFailedCode, errors.New("store: disk I/O error"), time.Now())
+	first := h.failed.Load().since
+	h.fail(eraseFailedCode, errors.New("again"), first.Add(time.Minute))
+	if ws := life.warnings(ctx); len(ws) != 1 || ws[0].Code != eraseFailedCode || ws[0].Message != "second: again" || !ws[0].Since.Equal(first) {
+		t.Fatalf("warnings after a failed erase: %+v", ws)
+	}
+	h.fail(restartFailedCode, errors.New("x"), first.Add(time.Hour))
+	if ws := life.warnings(ctx); len(ws) != 1 || ws[0].Code != restartFailedCode || !ws[0].Since.Equal(first.Add(time.Hour)) {
+		t.Fatalf("warnings after a failure of the other kind: %+v", ws)
+	}
+	if err := life.erase(ctx, h); err != nil || len(life.warnings(ctx)) != 0 {
+		t.Fatalf("an erase that succeeds clears the warning: %v", err)
+	}
+
 	life.end(ctx, h, false)
 	if err := life.erase(ctx, h); err == nil || routes.get("second") != nil {
 		t.Fatalf("erase of an ended half: %v", err)

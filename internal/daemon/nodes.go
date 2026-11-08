@@ -117,18 +117,30 @@ type bridgeHalf struct {
 	// registry node, the daemon's stop.
 	mu  sync.Mutex
 	cur atomic.Pointer[liveNode]
-	// failed is the last erase's failed restart, nil while a node runs.
-	failed atomic.Pointer[restartFailure]
+	// failed is the last erase's failure — the erase or the restart
+	// after it —, nil while a node runs.
+	failed atomic.Pointer[eraseFailure]
 	// ended (under mu): the half is stopped or deleted for good, and an
 	// erase no longer brings it back.
 	ended bool
 }
 
-// restartFailure is an erase whose new node did not start: the error and
-// when the host first saw it (fabricui.Warning.Since).
-type restartFailure struct {
+// eraseFailure is an erase that did not bring the node back: its warning
+// code (eraseFailedCode, restartFailedCode), the error, and when the host
+// first saw that code (fabricui.Warning.Since).
+type eraseFailure struct {
+	code  string
 	err   error
 	since time.Time
+}
+
+// fail records an erase's failure; a failure of the same kind again keeps
+// its first sighting. h.mu is held.
+func (h *bridgeHalf) fail(code string, err error, now time.Time) {
+	if prev := h.failed.Load(); prev != nil && prev.code == code {
+		now = prev.since
+	}
+	h.failed.Store(&eraseFailure{code: code, err: err, since: now})
 }
 
 // live is the run that serves the half now.
@@ -148,9 +160,13 @@ func (h *bridgeHalf) stop(ctx context.Context) {
 // away does not leave a node half erased.
 const eraseTimeout = 30 * time.Second
 
-// restartFailedCode is the pages' warning code of a node an erase did not
-// bring back (fabricui.Warning.Code).
-const restartFailedCode = "node_restart_failed"
+// The pages' warning codes of a node an erase did not bring back
+// (fabricui.Warning.Code): the erase failed (node.FactoryReset; the node
+// is not restarted), or the new node did not start.
+const (
+	eraseFailedCode   = "node_erase_failed"
+	restartFailedCode = "node_restart_failed"
+)
 
 // nodeLifecycle starts, erases and ends the device nodes — the default
 // node and the registry's — in one place: each node through startFunc on
@@ -221,10 +237,11 @@ func (l *nodeLifecycle) eraser(h *bridgeHalf) func(context.Context) error {
 // the host builds a new node on the same store, as after a restart;
 // fabrictest/device.go:396-416 the pattern): the bridge client receives
 // server_shutdown and dials the same route back, the pages follow the
-// switch. A failed erase restarts nothing. A new node that does not start
-// keeps the daemon up: the switch keeps the stopped node, the failure is
-// h's warning on every status page, and an erase again — FactoryReset of
-// the stopped node erases the erased store again — retries the start.
+// switch. Either failure keeps the daemon up and is h's warning on every
+// status page: a failed erase restarts nothing (node_erase_failed); a new
+// node that does not start leaves the switch on the stopped node
+// (node_restart_failed). An erase again — FactoryReset of a stopped node
+// erases its store again — retries both.
 func (l *nodeLifecycle) erase(ctx context.Context, h *bridgeHalf) error {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eraseTimeout)
 	defer cancel()
@@ -238,6 +255,7 @@ func (l *nodeLifecycle) erase(ctx context.Context, h *bridgeHalf) error {
 	old := h.live()
 	old.srv.Shutdown(ctx)
 	if err := old.node.FactoryReset(ctx); err != nil {
+		h.fail(eraseFailedCode, err, time.Now())
 		log.Error("fabricserver.node.erase_failed", slog.Any("error", err))
 		return fmt.Errorf("%s: erase: %w", nodeName(key), err)
 	}
@@ -245,11 +263,7 @@ func (l *nodeLifecycle) erase(ctx context.Context, h *bridgeHalf) error {
 	// erased it.
 	run, err := l.start(l.ctx, h.spec) //nolint:contextcheck // the daemon's context, above
 	if err != nil {
-		since := time.Now()
-		if prev := h.failed.Load(); prev != nil {
-			since = prev.since
-		}
-		h.failed.Store(&restartFailure{err: err, since: since})
+		h.fail(restartFailedCode, err, time.Now())
 		log.Error("fabricserver.node.restart_failed", slog.Any("error", err))
 		return fmt.Errorf("%s: erased, not restarted: %w", nodeName(key), err)
 	}
@@ -261,8 +275,8 @@ func (l *nodeLifecycle) erase(ctx context.Context, h *bridgeHalf) error {
 	return nil
 }
 
-// warnings is the pages' Options.Warnings: one node_restart_failed per
-// node an erase did not bring back, naming its key (the sibling handlers
+// warnings is the pages' Options.Warnings: one node_erase_failed or
+// node_restart_failed per node an erase did not bring back, naming its key (the sibling handlers
 // answer the host's one hook, so the message names the node).
 func (l *nodeLifecycle) warnings(context.Context) []fabricui.Warning {
 	l.mu.Lock()
@@ -271,7 +285,7 @@ func (l *nodeLifecycle) warnings(context.Context) []fabricui.Warning {
 	var out []fabricui.Warning
 	for _, h := range hs {
 		if f := h.failed.Load(); f != nil {
-			out = append(out, fabricui.Warning{Code: restartFailedCode, Message: h.spec.Key + ": " + f.err.Error(), Since: f.since})
+			out = append(out, fabricui.Warning{Code: f.code, Message: h.spec.Key + ": " + f.err.Error(), Since: f.since})
 		}
 	}
 	return out

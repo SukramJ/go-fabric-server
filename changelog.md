@@ -14,8 +14,9 @@ All notable changes to this project are documented here. The format follows
   place — same key, port, discriminator and passcode, a new UniqueID,
   uncommissioned — for the `--bridge-*` node and each registry node. The
   bridge client receives `server_shutdown` and dials the same path back.
-  A new node that fails to start keeps the daemon up and shows as the
-  warning `node_restart_failed` on every status page; Erase again retries.
+  A failed erase or a new node that fails to start keeps the daemon up and
+  shows as the warning `node_erase_failed` or `node_restart_failed` on
+  every status page; Erase again retries.
 
 ### Changed
 
