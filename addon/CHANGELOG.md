@@ -3,6 +3,14 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.6.2
+
+- Erase in the web UI: a device node leaves its controllers, erases its
+  store and comes back at once with its commissioning window open — for the
+  default node and every registry node (go-fabric-ui 0.7.1).
+- A pairing over `/ws` says in the log why it uses or skips Bluetooth LE;
+  the Commission page preselects the stored default credential.
+
 ## 0.6.1
 
 - Library updates (go-fabric 0.18.0, go-fabric-ui 0.6.1). Nothing to do for

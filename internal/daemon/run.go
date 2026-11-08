@@ -300,33 +300,32 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 
 	// The device nodes: the default one of the --bridge-* flags, then
 	// the node registry's (nodes.json), each its own node, store, mDNS
-	// advertiser and bridge half (startBridge). The registry's nodes stop
-	// before the default one.
+	// advertiser and bridge half (startBridge), started, erased and ended
+	// by one lifecycle. The registry's nodes stop before the default one;
+	// each stop stops the half's current node, the one an erase brought
+	// back if any.
 	var def *bridgeHalf
 	var reg *nodeRegistry
+	var life *nodeLifecycle
 	routes := newBridgeRoutes()
 	if c.Bridge {
 		if c.NodeLimit < 0 {
 			return fmt.Errorf("--node-limit %d is negative", c.NodeLimit)
 		}
 		spec := primaryNode(c)
-		br, n, err := startBridge(ctx, c, spec, log)
+		life = newNodeLifecycle(ctx, func(ctx context.Context, s nodeSpec) (liveNode, error) {
+			br, n, err := startBridge(ctx, c, s, log)
+			if err != nil {
+				return liveNode{}, err
+			}
+			return liveNode{node: n, srv: br}, nil
+		}, routes, log)
+		def, err = life.startHalf(spec)
 		if err != nil {
 			return err
 		}
-		defer func() { _ = n.Stop(context.WithoutCancel(ctx)) }()
-		def = &bridgeHalf{spec: spec, node: n, srv: br}
-		routes.add(BridgeHalf{Key: spec.Key, Server: br})
-		reg, err = openRegistry(ctx, registryOptions{
-			dir: c.StoragePath, limit: c.NodeLimit, primary: spec, routes: routes, log: log,
-			start: func(ctx context.Context, s nodeSpec) (bridgeHalf, error) {
-				br, n, err := startBridge(ctx, c, s, log)
-				if err != nil {
-					return bridgeHalf{}, err
-				}
-				return bridgeHalf{spec: s, node: n, srv: br}, nil
-			},
-		})
+		defer def.stop(context.WithoutCancel(ctx))
+		reg, err = openRegistry(registryOptions{dir: c.StoragePath, limit: c.NodeLimit, primary: spec, life: life})
 		if err != nil {
 			return err
 		}
@@ -335,7 +334,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	}
 	ev := fabricui.NewEvents()
 	if c.Web != "" {
-		stop, err := serveWeb(ctx, c, def, reg, ctrlPages, ev, ops, log)
+		stop, err := serveWeb(ctx, c, life, def, reg, ctrlPages, ev, ops, log)
 		if err != nil {
 			return err
 		}

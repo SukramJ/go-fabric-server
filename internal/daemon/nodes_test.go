@@ -11,21 +11,24 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"github.com/SukramJ/go-fabric/clock"
+	"github.com/SukramJ/go-fabric/fabrictest"
 	"github.com/SukramJ/go-fabric/node"
+
+	"github.com/SukramJ/go-fabric-server/bridgeapi"
 )
 
 // testRegistry is a registry on a temporary directory whose start must
 // not be reached.
 func testRegistry(t *testing.T, limit int, primary nodeSpec) *nodeRegistry {
 	t.Helper()
-	r, err := openRegistry(context.Background(), registryOptions{
-		dir: t.TempDir(), limit: limit, primary: primary, routes: newBridgeRoutes(), log: slog.New(slog.DiscardHandler),
-		start: func(context.Context, nodeSpec) (bridgeHalf, error) {
-			return bridgeHalf{}, errors.New("no start in this test")
-		},
-	})
+	life := newNodeLifecycle(context.Background(), func(context.Context, nodeSpec) (liveNode, error) {
+		return liveNode{}, errors.New("no start in this test")
+	}, newBridgeRoutes(), slog.New(slog.DiscardHandler))
+	r, err := openRegistry(registryOptions{dir: t.TempDir(), limit: limit, primary: primary, life: life})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +148,7 @@ func TestRegistryRefuses(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, registryFile), []byte(c.file), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		_, err := openRegistry(ctx, registryOptions{dir: dir, primary: primary, routes: newBridgeRoutes(), log: slog.New(slog.DiscardHandler)})
+		_, err := openRegistry(registryOptions{dir: dir, primary: primary, life: newNodeLifecycle(ctx, nil, newBridgeRoutes(), slog.New(slog.DiscardHandler))})
 		if err == nil || !strings.Contains(err.Error(), c.want) || !strings.Contains(err.Error(), registryFile) {
 			t.Fatalf("%s: %v, want %q", c.file, err, c.want)
 		}
@@ -155,7 +158,7 @@ func TestRegistryRefuses(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, registryFile), []byte(`{"nodes":[{"key":"a","label":"x","listen":"[::1]:0","discriminator":1},{"key":"b","label":"y","listen":"[::1]:0","discriminator":2}]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r, err := openRegistry(ctx, registryOptions{dir: dir, primary: nodeSpec{Listen: "[::1]:0", Discriminator: 3840}, routes: newBridgeRoutes(), log: slog.New(slog.DiscardHandler)})
+	r, err := openRegistry(registryOptions{dir: dir, primary: nodeSpec{Listen: "[::1]:0", Discriminator: 3840}, life: newNodeLifecycle(ctx, nil, newBridgeRoutes(), slog.New(slog.DiscardHandler))})
 	if err != nil || len(r.List()) != 2 || r.List()[0].Source != nil || r.List()[1].Config.Source != fabricui.NodeConfigSourceRegistry {
 		t.Fatalf("two ephemeral ports: %v", err)
 	}
@@ -170,8 +173,8 @@ func TestBridgeMetricsPrefixAndName(t *testing.T) {
 	}
 }
 
-// TestBridgeRoutes: the default half answers "" (/bridge); a removed
-// half is gone.
+// TestBridgeRoutes: the default half answers "" (/bridge), a replaced
+// one in place; a removed half is gone.
 func TestBridgeRoutes(t *testing.T) {
 	b := newBridgeRoutes()
 	if b.get("") != nil {
@@ -179,9 +182,104 @@ func TestBridgeRoutes(t *testing.T) {
 	}
 	b.add(BridgeHalf{Key: "default"})
 	b.add(BridgeHalf{Key: "second"})
+	// An erase's new half takes its node's place: the default stays first.
+	srv := bridgeapi.New(bridgeapi.Options{})
+	b.replace("default", srv)
+	b.replace("nope", nil)
+	if b.get("") != srv || b.all()[0].Key != "default" || len(b.all()) != 2 {
+		t.Fatalf("after replace %+v", b.all())
+	}
 	b.remove("second")
 	b.remove("nope")
 	if len(b.all()) != 1 || b.all()[0].Key != "default" {
 		t.Fatalf("%+v", b.all())
+	}
+}
+
+// TestEraseRestartFailed: an erase whose new node does not start keeps
+// the daemon up — the half's switch keeps the stopped node, the failure
+// is one node_restart_failed warning naming the key, kept from its first
+// sighting across a failed retry — and an erase again that starts clears
+// it and serves the new node. An ended half is not erased.
+func TestEraseRestartFailed(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	t.Cleanup(cancel)
+	log := slog.New(slog.DiscardHandler)
+	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: log})
+	fail := false
+	start := func(_ context.Context, s nodeSpec) (liveNode, error) {
+		if fail {
+			return liveNode{}, errors.New("listen: address in use")
+		}
+		return liveNode{node: site.AddDevice(fabrictest.Topology{}).Node(), srv: bridgeapi.New(bridgeapi.Options{Logger: log, Node: s.Key})}, nil
+	}
+	routes := newBridgeRoutes()
+	life := newNodeLifecycle(ctx, start, routes, log)
+	def, err := life.startHalf(nodeSpec{Key: "default"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := life.startHalf(nodeSpec{Key: "second"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ws := life.warnings(ctx); len(ws) != 0 {
+		t.Fatalf("warnings before an erase: %+v", ws)
+	}
+	stopped := h.live()
+
+	fail = true
+	if err := life.erase(ctx, h); err == nil || !strings.Contains(err.Error(), "address in use") {
+		t.Fatalf("erase with a failing start: %v", err)
+	}
+	ws := life.warnings(ctx)
+	if len(ws) != 1 || ws[0].Code != restartFailedCode || !strings.HasPrefix(ws[0].Message, "second: ") || ws[0].Since.IsZero() {
+		t.Fatalf("warnings after the failed restart: %+v", ws)
+	}
+	if h.sw.Current() != fabricui.NodeSource(stopped.node) || h.live() != stopped || routes.get("second") != stopped.srv {
+		t.Fatal("a failed restart moved the switch, the half or the route")
+	}
+	if err := life.erase(ctx, h); err == nil {
+		t.Fatal("the retry with a failing start succeeded")
+	}
+	if again := life.warnings(ctx); len(again) != 1 || !again[0].Since.Equal(ws[0].Since) {
+		t.Fatalf("warnings after a failed retry: %+v, since %v", again, ws[0].Since)
+	}
+
+	fail = false
+	if err := life.erase(ctx, h); err != nil {
+		t.Fatalf("the retry: %v", err)
+	}
+	if ws := life.warnings(ctx); len(ws) != 0 {
+		t.Fatalf("warnings after the restart: %+v", ws)
+	}
+	run := h.live()
+	if run == stopped || h.sw.Current() != fabricui.NodeSource(run.node) || routes.get("second") != run.srv || routes.get("") != def.live().srv {
+		t.Fatal("the restart did not serve the new node")
+	}
+
+	// A failed FactoryReset is the half's warning as well, by its own
+	// code; a failure of the other kind is a new sighting.
+	h.fail(eraseFailedCode, errors.New("store: disk I/O error"), time.Now())
+	first := h.failed.Load().since
+	h.fail(eraseFailedCode, errors.New("again"), first.Add(time.Minute))
+	if ws := life.warnings(ctx); len(ws) != 1 || ws[0].Code != eraseFailedCode || ws[0].Message != "second: again" || !ws[0].Since.Equal(first) {
+		t.Fatalf("warnings after a failed erase: %+v", ws)
+	}
+	h.fail(restartFailedCode, errors.New("x"), first.Add(time.Hour))
+	if ws := life.warnings(ctx); len(ws) != 1 || ws[0].Code != restartFailedCode || !ws[0].Since.Equal(first.Add(time.Hour)) {
+		t.Fatalf("warnings after a failure of the other kind: %+v", ws)
+	}
+	if err := life.erase(ctx, h); err != nil || len(life.warnings(ctx)) != 0 {
+		t.Fatalf("an erase that succeeds clears the warning: %v", err)
+	}
+
+	life.end(ctx, h, false)
+	if err := life.erase(ctx, h); err == nil || routes.get("second") != nil {
+		t.Fatalf("erase of an ended half: %v", err)
+	}
+	def.stop(ctx)
+	if err := life.erase(ctx, def); err == nil {
+		t.Fatal("erase of a stopped half")
 	}
 }

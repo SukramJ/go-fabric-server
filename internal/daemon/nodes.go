@@ -4,11 +4,16 @@
 package daemon
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"regexp"
+	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric/node"
@@ -91,12 +96,199 @@ type removedFlag string
 func (removedFlag) String() string     { return "" }
 func (f removedFlag) Set(string) error { return fmt.Errorf("removed: %s", string(f)) }
 
-// bridgeHalf is one running device node: its spec, the node and the
-// bridge half bound to it.
-type bridgeHalf struct {
-	spec nodeSpec
+// liveNode is one run of a device node: the node and the bridge half
+// bound to it. Both are single-use — a stopped node.Node does not start
+// again (go-fabric node/factory_reset.go:30-33 at v0.18.0), nor does a
+// bridgeapi.Server (Server.Start) — so an erase replaces the pair.
+type liveNode struct {
 	node *node.Node
 	srv  *bridgeapi.Server
+}
+
+// bridgeHalf is one device node under its key, across its erases: its
+// spec, the run that serves it now, and the pages' source, a
+// fabricui.NodeSwitch over the current run's node (go-fabric-ui 0.7.1),
+// so the pages keep one source while an erase remakes the node. The
+// nodeLifecycle drives it; nothing else starts, erases or stops its node.
+type bridgeHalf struct {
+	spec nodeSpec
+	sw   *fabricui.NodeSwitch
+	// mu serialises the half's lifecycle: an erase, the end of a
+	// registry node, the daemon's stop.
+	mu  sync.Mutex
+	cur atomic.Pointer[liveNode]
+	// failed is the last erase's failure — the erase or the restart
+	// after it —, nil while a node runs.
+	failed atomic.Pointer[eraseFailure]
+	// ended (under mu): the half is stopped or deleted for good, and an
+	// erase no longer brings it back.
+	ended bool
+}
+
+// eraseFailure is an erase that did not bring the node back: its warning
+// code (eraseFailedCode, restartFailedCode), the error, and when the host
+// first saw that code (fabricui.Warning.Since).
+type eraseFailure struct {
+	code  string
+	err   error
+	since time.Time
+}
+
+// fail records an erase's failure; a failure of the same kind again keeps
+// its first sighting. h.mu is held.
+func (h *bridgeHalf) fail(code string, err error, now time.Time) {
+	if prev := h.failed.Load(); prev != nil && prev.code == code {
+		now = prev.since
+	}
+	h.failed.Store(&eraseFailure{code: code, err: err, since: now})
+}
+
+// live is the run that serves the half now.
+func (h *bridgeHalf) live() *liveNode { return h.cur.Load() }
+
+// stop stops the half's current node at the daemon's shutdown — the one
+// an erase brought back, if any. Run shuts the halves' servers down with
+// their routes.
+func (h *bridgeHalf) stop(ctx context.Context) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.ended = true
+	_ = h.live().node.Stop(ctx)
+}
+
+// eraseTimeout bounds an erase, as the registry's Delete: a page that goes
+// away does not leave a node half erased.
+const eraseTimeout = 30 * time.Second
+
+// The pages' warning codes of a node an erase did not bring back
+// (fabricui.Warning.Code): the erase failed (node.FactoryReset; the node
+// is not restarted), or the new node did not start.
+const (
+	eraseFailedCode   = "node_erase_failed"
+	restartFailedCode = "node_restart_failed"
+)
+
+// nodeLifecycle starts, erases and ends the device nodes — the default
+// node and the registry's — in one place: each node through startFunc on
+// the daemon's context, its bridge half at its route, its source the
+// half's NodeSwitch.
+type nodeLifecycle struct {
+	ctx    context.Context // the daemon's: the nodes' lifetime
+	start  startFunc
+	routes *bridgeRoutes
+	log    *slog.Logger
+
+	mu     sync.Mutex
+	halves []*bridgeHalf // started and not ended, the default first
+}
+
+func newNodeLifecycle(ctx context.Context, start startFunc, routes *bridgeRoutes, log *slog.Logger) *nodeLifecycle {
+	return &nodeLifecycle{ctx: ctx, start: start, routes: routes, log: log}
+}
+
+// startHalf starts the node of s with its bridge half and serves the half
+// at /bridge/<key> (and /bridge for the first).
+func (l *nodeLifecycle) startHalf(s nodeSpec) (*bridgeHalf, error) {
+	run, err := l.start(l.ctx, s)
+	if err != nil {
+		return nil, err
+	}
+	h := &bridgeHalf{spec: s, sw: fabricui.NewNodeSwitch(run.node)}
+	h.cur.Store(&run)
+	l.routes.add(BridgeHalf{Key: s.Key, Server: run.srv})
+	l.mu.Lock()
+	l.halves = append(l.halves, h)
+	l.mu.Unlock()
+	return h, nil
+}
+
+// end ends h for good: its route is gone, its client receives
+// server_shutdown, and its node stops — with reset, after removing every
+// fabric (node.FactoryReset: each controller's Leave event) and erasing
+// its store.
+func (l *nodeLifecycle) end(ctx context.Context, h *bridgeHalf, reset bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.ended = true
+	l.mu.Lock()
+	l.halves = slices.DeleteFunc(l.halves, func(o *bridgeHalf) bool { return o == h })
+	l.mu.Unlock()
+	l.routes.remove(h.spec.Key)
+	run := h.live()
+	run.srv.Shutdown(ctx)
+	if reset {
+		err := run.node.FactoryReset(ctx)
+		if err == nil {
+			return
+		}
+		l.log.Warn("fabricserver.registry.reset_failed", slog.String("node", h.spec.Key), slog.Any("error", err))
+	}
+	_ = run.node.Stop(ctx)
+}
+
+// eraser is the pages' Erase of h (fabricui.Options.Erase,
+// NodeEntry.Erase).
+func (l *nodeLifecycle) eraser(h *bridgeHalf) func(context.Context) error {
+	return func(ctx context.Context) error { return l.erase(ctx, h) }
+}
+
+// erase is node.FactoryReset of h's node, then a new node on the erased
+// store, served again (go-fabric node/factory_reset.go:30-33 at v0.18.0:
+// the host builds a new node on the same store, as after a restart;
+// fabrictest/device.go:396-416 the pattern): the bridge client receives
+// server_shutdown and dials the same route back, the pages follow the
+// switch. Either failure keeps the daemon up and is h's warning on every
+// status page: a failed erase restarts nothing (node_erase_failed); a new
+// node that does not start leaves the switch on the stopped node
+// (node_restart_failed). An erase again — FactoryReset of a stopped node
+// erases its store again — retries both.
+func (l *nodeLifecycle) erase(ctx context.Context, h *bridgeHalf) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eraseTimeout)
+	defer cancel()
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	key := h.spec.Key
+	if h.ended {
+		return fmt.Errorf("%s is ended", nodeName(key))
+	}
+	log := l.log.With(slog.String("node", key))
+	old := h.live()
+	old.srv.Shutdown(ctx)
+	if err := old.node.FactoryReset(ctx); err != nil {
+		h.fail(eraseFailedCode, err, time.Now())
+		log.Error("fabricserver.node.erase_failed", slog.Any("error", err))
+		return fmt.Errorf("%s: erase: %w", nodeName(key), err)
+	}
+	// The node lives as long as the daemon, not as the request that
+	// erased it.
+	run, err := l.start(l.ctx, h.spec) //nolint:contextcheck // the daemon's context, above
+	if err != nil {
+		h.fail(restartFailedCode, err, time.Now())
+		log.Error("fabricserver.node.restart_failed", slog.Any("error", err))
+		return fmt.Errorf("%s: erased, not restarted: %w", nodeName(key), err)
+	}
+	l.routes.replace(key, run.srv)
+	h.cur.Store(&run)
+	h.sw.Set(run.node)
+	h.failed.Store(nil)
+	log.Info("fabricserver.node.erased")
+	return nil
+}
+
+// warnings is the pages' Options.Warnings: one node_erase_failed or
+// node_restart_failed per node an erase did not bring back, naming its key (the sibling handlers
+// answer the host's one hook, so the message names the node).
+func (l *nodeLifecycle) warnings(context.Context) []fabricui.Warning {
+	l.mu.Lock()
+	hs := slices.Clone(l.halves)
+	l.mu.Unlock()
+	var out []fabricui.Warning
+	for _, h := range hs {
+		if f := h.failed.Load(); f != nil {
+			out = append(out, fabricui.Warning{Code: f.code, Message: h.spec.Key + ": " + f.err.Error(), Since: f.since})
+		}
+	}
+	return out
 }
 
 // BridgeHalf is one bridge half under its node's key, for MuxNodes.
@@ -140,6 +332,18 @@ func (b *bridgeRoutes) add(h BridgeHalf) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.halves = append(b.halves, h)
+}
+
+// replace serves srv as key's half in its place: the default stays first.
+func (b *bridgeRoutes) replace(key string, srv *bridgeapi.Server) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for i := range b.halves {
+		if b.halves[i].Key == key {
+			b.halves[i].Server = srv
+			return
+		}
+	}
 }
 
 func (b *bridgeRoutes) remove(key string) {

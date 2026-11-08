@@ -80,7 +80,7 @@ reported as `other` until go-fabric names an attestation rejection.
 | `server_info` | implemented | plus `capabilities` |
 | `start_listening` | implemented | the dump (test nodes after the real ones), then events |
 | `get_nodes`, `get_node` | implemented | |
-| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` and a stored Wi-Fi or Thread credential (go-fabric's BlueZ central, see operations); an attestation the policy rejects: 1, reason `attestation-rejected` |
+| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` or `--bluetooth-proxy` and a stored Wi-Fi or Thread credential (go-fabric's BlueZ or ESPHome central, see operations; the log says whether BLE was used, `fabricserver.commission.ble`, or why not, `fabricserver.commission.ble_skipped`); an attestation the policy rejects: 1, reason `attestation-rejected` |
 | `commission_on_network` | implemented | `Controller.Discover` in 2-second rounds until the device of the filter (and `ip_addr`) answers, then the registry's commissioning |
 | `parse_onboarding_payload` | implemented | `{type: "qr", payloads: […]}` or `{type: "manual", …}`; `vendor_id`/`product_id` left out where the code says 0 |
 | `discover_commissionable_nodes`, `discover` | implemented | `Controller.Discover`, 3 seconds |
@@ -298,7 +298,10 @@ A Go host embeds go-fabric instead (go-fabric's `docs/guides/host-view.md`).
   (`default` for the `--bridge-*` node, a registry node's key for another);
   `/bridge` feeds the default node. A registry node's path answers from its
   creation in the pages to its deletion; an unknown key is 404, and a
-  connected client of a node that is deleted receives `server_shutdown`. Which bridged device goes to which
+  connected client of a node that is deleted receives `server_shutdown`.
+  An erase in the pages sends `server_shutdown` too; the same path
+  answers again once the new node runs (uncommissioned, its endpoints
+  assigned anew on the next `declare`). Which bridged device goes to which
   node is the client's decision.
 - On connect the bare `server_info`: `{bridge_schema_version: 1,
   sdk_version, capabilities, node}`; `node` is the key of the node the

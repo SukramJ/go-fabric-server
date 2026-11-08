@@ -6,6 +6,47 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-08
+
+### Added
+
+- Erase a device node from the pages (#50): the fabrics page's Erase
+  (admin, go-fabric-ui's `POST …/maintenance/erase`) removes every fabric,
+  erases the node's store and endpoint records and brings the node back in
+  place — same key, port, discriminator and passcode, a new UniqueID,
+  uncommissioned — for the `--bridge-*` node and each registry node. The
+  bridge client receives `server_shutdown` and dials the same path back.
+  A failed erase or a new node that fails to start keeps the daemon up and
+  shows as the warning `node_erase_failed` or `node_restart_failed` on
+  every status page; Erase again retries.
+
+### Changed
+
+- go-fabric-ui `v0.6.1` → `v0.7.1` (contracts 0.7.0 and 0.7.1, on go-fabric
+  `v0.18.0` as before; no new module). What the server sees: the node
+  pages' erase (`Options.Erase`, `NodeEntry.Erase`, `Status.erase`), the
+  re-announce route and the status page's attestation error, boot reason
+  and session parameters, all served from `*node.Node` as is; the update
+  manager's events now from go-fabric-ui's adapter; `fabricui.NodeSwitch`,
+  the source that follows a node replaced by an erase; the commissioning's
+  Bluetooth LE statement on the Commission page (go-fabric-ui#49). The
+  pages preselect the `default` credential entry (the one an id-less
+  `set_wifi_credentials` or `set_thread_dataset` stores):
+  `controllerapi.Credential.Default`, mapped to go-fabric-ui's
+  `Credential.Default`. `protocol/schema` unchanged.
+
+### Fixed
+
+- `commission_with_code` says why it uses or skips Bluetooth LE (#48):
+  `fabricserver.commission.ble` (`network`, `wifi_id`/`thread_id` as named
+  or `default`; never an SSID or a dataset) when BLE is handed to
+  go-fabric, `fabricserver.commission.ble_skipped` with `reason`
+  `network_only`, `code_without_ble` or `no_network` (plus a `hint`) when
+  the daemon has a central and BLE was left out — the reason names of
+  go-fabric-ui 0.7.1's Commission page. The rule itself is unchanged
+  (`by_design.md` B20). `docs/protocol.md` names `--bluetooth-proxy`
+  beside `--bluetooth-adapter` for the BLE route.
+
 ## [0.6.1] - 2026-11-07
 
 Dependency release: go-fabric `v0.18.0`, go-fabric-ui `v0.6.1`.

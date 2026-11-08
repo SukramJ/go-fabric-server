@@ -121,6 +121,34 @@ every fabric it holds (go-fabric's `node.FactoryReset`: each controller
 that paired it loses it) and stops, and its store files and its entry are
 deleted.
 
+#### Erasing a node
+
+The fabrics page of every device node — the `--bridge-*` one and each
+registry node, the add-on's one node included — offers **Erase** to an
+admin, behind two confirmations (`POST /api/v1/node/maintenance/erase`,
+`/api/v1/nodes/<key>/maintenance/erase`, body `{"confirm":"erase-node"}`).
+It returns the node to its factory state and brings it back in place:
+
+- every fabric is removed (go-fabric's `node.FactoryReset`: every
+  controller that paired the node loses it), the node stops, and its store
+  and endpoint records are erased;
+- a new node starts on the erased store under the same key, port,
+  discriminator and passcode, uncommissioned and with a new UniqueID; the
+  pages follow it (they poll the status until it answers again);
+- the bridge client receives `server_shutdown`, dials the same path back
+  and declares again — the endpoint numbers are assigned anew;
+- the node's expvar counters continue the old node's (one prefix per key).
+
+The log says `fabricserver.node.erased` with `node=<key>`. Either failure
+keeps the daemon up, and every status page carries a warning naming the
+key until an erase succeeds: when the erase itself fails
+(`fabricserver.node.erase_failed`, warning `node_erase_failed`) nothing is
+restarted; when the new node does not start
+(`fabricserver.node.restart_failed`, warning `node_restart_failed`) the
+pages read the stopped node. **Erase** again retries both, and after a
+failed restart a restart of the daemon also brings the node back (its
+store is erased).
+
 The registry is `nodes.json` under `--storage-path` ([Files](#files)).
 The Home Assistant add-on runs the one `--bridge-*` node only.
 
@@ -183,7 +211,7 @@ Under `--storage-path` (created with mode 0700):
 | --- | --- |
 | `fabric-server.db` (+ `-wal`, `-shm`) | the controller's SQLite database: our fabric and its CA, the paired nodes and their attribute images (go-fabric's stores) |
 | `server.json` (mode 0600) | the server's settings: the fabric label, the stored Wi-Fi credentials and Thread datasets |
-| `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys |
+| `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys; an erase in the pages empties it and keeps the file |
 | `nodes.json` (mode 0600) | with `--bridge`: the node registry, `{"nodes": [{"key", "label", "listen", "discriminator", "passcode", "created_at"}]}` — the nodes created in the pages, in their order; it holds their passcodes |
 | `bridge-<key>.db` | per registry node: that node's store, the same content |
 
@@ -257,7 +285,7 @@ file is written (`file_loglevel` is `null`).
 ## The pages
 
 `--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
-0.6.0), both families and the Operation page in one handler:
+0.7.1), both families and the Operation page in one handler:
 
 - **The node pages** for every device node — the `--bridge-*` one and the
   registry's — under a node selector that lists the default node first
@@ -266,7 +294,8 @@ file is written (`file_loglevel` is `null`).
   `--bridge-*` node, `registry` for the others; never the passcode),
   pairing, fabrics, the commissioning window, diagnostics; an admin
   creates, renames and deletes the registry's nodes there
-  ([Several device nodes](#several-device-nodes)). Without `--bridge` the
+  ([Several device nodes](#several-device-nodes)) and erases any node in
+  place ([Erasing a node](#erasing-a-node)). Without `--bridge` the
   node family is shown as disabled. The client decides what is exposed over
   `/bridge`, so the pages have no exposure selection; the selection page
   says so ("the server keeps no host item model; selection is the
@@ -351,6 +380,25 @@ is the full description.
 - `server_info.bluetooth_enabled` and the pages' `capabilities.ble` are
   true; commissioning over BLE still needs a stored Wi-Fi or Thread
   credential ([by_design.md](by_design.md) B20, B22).
+- **The log says whether a pairing used BLE** (with a proxy or an adapter
+  alike). `commission_with_code` logs `fabricserver.commission.ble` when
+  it hands BLE to go-fabric — `network=wifi|thread|wifi+thread` and
+  `wifi_id`/`thread_id` as the request named them or `default`; never an
+  SSID, a password or a dataset — and `fabricserver.commission.ble_skipped`
+  with `reason` when the daemon has a central and BLE was left out:
+  `network_only` (the request's flag), `code_without_ble` (a QR code
+  without the BLE capability) or `no_network` (no credential named and no
+  `default` entry stored; the line's `hint` says how to store one). Without
+  a central there is no line: `server_info.bluetooth_enabled` is false.
+  `/ws` needs no selection: without `wifi_credentials_id` or
+  `thread_dataset_id` it falls back to the `default` entry, the one an
+  id-less `set_wifi_credentials` or `set_thread_dataset` stores. The pages
+  (go-fabric-ui 0.7.1, #49) report the same decision with the same four
+  reason names (`no_central`, `network_only`, `code_without_ble`,
+  `no_network`): the Commission page preselects the host's default or only
+  credential, hints while none is picked on a host with a central, and the
+  commissioning's progress says whether BLE was used and why not (`ble` on
+  `commissioning_progress`, `fabricui.pair.ble_skipped` in the log).
 
 ```sh
 fabric-server --bluetooth-proxy proxy-office.local,<base64 key> --bluetooth-proxy 10.0.0.42:6053,<key>
