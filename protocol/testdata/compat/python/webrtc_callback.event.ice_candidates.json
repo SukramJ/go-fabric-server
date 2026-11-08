@@ -6,7 +6,7 @@
     "node_id": 1,
     "endpoint_id": 1,
     "fabric_index": 1,
-    "client_session_key": "living-room-1",
-    "data": { "ice_candidates": [{ "candidate": "candidate:1 1 UDP 2130706431 192.0.2.1 50000 typ host", "sdpMid": "0", "sdpMLineIndex": null }] }
+    "data": { "ice_candidates": [{ "candidate": "candidate:1 1 UDP 2130706431 192.0.2.1 50000 typ host", "sdpMid": "0", "sdpMLineIndex": null }] },
+    "client_session_key": "living-room-1"
   }
 }

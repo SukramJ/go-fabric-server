@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -79,6 +80,21 @@ func (r *rawConn) send(command string, args map[string]any) string {
 	r.t.Helper()
 	id := strconv.FormatUint(r.seq.Add(1), 10)
 	b := protocol.MustEncode(map[string]any{"message_id": id, "command": command, "args": args})
+	if err := r.ws.Write(context.Background(), websocket.MessageText, b); err != nil {
+		r.t.Fatal(err)
+	}
+	return id
+}
+
+// sendPadded sends a command with pad bytes of whitespace in its
+// arguments.
+func (r *rawConn) sendPadded(command string, args map[string]any, pad int) string {
+	r.t.Helper()
+	id := strconv.FormatUint(r.seq.Add(1), 10)
+	b := protocol.MustEncode(map[string]any{"message_id": id, "command": command, "args": args})
+	// Inside args: the server's own decoding of the arguments reads it
+	// again after the envelope's.
+	b = []byte(strings.Replace(string(b), `"args":{`, `"args":{`+strings.Repeat(" ", pad), 1))
 	if err := r.ws.Write(context.Background(), websocket.MessageText, b); err != nil {
 		r.t.Fatal(err)
 	}
@@ -557,5 +573,56 @@ func TestCameraStreamEvicted(t *testing.T) {
 		if json.Unmarshal(ev.Data, &d) != nil || d.Kind != "video" || d.StreamID != res.Video.EvictedStreamIDs[0] {
 			t.Fatalf("evicted %s", ev.Data)
 		}
+	}
+}
+
+// TestCameraStartRegisteredInArrivalOrder: candidates by key sent right
+// after camera_start_stream, before the camera has the offer, queue on
+// the start: a connection reads its next frame once the start is
+// registered.
+func TestCameraStartRegisteredInArrivalOrder(t *testing.T) {
+	t.Parallel()
+	e, at := cameraSite(t)
+	a := e.raw()
+	gate, entered := make(chan struct{}), make(chan struct{})
+	e.port.mu.Lock()
+	e.port.gate, e.port.entered = gate, entered
+	e.port.mu.Unlock()
+	// Whitespace inside the start's frame makes its decoding long — the
+	// window a registration out of arrival order would fall into — and
+	// leaves what the camera gets as it is.
+	start := a.sendPadded("camera_start_stream", at(map[string]any{"stream_usage": "LiveView", "sdp": testOffer, "client_session_key": "early"}), 8<<20)
+	ice := a.send("camera_provide_ice_candidates", at(map[string]any{"client_session_key": "early", "ice_candidates": []map[string]any{{"candidate": "candidate:early", "sdpMid": "0", "sdpMLineIndex": 0}}}))
+	<-entered
+	close(gate)
+	f, _ := a.next(response(start))
+	var res startResult
+	if f.ErrorCode != nil || json.Unmarshal(f.Result, &res) != nil {
+		t.Fatalf("start: %s %s", f.Result, f.Details)
+	}
+	if g, _ := a.next(response(ice)); g.ErrorCode != nil {
+		t.Fatalf("candidates: %s", g.Details)
+	}
+	e.port.mu.Lock()
+	got := e.port.cands[res.WebRTCSessionID]
+	e.port.mu.Unlock()
+	if len(got) != 1 || got[0] != "candidate:early" {
+		t.Fatalf("the camera got %v", got)
+	}
+}
+
+// TestCameraWithoutService: a backend without a camera service does not
+// offer the camera commands.
+func TestCameraWithoutService(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t, envOptions{noCameraService: true})
+	for _, cmd := range []string{"camera_snapshot", "camera_start_stream", "send_webrtc_provider_command"} {
+		for _, c := range e.client.ServerInfo().Capabilities {
+			if c == cmd {
+				t.Fatalf("%s in capabilities", cmd)
+			}
+		}
+		_, err := e.client.CallRaw(e.ctx, cmd, map[string]any{"node_id": 1, "endpoint_id": 1})
+		wantCode(t, err, protocol.InvalidCommand, "camera service")
 	}
 }

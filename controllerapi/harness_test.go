@@ -55,6 +55,8 @@ type envOptions struct {
 	// runs on loopback sockets then, since the camera's offers need the
 	// device's TCP.
 	camera bool
+	// noCameraService starts the server without its camera service.
+	noCameraService bool
 }
 
 func logger() *slog.Logger {
@@ -136,7 +138,11 @@ func newEnv(t *testing.T, o envOptions) *env {
 		topo.Close()
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl, controllerapi.Services{Topology: topo, Camera: svc}); err != nil {
+	services := controllerapi.Services{Topology: topo, Camera: svc}
+	if o.noCameraService {
+		services.Camera = nil
+	}
+	if err := api.Start(ctx, ctrl, services); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.Mux(api, o.token, "test"))

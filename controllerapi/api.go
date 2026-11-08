@@ -318,10 +318,16 @@ func (s *Server) Shutdown(ctx context.Context) {
 	for _, stop := range stops {
 		stop()
 	}
+	// The connections close at once: each ends its camera sessions
+	// within ctx (cameraReleased).
+	var closing sync.WaitGroup
 	for _, c := range conns {
-		_ = c.send.Flush(ctx)
-		c.close(websocket.StatusGoingAway, "server shutting down") //nolint:contextcheck // close ends the camera sessions on its own timeout (cameraReleased)
+		closing.Go(func() {
+			_ = c.send.Flush(ctx)
+			c.close(ctx, websocket.StatusGoingAway, "server shutting down")
+		})
 	}
+	closing.Wait()
 	s.labelMu.Lock()
 	if s.labelCancel != nil {
 		s.labelCancel()
@@ -349,7 +355,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ws.SetReadLimit(16 << 20)
 	c := s.newConn(ws)
-	defer c.close(websocket.StatusNormalClosure, "") //nolint:contextcheck // close ends the camera sessions on its own timeout (cameraReleased)
+	// The request's context ends with the connection; the release of its
+	// camera sessions keeps its values, not its end.
+	defer c.close(context.WithoutCancel(r.Context()), websocket.StatusNormalClosure, "")
 	c.run(r.Context())
 }
 

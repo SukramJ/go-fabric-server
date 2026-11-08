@@ -17,6 +17,14 @@ import (
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
+// The camera files of this package cite matterjs-server at 0bd06f2:
+// "docs" (or docs/websockets_api.md) is docs/websockets_api.md;
+// handler.ts packages/ws-controller/src/server/WebSocketControllerHandler.ts;
+// startingSessionSignalling.ts the same directory's file; types.ts
+// packages/ws-controller/src/types/WebSocketMessageTypes.ts; model.ts
+// packages/ws-client/src/models/model.ts; wireNames.ts, cameraCommands.ts
+// and wireArgumentChecks.ts packages/ws-controller/src/camera/.
+
 // The wire names of the camera codecs: matterjs-server's SDP spellings,
 // not the enum member names the schema carries (Hevc, Vvc, Av1, AacLc) —
 // a wire-contract table (wireNames.ts:16-31 of matterjs-server at
@@ -439,8 +447,10 @@ type cameraStopResult struct {
 	Ended bool `json:"ended"`
 }
 
-// The events (docs/websockets_api.md:2255-2269, :2290-2305, :2326; WebRtcCallbackBridge.ts:16-25,
-// :55-66, :81-88, :94-107, :114-121; model.ts:836-846, :857-862).
+// The events (docs/websockets_api.md:2255-2269, :2290-2305, :2326;
+// packages/ws-controller/src/controller/WebRtcCallbackBridge.ts:16-25,
+// :55-66, :81-88, :94-107, :114-121; model.ts:836-846, :857-862). An owned
+// session's key goes last, as handler.ts:786 spreads it after the data.
 
 type webrtcCallbackData struct {
 	EventType        string           `json:"event_type"`
@@ -448,8 +458,8 @@ type webrtcCallbackData struct {
 	NodeID           uint64           `json:"node_id"`
 	EndpointID       uint16           `json:"endpoint_id"`
 	FabricIndex      uint8            `json:"fabric_index"`
-	ClientSessionKey string           `json:"client_session_key,omitempty"`
 	Data             webrtcSignalData `json:"data"`
+	ClientSessionKey string           `json:"client_session_key,omitempty"`
 }
 
 // webrtcSignalData is the data of each kind: offer {sdp, ice_servers?,
@@ -553,8 +563,8 @@ func wireStreamEvicted(e camera.StreamEvicted) cameraStreamEvicted {
 }
 
 // cameraArgs are the arguments of a camera command, decoded strictly
-// (docs/websockets_api.md:1835-1841; cameraCommands.ts:139-168,
-// wireArgumentChecks.ts:16-22): an object, every key one the command
+// (docs/websockets_api.md:1835-1841; cameraCommands.ts:150-162 parses,
+// wireArgumentChecks.ts:16-22 refuses an unknown key): an object, every key one the command
 // takes; protocol.DecodeArgs stays tolerant for the other commands.
 type cameraArgs struct {
 	command string

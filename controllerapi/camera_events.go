@@ -78,6 +78,10 @@ type pendingStart struct {
 	node     uint64
 	endpoint uint16
 	key      string
+	// id is the session's id once StartStream returned (returned), before
+	// the response is sent.
+	id       uint16
+	returned bool
 	// answered: the response is sent; the start holds nothing more, and
 	// stays only while its queue is sent.
 	answered bool
@@ -150,15 +154,14 @@ func (s *Server) cameraConns(want func(*wsConn) bool) []*wsConn {
 
 // cameraReleased drops a closing connection from the camera's events and
 // ends the sessions it owns (handler.ts:810-812; service.go:316-323),
-// bounded by releaseTimeout, as the connection's close has no context of
-// its own: no event reaches it.
-func (s *Server) cameraReleased(conn *wsConn) {
+// within ctx and at most releaseTimeout: no event reaches it.
+func (s *Server) cameraReleased(ctx context.Context, conn *wsConn) {
 	s.camMu.Lock()
 	_, opted := s.camConns[conn.id]
 	delete(s.camConns, conn.id)
 	s.camMu.Unlock()
 	if svc := s.cameraService(); svc != nil && opted {
-		ctx, cancel := context.WithTimeout(context.Background(), releaseTimeout)
+		ctx, cancel := context.WithTimeout(ctx, releaseTimeout)
 		defer cancel()
 		svc.Release(ctx, conn.id)
 	}
@@ -226,13 +229,32 @@ func (c *wsConn) sessionEnded(e camera.SessionEnd) {
 		c.sendSessionEnded(e)
 		return
 	}
-	for i := len(c.cam.starts) - 1; i >= 0; i-- {
-		st := c.cam.starts[i]
-		if !st.answered && st.node == e.NodeID && st.endpoint == e.Endpoint && st.key == e.Key {
-			st.held = append(st.held, e)
-			break
+	// An end held for an unanswered start: the start whose StartStream
+	// returned the id first (brief S8 §5), else the newest one still
+	// running with the end's key — a session that ends before its start
+	// returns fails that start, so such an end is dropped at the response.
+	var held *pendingStart
+	for i := len(c.cam.starts) - 1; i >= 0 && held == nil; i-- {
+		if st := c.cam.starts[i]; !st.answered && st.returned && st.node == e.NodeID && st.endpoint == e.Endpoint && st.id == e.SessionID {
+			held = st
 		}
 	}
+	for i := len(c.cam.starts) - 1; i >= 0 && held == nil; i-- {
+		if st := c.cam.starts[i]; !st.answered && !st.returned && st.node == e.NodeID && st.endpoint == e.Endpoint && st.key == e.Key {
+			held = st
+		}
+	}
+	if held != nil {
+		held.held = append(held.held, e)
+	}
+	c.cam.mu.Unlock()
+}
+
+// startReturned records the id StartStream returned for st, before its
+// response is sent.
+func (c *wsConn) startReturned(st *pendingStart, id uint16) {
+	c.cam.mu.Lock()
+	st.id, st.returned = id, true
 	c.cam.mu.Unlock()
 }
 
@@ -346,7 +368,11 @@ func (c *wsConn) drain(k sessionAt, o *ownedSession) {
 // key on the node and endpoint: queued while its start is not done, else
 // to the open session; a key naming neither is error 8
 // (docs/websockets_api.md:1682-1684).
-func (c *wsConn) candidatesByKey(ctx context.Context, node uint64, endpoint uint16, key string, list []wpdef.ICECandidateStruct) *protocol.Error {
+//
+// ready is called once the candidates are queued or the session chosen,
+// so the connection's next frame queues behind them.
+func (c *wsConn) candidatesByKey(ctx context.Context, node uint64, endpoint uint16, key string, list []wpdef.ICECandidateStruct, ready func()) *protocol.Error {
+	defer ready()
 	c.cam.mu.Lock()
 	for i := len(c.cam.starts) - 1; i >= 0; i-- {
 		st := c.cam.starts[i]
@@ -362,6 +388,7 @@ func (c *wsConn) candidatesByKey(ctx context.Context, node uint64, endpoint uint
 		st.queue = append(st.queue, q)
 		st.queued += len(list)
 		c.cam.mu.Unlock()
+		ready()
 		select {
 		case perr := <-q.done:
 			return perr
@@ -377,6 +404,7 @@ func (c *wsConn) candidatesByKey(ctx context.Context, node uint64, endpoint uint
 		}
 	}
 	c.cam.mu.Unlock()
+	ready()
 	if sess == nil {
 		return unknownSessionKey(key, node, endpoint)
 	}

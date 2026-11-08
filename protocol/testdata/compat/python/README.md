@@ -29,7 +29,7 @@ partial one), recorded in the shape of matterjs-server's python client
 | `camera_release_stream.error.json` | error 104 | `WebSocketMessageTypes.ts:317-324` |
 | `camera_get_capabilities.error.json` | error 105 | `WebSocketMessageTypes.ts:335-341` |
 | `camera_start_stream.error.privacy.json` | error 106 | `WebSocketMessageTypes.ts:326-333` |
-| `webrtc_callback.event.ice_candidates.json` | `WebRTCCallbackData`, with `client_session_key` and a null `sdpMLineIndex` | `WebRtcCallbackBridge.ts:94-107` |
+| `webrtc_callback.event.ice_candidates.json` | `WebRTCCallbackData`, with a null `sdpMLineIndex` and `client_session_key` last | `packages/ws-controller/src/controller/WebRtcCallbackBridge.ts:94-107` (the event), `packages/ws-controller/src/server/WebSocketControllerHandler.ts:786` (the key) |
 
 `controllerapi/compat_internal_test.go` round-trips each through the type
 the server encodes it with, as it does the documented examples.

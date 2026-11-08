@@ -22,7 +22,11 @@ import (
 
 // The camera commands of schema 14 and send_webrtc_provider_command, each
 // one call of go-fabric's controller/camera (brief S8 §3). The keys each
-// command takes, in matterjs-server's order (cameraCommands.ts:139-168).
+// command takes, in matterjs-server's order: cameraCommands.ts:188-199
+// (video hints), :203-208 (audio hints), :212-220 (snapshot), :222-235
+// (start), :237-268 (capabilities, stop, answer, ICE candidates, release),
+// :271-279 (CAMERA_ARG_KEYS); send_webrtc_provider_command's
+// handler.ts:174-179.
 var (
 	capabilitiesKeys  = []string{"node_id", "endpoint_id"}
 	stopStreamKeys    = []string{"node_id", "endpoint_id", "webrtc_session_id", "client_session_key"}
@@ -310,11 +314,15 @@ func cmdCameraStartStream(ctx context.Context, s *Server, c *call) (any, *protoc
 	}
 	req.Node, req.Endpoint, req.Owner = n, ep, c.conn.id
 	st := c.conn.beginStart(uint64(*id), ep, req.Key)
+	c.ready()
+	var sess *camera.Session
+	// Set in a defer, so a panicking StartStream still leaves the start.
+	defer func() { c.after = func() { c.conn.startAnswered(ctx, st, sess) } }()
 	sess, err := svc.StartStream(ctx, req)
-	c.after = func() { c.conn.startAnswered(ctx, st, sess) }
 	if err != nil {
 		return nil, cameraError(c.req.Command, err)
 	}
+	c.conn.startReturned(st, sess.ID)
 	return wireStartResult(sess), nil
 }
 
@@ -581,13 +589,14 @@ func cmdCameraProvideICECandidates(ctx context.Context, s *Server, c *call) (any
 		return nil, perr
 	}
 	if ref.key == "" {
+		c.ready()
 		_, perr = s.providerSend(ctx, c, id, ep, "ProvideIceCandidates", a.payloadOf())
 		return nil, perr
 	}
 	if _, _, perr := s.cameraNode(c.req.Command, id); perr != nil {
 		return nil, perr
 	}
-	return nil, c.conn.candidatesByKey(ctx, uint64(*id), ep, ref.key, list)
+	return nil, c.conn.candidatesByKey(ctx, uint64(*id), ep, ref.key, list, c.ready)
 }
 
 // cmdSendWebRTCProviderCommand is the provider's raw route

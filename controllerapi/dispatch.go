@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -18,7 +19,16 @@ type call struct {
 	req  protocol.Request
 	// after runs once the response is handed to the socket.
 	after func()
+	// ready lets the connection read its next frame: called by the
+	// dispatcher before a handler runs, or by a handler of
+	// preambleCommands once what it registers is registered; idempotent.
+	ready func()
 }
+
+// preambleCommands register state a later frame of the connection names
+// (a camera start, keyed candidates); their handlers call ready
+// themselves.
+var preambleCommands = map[string]bool{"camera_start_stream": true, "camera_provide_ice_candidates": true}
 
 func (c *call) args(dst any) *protocol.Error {
 	return protocol.DecodeArgs(c.req.Command, c.req.Args, dst)
@@ -133,8 +143,12 @@ func (s *Server) Capabilities() []string {
 	return out
 }
 
-// handle answers one frame.
-func (s *Server) handle(ctx context.Context, conn *wsConn, frame []byte) {
+// handle answers one frame; ready is closed once the frame's preamble
+// ran (call.ready), at the latest when it is answered.
+func (s *Server) handle(ctx context.Context, conn *wsConn, frame []byte, ready chan struct{}) {
+	var once sync.Once
+	release := func() { once.Do(func() { close(ready) }) }
+	defer release()
 	req, perr := protocol.DecodeRequest(frame)
 	if perr != nil {
 		conn.reply(perr)
@@ -148,7 +162,10 @@ func (s *Server) handle(ctx context.Context, conn *wsConn, frame []byte) {
 	// The camera's opt-ins come before the command runs: the camera can
 	// answer, end a session or evict a stream while it is in flight.
 	s.cameraOptIn(conn, req.Command)
-	c := &call{conn: conn, req: req}
+	c := &call{conn: conn, req: req, ready: release}
+	if !preambleCommands[req.Command] {
+		release()
+	}
 	result, err := s.dispatch(ctx, c)
 	if err != nil {
 		err.MessageID = req.MessageID

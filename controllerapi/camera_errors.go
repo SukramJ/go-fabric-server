@@ -16,7 +16,7 @@ import (
 // cameraError maps an error of the camera service onto matterjs-server's
 // codes (brief S8 §4): the typed errors 102 to 106 with their details a
 // JSON string in matterjs-server's key order (types.ts:266-341;
-// CameraErrorsTest.ts:156), a StackError 7, an invalid argument 8 with
+// packages/ws-controller/test/CameraErrorsTest.ts:156), a StackError 7, an invalid argument 8 with
 // go-fabric's message, and anything else as an interaction with the node
 // fails (nodeError).
 func cameraError(command string, err error) *protocol.Error {
