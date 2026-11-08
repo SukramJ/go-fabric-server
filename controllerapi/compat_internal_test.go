@@ -147,6 +147,10 @@ var typed = map[string]func(*testing.T, []byte) []byte{
 	"open_commissioning_window.response.json": roundTrip[result[windowData]],
 	"batched_device_commands.value.json":      roundTrip[[]batchedResult],
 	"get_icd_state.value.json":                roundTrip[icdState],
+	// S8.
+	"webrtc_callback.event.json":       roundTrip[event[webrtcCallbackData]],
+	"camera_session_ended.event.json":  roundTrip[event[cameraSessionEnded]],
+	"camera_stream_evicted.event.json": roundTrip[event[cameraStreamEvicted]],
 }
 
 // pythonDir holds the S3 fixtures in the python client's shape
@@ -165,6 +169,17 @@ var typedPython = map[string]func(*testing.T, []byte) []byte{
 	"network_topology_updated.event.json":          roundTrip[event[networkTopology]],
 	"get_all_credentials.value.json":               roundTrip[map[string][]map[string]any],
 	"discover.value.json":                          roundTrip[[]map[string]any],
+	// S8.
+	"camera_get_capabilities.value.json":        roundTrip[cameraCapabilities],
+	"camera_start_stream.value.json":            roundTrip[cameraStartResult],
+	"camera_stop_stream.value.json":             roundTrip[cameraStopResult],
+	"camera_snapshot.value.json":                roundTrip[cameraSnapshotResult],
+	"camera_start_stream.error.json":            roundTrip[protocol.Error],
+	"camera_snapshot.error.json":                roundTrip[protocol.Error],
+	"camera_release_stream.error.json":          roundTrip[protocol.Error],
+	"camera_get_capabilities.error.json":        roundTrip[protocol.Error],
+	"camera_start_stream.error.privacy.json":    roundTrip[protocol.Error],
+	"webrtc_callback.event.ice_candidates.json": roundTrip[event[webrtcCallbackData]],
 }
 
 // notInS1 are documented shapes of commands and events S1 does not
@@ -172,7 +187,6 @@ var typedPython = map[string]func(*testing.T, []byte) []byte{
 // bundle that brings them.
 var notInS1 = []string{
 	"initiate_ota_upload.value", "thread_diagnostics_updated.event",
-	"webrtc_callback.event", "camera_session_ended.event", "camera_stream_evicted.event",
 }
 
 // TestCompatPythonFixtures holds the S3 fixtures of python/: every

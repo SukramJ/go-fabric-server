@@ -1,0 +1,27 @@
+{
+  "webrtc_session_id": 3,
+  "mode": "provide_offer",
+  "video": {
+    "stream_id": 12,
+    "codec": "H264",
+    "resolution": { "min": { "width": 1280, "height": 720 }, "max": { "width": 1280, "height": 720 } },
+    "frame_rate": { "min": 30, "max": 30 },
+    "bit_rate": { "min": 4000000, "max": 4000000 },
+    "provenance": "allocated",
+    "watermark_enabled": false,
+    "osd_enabled": false,
+    "degraded": false,
+    "evicted_stream_ids": [7],
+    "narrowed_by_encoder_budget": { "max_resolution": { "width": 1920, "height": 1080 } }
+  },
+  "audio": {
+    "stream_id": 2,
+    "codec": "OPUS",
+    "channel_count": 2,
+    "sample_rate": 48000,
+    "bit_rate": 64000,
+    "bit_depth": 16,
+    "provenance": "reused"
+  },
+  "talkback": true
+}

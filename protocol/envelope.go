@@ -40,6 +40,9 @@ const (
 	OtaUploadError           ErrorCode = 101
 	CameraStreamIncompatible ErrorCode = 102
 	CameraResourceExhausted  ErrorCode = 103
+	CameraStreamInUse        ErrorCode = 104
+	CameraNotSupported       ErrorCode = 105
+	CameraPrivacyMode        ErrorCode = 106
 )
 
 // The codes of the bridge half (/bridge) beyond matterjs-server's: our own
