@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"log/slog"
 	"net/netip"
 	"strings"
 	"time"
@@ -98,11 +99,10 @@ func (s *Server) bleNetwork(command string, wifiID, threadID *string) (*commissi
 // cmdCommissionWithCode pairs the device a QR or manual code names
 // (controller.Controller.Pair) and answers its node data. Over DNS-SD by
 // default; over BLE (controller.PairOptions.BLE, go-fabric v0.12.1) when
-// the server has an adapter (--ble-adapter), network_only is false, the
-// code does not rule BLE out (a QR code's discovery capabilities without
-// the BLE bit do) and a stored Wi-Fi or Thread credential can put the
-// device on its network — matterjs-server takes BLE whenever it is
-// enabled and network_only is false (ControllerCommandHandler.ts:1971-2121).
+// bleChoice says so — matterjs-server takes BLE whenever it is enabled
+// and network_only is false (ControllerCommandHandler.ts:1971-2121). The
+// decision is logged, never silent (fabricserver.commission.ble or
+// .ble_skipped), when the server has a central to decide about.
 func cmdCommissionWithCode(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Code              *string         `json:"code"`
@@ -130,8 +130,13 @@ func cmdCommissionWithCode(ctx context.Context, s *Server, c *call) (any, *proto
 		return nil, perr
 	}
 	opts := s.pairOptions()
-	if s.opts.BLE != nil && !a.NetworkOnly && (pc.Manual || pc.Capabilities&capabilityBLE != 0) && (wifi != nil || thread != nil) {
+	use, reason := bleChoice(s.opts.BLE != nil, pc, a.NetworkOnly, wifi, thread)
+	switch {
+	case use:
 		opts.BLE, opts.WiFi, opts.Thread = s.opts.BLE, wifi, thread
+		s.log.LogAttrs(ctx, slog.LevelInfo, "fabricserver.commission.ble", bleUsed(wifi, thread, a.WifiCredentialsID, a.ThreadDatasetID)...)
+	case s.opts.BLE != nil:
+		s.log.LogAttrs(ctx, slog.LevelInfo, "fabricserver.commission.ble_skipped", bleSkipped(reason)...)
 	}
 	pctx, cancel := s.commissionContext(ctx, timeout)
 	defer cancel()
@@ -253,8 +258,74 @@ func (s *Server) discoverWindow(timeout time.Duration) time.Duration {
 
 // capabilityBLE is the BLE bit of a QR payload's discovery capabilities
 // (controller.PairingCode.Capabilities: bit 0 SoftAP, bit 1 BLE, bit 2 on
-// the IP network).
+// the IP network; go-fabric controller/code.go:40-42 at v0.18.0).
 const capabilityBLE = 1 << 1
+
+// The reasons commission_with_code leaves BLE out, in their precedence
+// (the first that holds is the reason): the names and order of
+// go-fabric-ui's BLESkipReason (fabricui/controller.go:613-616 at
+// v0.7.1; its bleFor, fabricui/gofabric/gofabric.go:259-282), so the
+// pages and /ws state one decision in one vocabulary (owner, 2026-11-08).
+const (
+	bleSkipNoCentral   = "no_central"
+	bleSkipNetworkOnly = "network_only"
+	bleSkipCode        = "code_without_ble"
+	bleSkipNoNetwork   = "no_network"
+)
+
+// bleNoNetworkHint goes with reason no_network: the one reason the
+// operator can act on from the log line alone.
+const bleNoNetworkHint = "store a credential with set_wifi_credentials/set_thread_dataset without an id, or name one"
+
+// bleChoice is commission_with_code's BLE decision (docs/by_design.md
+// B20): BLE is handed to go-fabric when the server has a central
+// (--bluetooth-adapter or --bluetooth-proxy), network_only is false, the
+// code does not rule BLE out (a manual code names no capabilities and
+// allows every transport; a QR code allows BLE with bit 1) and a stored
+// Wi-Fi or Thread credential can put the device on its network — go-fabric
+// refuses BLE without a network to provision. reason is the first
+// condition that fails, "" when BLE is used.
+func bleChoice(central bool, pc controller.PairingCode, networkOnly bool, wifi *commissioner.WiFiNetwork, thread *commissioner.ThreadNetwork) (use bool, reason string) {
+	switch {
+	case !central:
+		return false, bleSkipNoCentral
+	case networkOnly:
+		return false, bleSkipNetworkOnly
+	case !pc.Manual && pc.Capabilities&capabilityBLE == 0:
+		return false, bleSkipCode
+	case wifi == nil && thread == nil:
+		return false, bleSkipNoNetwork
+	}
+	return true, ""
+}
+
+// bleUsed are fabricserver.commission.ble's attributes: the network kind
+// (wifi, thread, wifi+thread) and the stored entries' ids as the request
+// named them or "default" — ids only, never an SSID, a password or a
+// dataset (TestSecretsNotLogged).
+func bleUsed(wifi *commissioner.WiFiNetwork, thread *commissioner.ThreadNetwork, wifiID, threadID *string) []slog.Attr {
+	var kinds []string
+	attrs := make([]slog.Attr, 0, 3)
+	if wifi != nil {
+		kinds = append(kinds, "wifi")
+		attrs = append(attrs, slog.String("wifi_id", credentialID(wifiID)))
+	}
+	if thread != nil {
+		kinds = append(kinds, "thread")
+		attrs = append(attrs, slog.String("thread_id", credentialID(threadID)))
+	}
+	return append([]slog.Attr{slog.String("network", strings.Join(kinds, "+"))}, attrs...)
+}
+
+// bleSkipped are fabricserver.commission.ble_skipped's attributes: the
+// reason, and for no_network the hint.
+func bleSkipped(reason string) []slog.Attr {
+	attrs := []slog.Attr{slog.String("reason", reason)}
+	if reason == bleSkipNoNetwork {
+		attrs = append(attrs, slog.String("hint", bleNoNetworkHint))
+	}
+	return attrs
+}
 
 // cmdParseOnboardingPayload decodes a QR or manual pairing code without
 // contacting a device (controller.ParsePairingCode) — matterjs-server's

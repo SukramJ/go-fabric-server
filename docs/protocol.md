@@ -80,7 +80,7 @@ reported as `other` until go-fabric names an attestation rejection.
 | `server_info` | implemented | plus `capabilities` |
 | `start_listening` | implemented | the dump (test nodes after the real ones), then events |
 | `get_nodes`, `get_node` | implemented | |
-| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` and a stored Wi-Fi or Thread credential (go-fabric's BlueZ central, see operations); an attestation the policy rejects: 1, reason `attestation-rejected` |
+| `commission_with_code` | implemented | QR or manual code decoded by `controller.ParsePairingCode` (an undecodable code: 8, reason `invalid-payload`); over BLE with `--bluetooth-adapter` or `--bluetooth-proxy` and a stored Wi-Fi or Thread credential (go-fabric's BlueZ or ESPHome central, see operations; the log says whether BLE was used, `fabricserver.commission.ble`, or why not, `fabricserver.commission.ble_skipped`); an attestation the policy rejects: 1, reason `attestation-rejected` |
 | `commission_on_network` | implemented | `Controller.Discover` in 2-second rounds until the device of the filter (and `ip_addr`) answers, then the registry's commissioning |
 | `parse_onboarding_payload` | implemented | `{type: "qr", payloads: […]}` or `{type: "manual", …}`; `vendor_id`/`product_id` left out where the code says 0 |
 | `discover_commissionable_nodes`, `discover` | implemented | `Controller.Discover`, 3 seconds |

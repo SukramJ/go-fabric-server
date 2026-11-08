@@ -32,6 +32,18 @@ All notable changes to this project are documented here. The format follows
   `controllerapi.Credential.Default`, mapped to go-fabric-ui's
   `Credential.Default`. `protocol/schema` unchanged.
 
+### Fixed
+
+- `commission_with_code` says why it uses or skips Bluetooth LE (#48):
+  `fabricserver.commission.ble` (`network`, `wifi_id`/`thread_id` as named
+  or `default`; never an SSID or a dataset) when BLE is handed to
+  go-fabric, `fabricserver.commission.ble_skipped` with `reason`
+  `network_only`, `code_without_ble` or `no_network` (plus a `hint`) when
+  the daemon has a central and BLE was left out — the reason names of
+  go-fabric-ui 0.7.1's Commission page. The rule itself is unchanged
+  (`by_design.md` B20). `docs/protocol.md` names `--bluetooth-proxy`
+  beside `--bluetooth-adapter` for the BLE route.
+
 ## [0.6.1] - 2026-11-07
 
 Dependency release: go-fabric `v0.18.0`, go-fabric-ui `v0.6.1`.

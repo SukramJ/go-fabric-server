@@ -200,8 +200,46 @@ func TestCommissionThroughProxy(t *testing.T) {
 	}
 	waitWSEvent(t, e.ws, "node_added")
 	drv.mu.Lock()
-	defer drv.mu.Unlock()
 	if len(drv.connects) != 1 || drv.connects[0] != "lab/secret12" || n.NodeID == 0 {
+		drv.mu.Unlock()
 		t.Fatalf("driver connects %q, node %d", drv.connects, n.NodeID)
+	}
+	drv.mu.Unlock()
+
+	// The decision is in the log (brief S7 §3.2): the pairing above said
+	// BLE with the default Wi-Fi entry, by id only. Two more attempts on
+	// the commissioned device (its window is closed; a second's timeout
+	// ends each) say why BLE was left out: network_only, and the node's
+	// QR code, which names the IP network only (go-fabric
+	// node/credentials.go:102 at v0.18.0).
+	_ = e.ws.Call(e.ctx, "commission_with_code", map[string]any{"code": code, "network_only": true, "discovery_timeout_s": 1}, nil)
+	_ = e.ws.Call(e.ctx, "commission_with_code", map[string]any{"code": payload.QR, "discovery_timeout_s": 1}, nil)
+	var log struct {
+		Records []struct {
+			Msg   string            `json:"msg"`
+			Attrs map[string]string `json:"attrs"`
+		} `json:"records"`
+	}
+	e.json(http.MethodGet, "/operation/log?limit=1000", "", http.StatusOK, &log)
+	var used []map[string]string
+	var skipped []string
+	for _, r := range log.Records {
+		switch r.Msg {
+		case "fabricserver.commission.ble":
+			used = append(used, r.Attrs)
+		case "fabricserver.commission.ble_skipped":
+			skipped = append(skipped, r.Attrs["reason"])
+		}
+		for k, v := range r.Attrs {
+			if strings.Contains(k, "ssid") || v == "lab" || v == "secret12" {
+				t.Errorf("%s carries the credential: %s=%q", r.Msg, k, v)
+			}
+		}
+	}
+	if len(used) != 1 || used[0]["network"] != "wifi" || used[0]["wifi_id"] != "default" || used[0]["thread_id"] != "" {
+		t.Fatalf("fabricserver.commission.ble records: %v", used)
+	}
+	if strings.Join(skipped, ",") != "network_only,code_without_ble" {
+		t.Fatalf("fabricserver.commission.ble_skipped reasons: %v", skipped)
 	}
 }

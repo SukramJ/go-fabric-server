@@ -377,6 +377,25 @@ is the full description.
 - `server_info.bluetooth_enabled` and the pages' `capabilities.ble` are
   true; commissioning over BLE still needs a stored Wi-Fi or Thread
   credential ([by_design.md](by_design.md) B20, B22).
+- **The log says whether a pairing used BLE** (with a proxy or an adapter
+  alike). `commission_with_code` logs `fabricserver.commission.ble` when
+  it hands BLE to go-fabric — `network=wifi|thread|wifi+thread` and
+  `wifi_id`/`thread_id` as the request named them or `default`; never an
+  SSID, a password or a dataset — and `fabricserver.commission.ble_skipped`
+  with `reason` when the daemon has a central and BLE was left out:
+  `network_only` (the request's flag), `code_without_ble` (a QR code
+  without the BLE capability) or `no_network` (no credential named and no
+  `default` entry stored; the line's `hint` says how to store one). Without
+  a central there is no line: `server_info.bluetooth_enabled` is false.
+  `/ws` needs no selection: without `wifi_credentials_id` or
+  `thread_dataset_id` it falls back to the `default` entry, the one an
+  id-less `set_wifi_credentials` or `set_thread_dataset` stores. The pages
+  (go-fabric-ui 0.7.1, #49) report the same decision with the same four
+  reason names (`no_central`, `network_only`, `code_without_ble`,
+  `no_network`): the Commission page preselects the host's default or only
+  credential, hints while none is picked on a host with a central, and the
+  commissioning's progress says whether BLE was used and why not (`ble` on
+  `commissioning_progress`, `fabricui.pair.ble_skipped` in the log).
 
 ```sh
 fabric-server --bluetooth-proxy proxy-office.local,<base64 key> --bluetooth-proxy 10.0.0.42:6053,<key>
