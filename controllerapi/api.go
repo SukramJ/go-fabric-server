@@ -79,7 +79,7 @@ type Options struct {
 	// Declaration) do not.
 	Attestation attestation.Policy
 	// BLE is the Bluetooth LE central commission_with_code finds a device
-	// on BLE through (--ble-adapter); nil commissions over DNS-SD only.
+	// on BLE through (--bluetooth-adapter or --bluetooth-proxy); nil commissions over DNS-SD only.
 	BLE ble.Central
 }
 

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-08
+
 ### Added
 
 - Erase a device node from the pages (#50): the fabrics page's Erase
