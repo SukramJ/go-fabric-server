@@ -2,8 +2,9 @@
 
 go-fabric-server's `/ws` speaks the WebSocket API of matterjs-server at
 schema 14, the contract the Matter integration of Home Assistant (core
-`2026.10.3`, `homeassistant/components/matter/`) speaks through
-`matter-python-client==1.4.0`. The integration is pointed at the server by
+`2026.11.0`, `homeassistant/components/matter/`) speaks through
+`matter-python-client==1.5.5` (its `manifest.json:13`); the integration's
+camera platform is in 2026.11.0, not in 2026.10.3. The integration is pointed at the server by
 its URL; it never selects the server on its own.
 
 ## Pointing the integration at the server
