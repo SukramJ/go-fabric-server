@@ -67,7 +67,7 @@ func (c credentialStore) List(context.Context) ([]fabricui.Credential, error) {
 	cs := c.api.Credentials()
 	out := make([]fabricui.Credential, 0, len(cs))
 	for _, e := range cs {
-		out = append(out, fabricui.Credential{Kind: fabricui.CredentialKind(e.Kind), ID: e.ID, Name: e.Name})
+		out = append(out, fabricui.Credential{Kind: fabricui.CredentialKind(e.Kind), ID: e.ID, Name: e.Name, Default: e.Default})
 	}
 	return out, nil
 }

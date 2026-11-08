@@ -40,8 +40,11 @@ var (
 
 // Credential is a stored credential's name, never its secret: Name is the
 // Wi-Fi SSID or the Thread dataset's network name ("" when it names none).
+// Default marks the entry commission_with_code falls back to when the
+// request names no id (the id "default", bleNetwork).
 type Credential struct {
 	Kind, ID, Name string
+	Default        bool
 }
 
 // Credentials lists the stored credentials, Wi-Fi first, each kind by id —
@@ -57,11 +60,11 @@ func (s *Server) Credentials() []Credential {
 	sort.SliceStable(ts, func(i, j int) bool { return ts[i].ID < ts[j].ID })
 	out := make([]Credential, 0, len(ws)+len(ts))
 	for _, e := range ws {
-		out = append(out, Credential{Kind: CredentialWiFi, ID: e.ID, Name: e.SSID})
+		out = append(out, Credential{Kind: CredentialWiFi, ID: e.ID, Name: e.SSID, Default: e.ID == defaultCredentialID})
 	}
 	for _, e := range ts {
 		name, _ := threadSummary(e)["networkName"].(string)
-		out = append(out, Credential{Kind: CredentialThread, ID: e.ID, Name: name})
+		out = append(out, Credential{Kind: CredentialThread, ID: e.ID, Name: name, Default: e.ID == defaultCredentialID})
 	}
 	return out
 }

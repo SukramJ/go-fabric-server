@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- go-fabric-ui `v0.6.1` → `v0.7.1` (contracts 0.7.0 and 0.7.1, on go-fabric
+  `v0.18.0` as before; no new module). What the server sees: the node
+  pages' erase (`Options.Erase`, `NodeEntry.Erase`, `Status.erase`), the
+  re-announce route and the status page's attestation error, boot reason
+  and session parameters, all served from `*node.Node` as is; the update
+  manager's events now from go-fabric-ui's adapter; `fabricui.NodeSwitch`,
+  the source that follows a node replaced by an erase; the commissioning's
+  Bluetooth LE statement on the Commission page (go-fabric-ui#49). The
+  pages preselect the `default` credential entry (the one an id-less
+  `set_wifi_credentials` or `set_thread_dataset` stores):
+  `controllerapi.Credential.Default`, mapped to go-fabric-ui's
+  `Credential.Default`. `protocol/schema` unchanged.
+
 ## [0.6.1] - 2026-11-07
 
 Dependency release: go-fabric `v0.18.0`, go-fabric-ui `v0.6.1`.

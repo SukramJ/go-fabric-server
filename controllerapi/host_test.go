@@ -70,6 +70,18 @@ func TestHostCredentials(t *testing.T) {
 		t.Fatalf("after a restart %+v", got)
 	}
 
+	// An id-less set stores the default entry, the one listed Default
+	// (the pages preselect it, go-fabric-ui contract 0.7.1).
+	if err := s.SetWiFiCredential("", "Fallback", "secret"); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Credentials(); len(got) != 3 || got[0] != (controllerapi.Credential{Kind: "wifi", ID: "default", Name: "Fallback", Default: true}) || got[1].Default || got[2].Default {
+		t.Fatalf("with a default entry %+v", got)
+	}
+	if err := s.RemoveCredential("wifi", "default"); err != nil {
+		t.Fatal(err)
+	}
+
 	for _, c := range []struct{ kind, id string }{{"wifi", "home"}, {"thread", "mesh"}} {
 		if err := s.RemoveCredential(c.kind, c.id); err != nil {
 			t.Fatal(err)
