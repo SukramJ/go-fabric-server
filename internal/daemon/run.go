@@ -26,6 +26,7 @@ import (
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
+	"github.com/SukramJ/go-fabric/controller/camera"
 	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
 	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/node"
@@ -272,17 +273,36 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		// chain composed above, so both halves' hooks run first.
 		var changes topology.Changes
 		changes.Install(&cfg)
+		// The controller side of cameras, always on, as matterjs-server
+		// composes its camera controller endpoint unconditionally
+		// (ControllerNode.ts:147, as go-fabric controller/serve.go:55-59
+		// cites it; brief S8 §1, owner 2026-11-08): the controller serves
+		// the Camera Controller endpoint with its requestor, and opens
+		// outgoing TCP, which camera.New requires and which falls back to
+		// UDP for a peer without TCP (controller/controller.go:177-181).
+		// The cameras' reports wrap the chain composed above, so its hooks
+		// run first.
+		cfg.Camera = &controller.CameraConfig{}
+		cfg.TCP = controller.TCPConfig{Outgoing: true}
+		var reports camera.Reports
+		reports.Install(&cfg)
 		ctrl, err = controller.New(ctx, cfg)
 		if err != nil {
 			return fmt.Errorf("controller: %w", err)
 		}
 		topo := topology.New(ctrl, topology.Config{Changes: &changes})
+		var cam *camera.Service
 		defer func() {
-			// The graph stops before the pages' hooks and the controller
+			// The camera service ends the sessions the closing sockets did
+			// not release (api.Shutdown closes every socket first), then
+			// the graph stops before the pages' hooks and the controller
 			// (Service.Close detaches it from the hooks and cancels a
 			// refresh in flight); the pages' hooks stop their
 			// node_updated timers and their topology subscription before
 			// the controller goes (gofabric.Hooks.Close).
+			if cam != nil {
+				_ = cam.Close(context.WithoutCancel(ctx))
+			}
 			topo.Close()
 			if pageHooks != nil {
 				pageHooks.Close()
@@ -290,7 +310,11 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			_ = ctrl.Close(context.WithoutCancel(ctx))
 		}()
 		defer closeCentral()
-		if err := api.Start(ctx, ctrl, topo); err != nil {
+		cam, err = camera.New(ctx, ctrl, camera.Config{Reports: &reports, Observer: api.CameraObserver(), Logger: log})
+		if err != nil {
+			return fmt.Errorf("camera: %w", err)
+		}
+		if err := api.Start(ctx, ctrl, controllerapi.Services{Topology: topo, Camera: cam}); err != nil {
 			return err
 		}
 		if pageHooks != nil {

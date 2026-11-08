@@ -11,11 +11,13 @@ wire-compatible with the API Home Assistant's Matter integration speaks (the
 python-matter-server / matterjs-server contract, schema 14), and a
 **bridge door** (`/bridge`) for hosts that are not written in Go.
 
-> **Status: S3 (v0.3.1).** The controller half (`/ws`) answers every
+> **Status: S8 (v0.7.0).** The controller half (`/ws`) answers every
 > command of matterjs-server's dispatch Home Assistant's Matter integration
-> uses, the ICD commands, the network topology and test nodes; the OTA
-> commands, the two Thread border router commands and camera/WebRTC answer
-> `InvalidCommand` naming what they wait for. The bridge half (`/bridge`,
+> uses, the ICD commands, the network topology, test nodes and the camera
+> commands (schema 14's `camera_*`, `send_webrtc_provider_command` and their
+> events, on go-fabric's `controller/camera`); the OTA commands and the two
+> Thread border router commands answer `InvalidCommand` naming what they
+> wait for. The bridge half (`/bridge`,
 > `--bridge`) lets a host declare devices by name;
 > [`examples/bridge-python/`](examples/bridge-python/) is a host in 71 lines
 > of Python, and `--web` serves the controller's and the bridge nodes' pages, where
@@ -34,7 +36,7 @@ python-matter-server / matterjs-server contract, schema 14), and a
 | ICD, topology | `get_icd_state`, `register_icd`, `resync_icd`, `unregister_icd`, `get_network_topology` | implemented |
 | OTA | `check_node_update`, `update_node`, `initiate_ota_upload` | waits for go-fabric (milestone 5 phase 25) |
 | Thread | `get_thread_border_routers`, `get_thread_diagnostics` | waits for go-fabric (milestone 6) |
-| Camera | `camera_*`, `send_webrtc_provider_command` | never |
+| Camera | `camera_get_capabilities`, `camera_start_stream`, `camera_stop_stream`, `camera_snapshot`, `camera_release_stream`, `camera_provide_answer`, `camera_provide_ice_candidates`, `send_webrtc_provider_command` | implemented (go-fabric `controller/camera`; the daemon serves a Camera Controller endpoint and opens outgoing TCP) |
 
 ## Quickstart
 

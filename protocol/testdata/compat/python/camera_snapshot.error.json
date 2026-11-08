@@ -1,0 +1,5 @@
+{
+  "message_id": "2",
+  "error_code": 103,
+  "details": "{\"message\":\"Camera has no capacity for this stream\",\"allocated\":[{\"kind\":\"video\",\"stream_id\":1,\"reference_count\":1},{\"kind\":\"snapshot\",\"stream_id\":3,\"reference_count\":0}],\"max_concurrent_encoders\":2}"
+}

@@ -421,8 +421,8 @@ func TestErrors(t *testing.T) {
 	for _, cmd := range []string{"get_thread_border_routers", "get_thread_diagnostics"} {
 		wantCode(t, e.client.Call(ctx, cmd, nil, nil), protocol.InvalidCommand, "milestone 6, ADR 0027")
 	}
-	wantCode(t, e.client.Call(ctx, "camera_snapshot", nil, nil), protocol.InvalidCommand, "not planned")
-	wantCode(t, e.client.Call(ctx, "send_webrtc_provider_command", nil, nil), protocol.InvalidCommand, "not planned")
+	wantCode(t, e.client.Call(ctx, "camera_snapshot", nil, nil), protocol.InvalidArguments, "node_id is required")
+	wantCode(t, e.client.Call(ctx, "send_webrtc_provider_command", nil, nil), protocol.InvalidArguments, "requires command_name")
 	wantCode(t, e.client.Call(ctx, "get_node", nil, nil), protocol.InvalidArguments, "node_id is required")
 	wantCode(t, e.client.Call(ctx, "get_node", map[string]any{"node_id": 4242}, nil), protocol.NodeNotExists, "4242")
 	wantCode(t, e.client.Call(ctx, "get_node", map[string]any{"node_id": "x"}, nil), protocol.InvalidArguments, "")

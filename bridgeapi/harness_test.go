@@ -97,7 +97,7 @@ func newEnv(t *testing.T, opts bridgeapi.Options) *env {
 		topo.Close()
 		_ = ctrl.Close(cctx)
 	})
-	if err := api.Start(ctx, ctrl, topo); err != nil {
+	if err := api.Start(ctx, ctrl, controllerapi.Services{Topology: topo}); err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(daemon.MuxWith(api, br, "", "test"))

@@ -19,12 +19,12 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--listen` | `unix:$XDG_RUNTIME_DIR/fabric-server.sock` | the API listener: `host:port` or `unix:/path` |
 | `--token` | — | the bearer token every HTTP request must carry; required on a TCP listener beyond loopback |
 | `--storage-path` | `$STATE_DIRECTORY`, else `$XDG_STATE_HOME/fabric-server`, else `./data` | the controller's database and the server's settings |
-| `--matter-listen` | `[::]:0` | the controller's UDP address for Matter |
+| `--matter-listen` | `[::]:0` | the controller's UDP address for Matter; the controller also opens outgoing TCP to a peer that serves it (a camera's offers need it) and serves a Camera Controller endpoint (endpoint 1) |
 | `--vendor-id` | `0xFFF1` | our fabric's vendor id, on the first run |
 | `--trust` | `production` | attestation roots: `production` (the DCL snapshot go-fabric embeds) or `development` (plus the CSA test roots) |
 | `--log-level` | `info` | `critical`, `error`, `warning`, `notice`, `info`, `debug`; `set_loglevel` changes it until the next start |
 | `--default-fabric-label` | — | pins the fabric label; `set_default_fabric_label` then has no effect |
-| `--disable-auto-subscription` | `false` | new nodes are paired without the server's subscription; `subscribe`/`unsubscribe` become available |
+| `--disable-auto-subscription` | `false` | new nodes are paired without the server's subscription; `subscribe`/`unsubscribe` become available. A camera's reports then never arrive: only a reissued session id ends a camera session (`camera_restarted`) |
 | `--controller` | `true` | run the controller half (`/ws`) |
 | `--bridge` | `false` | run the bridge half (`/bridge`) and its bridge node |
 | `--bridge-listen` | `:5540` | the bridge node's UDP address for Matter |
@@ -226,6 +226,9 @@ fabric: every node must be commissioned again.
   (the bridge node, 5540) and each registry node's port (the next free ones after it, `nodes.json`), IPv6 link-local and site addresses; DNS-SD on UDP
   5353 (multicast). The host needs IPv6 and multicast on the interface
   the devices are on; in a container, use host networking.
+- Matter over TCP: the controller dials out to a peer that serves TCP (a
+  camera: its offers and answers carry the Large Message quality) and
+  falls back to UDP for a peer without; it listens on no TCP port.
 
 ## Authentication
 

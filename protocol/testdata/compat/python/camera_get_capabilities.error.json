@@ -1,0 +1,5 @@
+{
+  "message_id": "4",
+  "error_code": 105,
+  "details": "{\"message\":\"Endpoint does not support camera streaming\",\"missing_clusters\":[1361,1363]}"
+}

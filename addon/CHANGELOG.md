@@ -3,6 +3,12 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.7.0
+
+- Cameras: Home Assistant's Matter integration can stream from and take
+  snapshots of Matter cameras through this server (the `camera_*` commands
+  and WebRTC signalling of schema 14, on go-fabric's controller side).
+
 ## 0.6.2
 
 - Erase in the web UI: a device node leaves its controllers, erases its

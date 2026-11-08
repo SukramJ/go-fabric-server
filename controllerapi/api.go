@@ -33,6 +33,7 @@ import (
 
 	"github.com/SukramJ/go-fabric/controller/attestation"
 	"github.com/SukramJ/go-fabric/controller/ble"
+	"github.com/SukramJ/go-fabric/controller/camera"
 	"github.com/SukramJ/go-fabric/controller/client"
 	"github.com/SukramJ/go-fabric/controller/topology"
 
@@ -128,11 +129,36 @@ type Server struct {
 	labelPushes atomic.Int64
 	// bg are the background pushes Shutdown waits for.
 	bg sync.WaitGroup
+
+	// camConns are the connections opted in for the camera's events, by
+	// id (camera_events.go); camMu guards them, never under mu.
+	camMu    sync.Mutex
+	camConns map[string]*wsConn
 }
 
 type backendRef struct {
 	b    Backend
 	topo *topology.Service
+	cam  *camera.Service
+}
+
+// Services are the controller's services the server answers from, each
+// built over the same controller as the backend; the next one (OTA)
+// joins the struct.
+type Services struct {
+	// Topology is the network graph of the controller's nodes (go-fabric
+	// controller/topology, built with topology.New, its Changes installed
+	// on the controller's configuration): get_network_topology answers
+	// from it, and network_topology_updated follows it. Required.
+	Topology *topology.Service
+	// Camera is the controller side of cameras (go-fabric
+	// controller/camera, built with camera.New over a controller with
+	// controller.Config.Camera and TCP.Outgoing, its Reports installed and
+	// its Observer the server's [Server.CameraObserver]): the camera_*
+	// commands and send_webrtc_provider_command map onto it (brief S8). A
+	// backend without one does not offer those commands: they are left out
+	// of capabilities and answered InvalidCommand naming the service.
+	Camera *camera.Service
 }
 
 // New returns a server; it loads the settings under opts.StoragePath.
@@ -163,7 +189,7 @@ func New(opts Options) (*Server, error) {
 	}
 	return &Server{
 		opts: opts, log: log, meter: protocol.NewMeter(opts.Metrics), cfg: cfg,
-		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{},
+		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{}, camConns: map[string]*wsConn{},
 		dirty: map[string]bool{}, wake: make(chan struct{}, 1), stop: make(chan struct{}), loopDone: make(chan struct{}),
 	}, nil
 }
@@ -195,26 +221,25 @@ func (s *Server) Hooks(id string) client.Hooks {
 	return h
 }
 
-// Start binds the server to its controller and to topo, the network graph
-// of that controller's nodes (go-fabric controller/topology, built with
-// topology.New over the same controller, its Changes installed on the
-// controller's configuration): the node cache is built from the
-// registry's nodes (no events for them), and changes are followed from
-// then on. get_network_topology answers from topo; the server adds the
-// imported test nodes to it as a source and sends its changes as
-// network_topology_updated until Shutdown. topo stays the caller's to
-// close, after Shutdown.
-func (s *Server) Start(ctx context.Context, b Backend, topo *topology.Service) error {
+// Start binds the server to its controller and to its services (see
+// [Services]): the node cache is built from the registry's nodes (no
+// events for them), and changes are followed from then on. The server
+// adds the imported test nodes to the topology as a source and sends its
+// changes as network_topology_updated until Shutdown. The services stay
+// the caller's to close, after Shutdown: the camera first (its Close ends
+// the sessions the closing sockets did not release), then the topology.
+func (s *Server) Start(ctx context.Context, b Backend, svc Services) error {
 	if b == nil {
 		return errors.New("controllerapi: Start needs a backend")
 	}
+	topo := svc.Topology
 	if topo == nil {
 		return errors.New("controllerapi: Start needs a topology service")
 	}
 	if !s.started.CompareAndSwap(false, true) {
 		return errors.New("controllerapi: already started")
 	}
-	s.backend.Store(&backendRef{b: b, topo: topo})
+	s.backend.Store(&backendRef{b: b, topo: topo, cam: svc.Camera})
 	s.mu.Lock()
 	for _, n := range b.Registry().Commissioned() {
 		if st := s.snapshot(n, nil); st != nil {
@@ -241,6 +266,15 @@ func (s *Server) b() Backend {
 func (s *Server) topo() *topology.Service {
 	if r := s.backend.Load(); r != nil {
 		return r.topo
+	}
+	return nil
+}
+
+// cameraService is the camera service Start bound; nil before, and for
+// a backend without one.
+func (s *Server) cameraService() *camera.Service {
+	if r := s.backend.Load(); r != nil {
+		return r.cam
 	}
 	return nil
 }
@@ -284,10 +318,16 @@ func (s *Server) Shutdown(ctx context.Context) {
 	for _, stop := range stops {
 		stop()
 	}
+	// The connections close at once: each ends its camera sessions
+	// within ctx (cameraReleased).
+	var closing sync.WaitGroup
 	for _, c := range conns {
-		_ = c.send.Flush(ctx)
-		c.close(websocket.StatusGoingAway, "server shutting down")
+		closing.Go(func() {
+			_ = c.send.Flush(ctx)
+			c.close(ctx, websocket.StatusGoingAway, "server shutting down")
+		})
 	}
+	closing.Wait()
 	s.labelMu.Lock()
 	if s.labelCancel != nil {
 		s.labelCancel()
@@ -315,7 +355,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ws.SetReadLimit(16 << 20)
 	c := s.newConn(ws)
-	defer c.close(websocket.StatusNormalClosure, "")
+	// The request's context ends with the connection; the release of its
+	// camera sessions keeps its values, not its end.
+	defer c.close(context.WithoutCancel(r.Context()), websocket.StatusNormalClosure, "")
 	c.run(r.Context())
 }
 

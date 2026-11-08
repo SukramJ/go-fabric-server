@@ -36,6 +36,9 @@ type wsConn struct {
 	// it gets network_topology_updated from then on
 	// (WebSocketControllerHandler.ts:2220-2229).
 	topology atomic.Bool
+
+	// cam is the connection's camera events and sessions (camera_events.go).
+	cam connCamera
 }
 
 // run sends server_info, then reads requests until the connection ends.
@@ -67,11 +70,20 @@ func (c *wsConn) run(ctx context.Context) {
 		if ctx.Err() != nil {
 			break
 		}
+		// The next frame is read once this one's preamble ran (its
+		// decoding, its camera opt-ins, a camera start's or a keyed
+		// candidates' registration; call.ready): what a frame registers is
+		// in arrival order, while the calls themselves run concurrently.
+		ready := make(chan struct{})
 		c.wg.Add(1)
 		go func() {
 			defer func() { <-c.sem; c.wg.Done() }()
-			c.s.handle(ctx, c, data)
+			c.s.handle(ctx, c, data, ready)
 		}()
+		select {
+		case <-ready:
+		case <-ctx.Done():
+		}
 	}
 	cancel()
 	c.wg.Wait()
@@ -90,7 +102,7 @@ func (c *wsConn) reply(v any) {
 // close ends the connection: its subscriptions close without
 // subscription_ended (docs/websockets_api.md:2232), the send path stops,
 // the socket closes.
-func (c *wsConn) close(code websocket.StatusCode, reason string) {
+func (c *wsConn) close(ctx context.Context, code websocket.StatusCode, reason string) {
 	if !c.closed.CompareAndSwap(false, true) {
 		return
 	}
@@ -107,4 +119,5 @@ func (c *wsConn) close(code websocket.StatusCode, reason string) {
 	}
 	c.send.Close()
 	_ = c.ws.Close(code, reason)
+	c.s.cameraReleased(ctx, c)
 }
