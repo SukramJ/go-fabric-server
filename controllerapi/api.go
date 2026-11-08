@@ -129,6 +129,11 @@ type Server struct {
 	labelPushes atomic.Int64
 	// bg are the background pushes Shutdown waits for.
 	bg sync.WaitGroup
+
+	// camConns are the connections opted in for the camera's events, by
+	// id (camera_events.go); camMu guards them, never under mu.
+	camMu    sync.Mutex
+	camConns map[string]*wsConn
 }
 
 type backendRef struct {
@@ -184,7 +189,7 @@ func New(opts Options) (*Server, error) {
 	}
 	return &Server{
 		opts: opts, log: log, meter: protocol.NewMeter(opts.Metrics), cfg: cfg,
-		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{},
+		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{}, camConns: map[string]*wsConn{},
 		dirty: map[string]bool{}, wake: make(chan struct{}, 1), stop: make(chan struct{}), loopDone: make(chan struct{}),
 	}, nil
 }
@@ -315,7 +320,7 @@ func (s *Server) Shutdown(ctx context.Context) {
 	}
 	for _, c := range conns {
 		_ = c.send.Flush(ctx)
-		c.close(websocket.StatusGoingAway, "server shutting down")
+		c.close(websocket.StatusGoingAway, "server shutting down") //nolint:contextcheck // close ends the camera sessions on its own timeout (cameraReleased)
 	}
 	s.labelMu.Lock()
 	if s.labelCancel != nil {
@@ -344,7 +349,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ws.SetReadLimit(16 << 20)
 	c := s.newConn(ws)
-	defer c.close(websocket.StatusNormalClosure, "")
+	defer c.close(websocket.StatusNormalClosure, "") //nolint:contextcheck // close ends the camera sessions on its own timeout (cameraReleased)
 	c.run(r.Context())
 }
 

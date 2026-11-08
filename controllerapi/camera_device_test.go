@@ -72,6 +72,9 @@ type cameraPort struct {
 	// gate, when set, holds ProvideOffer until it is closed; entered is
 	// closed once an offer waits on it.
 	gate, entered chan struct{}
+	// exhausted refuses that many video allocations with
+	// RESOURCE_EXHAUSTED (0x89, Matter Core §8.10.1), as a full camera does.
+	exhausted int
 }
 
 func newCameraPort() *cameraPort {
@@ -131,6 +134,13 @@ func (p *cameraPort) EndSession(_ context.Context, id uint16, reason uint8) erro
 }
 
 func (p *cameraPort) VideoStreamAllocate(_ context.Context, args csdef.VideoStreamStruct) (uint16, error) {
+	p.mu.Lock()
+	if p.exhausted > 0 {
+		p.exhausted--
+		p.mu.Unlock()
+		return 0, contract.StatusError{Status: 0x89, Message: "no encoder free"}
+	}
+	p.mu.Unlock()
 	if args.VideoStreamId != 0 {
 		return args.VideoStreamId, nil
 	}

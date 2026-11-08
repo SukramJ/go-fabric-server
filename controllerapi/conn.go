@@ -36,6 +36,9 @@ type wsConn struct {
 	// it gets network_topology_updated from then on
 	// (WebSocketControllerHandler.ts:2220-2229).
 	topology atomic.Bool
+
+	// cam is the connection's camera events and sessions (camera_events.go).
+	cam connCamera
 }
 
 // run sends server_info, then reads requests until the connection ends.
@@ -107,4 +110,5 @@ func (c *wsConn) close(code websocket.StatusCode, reason string) {
 	}
 	c.send.Close()
 	_ = c.ws.Close(code, reason)
+	c.s.cameraReleased(c)
 }

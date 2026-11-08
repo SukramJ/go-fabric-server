@@ -8,8 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
+	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
 	"github.com/SukramJ/go-fabric/controller/client"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
@@ -383,6 +385,23 @@ func cmdDeviceCommand(ctx context.Context, s *Server, c *call) (any, *protocol.E
 	if err != nil {
 		return nil, invalidArgs(c.req.Command, "%v", err)
 	}
+	// A WebRtcTransportProvider EndSession ends the camera service's
+	// records of the session with it, the connection the requester
+	// (Provider.EndSession, as WebSocketControllerHandler.ts:1794-1807 hooks
+	// it); without a readable session id it is the plain invoke
+	// (:1799-1802).
+	if svc := s.cameraService(); svc != nil && *a.ClusterID == wpdef.ClusterID && cmd.ID == wpdef.CmdEndSession {
+		if req, ok := endSessionOf(a.Payload); ok {
+			p, err := svc.Provider(n, *a.EndpointID)
+			if err == nil {
+				err = p.EndSession(ctx, req, c.conn.id)
+			}
+			if err != nil {
+				return nil, cameraError(c.req.Command, err)
+			}
+			return nil, nil
+		}
+	}
 	opts := client.InvokeOptions{Timed: timed > 0 || cmd.Timed, TimedTimeout: timed, ExpectedProcessingTime: processing}
 	res, err := n.Invoke(ctx, client.CommandAt(*a.EndpointID, *a.ClusterID, cmd.ID), payload, opts)
 	if err != nil {
@@ -547,4 +566,34 @@ func cmdSetAutoSubscription(ctx context.Context, s *Server, c *call) (any, *prot
 		s.mu.Unlock()
 	}
 	return nil, nil
+}
+
+// endSessionOf reads an EndSession payload's session id and reason, keys
+// matched as the invoke matched them (case and separators ignored).
+func endSessionOf(raw json.RawMessage) (wpdef.EndSessionRequest, bool) {
+	t := bytes.TrimSpace(raw)
+	if len(t) == 0 || t[0] != '{' {
+		return wpdef.EndSessionRequest{}, false
+	}
+	keys, fields, err := objectFields(t)
+	if err != nil {
+		return wpdef.EndSessionRequest{}, false
+	}
+	var (
+		req           wpdef.EndSessionRequest
+		haveID, haveR bool
+	)
+	for _, k := range keys {
+		switch strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(k, "_", ""), "-", "")) {
+		case "webrtcsessionid":
+			if v, ok := uintOfJSON(fields[k], 0xFFFF); ok {
+				req.WebRtcSessionId, haveID = uint16(v), true //nolint:gosec // G115: checked above
+			}
+		case "reason":
+			if v, ok := uintOfJSON(fields[k], 0xFF); ok {
+				req.Reason, haveR = uint8(v), true //nolint:gosec // G115: checked above
+			}
+		}
+	}
+	return req, haveID && haveR
 }

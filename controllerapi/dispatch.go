@@ -82,20 +82,20 @@ func init() {
 		"camera_release_stream":         cmdCameraReleaseStream,
 		"camera_stop_stream":            cmdCameraStopStream,
 		"camera_provide_answer":         cmdCameraProvideAnswer,
+		"camera_start_stream":           cmdCameraStartStream,
+		"camera_provide_ice_candidates": cmdCameraProvideICECandidates,
+		"send_webrtc_provider_command":  cmdSendWebRTCProviderCommand,
 	}
 }
 
 // planned names why a command of matterjs-server's dispatch is not
-// answered (concept v8 C.2): the go-fabric work it waits for, or never.
+// answered (concept v8 C.2): the go-fabric work it waits for.
 var planned = map[string]string{
-	"check_node_update":             otaRoute,
-	"update_node":                   otaRoute,
-	"initiate_ota_upload":           otaRoute,
-	"get_thread_border_routers":     threadRoute,
-	"get_thread_diagnostics":        threadRoute,
-	"camera_start_stream":           "never",
-	"camera_provide_ice_candidates": "never",
-	"send_webrtc_provider_command":  "never",
+	"check_node_update":         otaRoute,
+	"update_node":               otaRoute,
+	"initiate_ota_upload":       otaRoute,
+	"get_thread_border_routers": threadRoute,
+	"get_thread_diagnostics":    threadRoute,
 }
 
 // The go-fabric routes the stubs wait for (brief S3 §3).
@@ -145,6 +145,9 @@ func (s *Server) handle(ctx context.Context, conn *wsConn, frame []byte) {
 		s.startListening(conn, req)
 		return
 	}
+	// The camera's opt-ins come before the command runs: the camera can
+	// answer, end a session or evict a stream while it is in flight.
+	s.cameraOptIn(conn, req.Command)
 	c := &call{conn: conn, req: req}
 	result, err := s.dispatch(ctx, c)
 	if err != nil {
@@ -169,9 +172,6 @@ func (s *Server) dispatch(ctx context.Context, c *call) (result any, err *protoc
 	h, ok := handlers[c.req.Command]
 	if !ok {
 		if why, ok := planned[c.req.Command]; ok {
-			if why == "never" {
-				return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; not planned (camera and WebRTC are out of scope)", s.opts.Version)
-			}
 			return nil, protocol.Errorf(protocol.InvalidCommand, "not implemented in go-fabric-server %s; needs %s", s.opts.Version, why)
 		}
 		return nil, protocol.Errorf(protocol.InvalidCommand, "Unknown command: %s", c.req.Command)
