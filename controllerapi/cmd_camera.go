@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
 	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
@@ -17,7 +16,6 @@ import (
 	"github.com/SukramJ/go-fabric/controller/client"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
 // The camera commands of schema 14 and send_webrtc_provider_command, each
@@ -167,7 +165,7 @@ func cmdCameraSnapshot(ctx context.Context, s *Server, c *call) (any, *protocol.
 		var codec csdef.ImageCodecEnum
 		ok := false
 		if name != nil {
-			codec, ok = imageCodecByName(*name)
+			codec, ok = camera.ImageCodecByName(*name)
 		}
 		if !ok {
 			return nil, protocol.Errorf(protocol.InvalidArguments, `camera_snapshot codec must be an image codec name such as "JPEG" or "HEIC", not %s`, raw)
@@ -333,7 +331,7 @@ func (a *cameraArgs) startRequest() (camera.StartRequest, *protocol.Error) {
 	usage, _ := a.str("stream_usage", "stream_usage")
 	u, ok := csdef.StreamUsageEnum(0), false
 	if usage != nil {
-		u, ok = streamUsageByName(*usage)
+		u, ok = camera.StreamUsageByName(*usage)
 	}
 	if !ok || u == csdef.StreamUsageInternal {
 		shown := "undefined"
@@ -412,17 +410,18 @@ func (a *cameraArgs) videoBounds() (*camera.VideoBounds, *protocol.Error) {
 	if b.MaxResolution, perr = h.resolution("max_resolution", "video.max_resolution"); perr != nil {
 		return nil, perr
 	}
-	var v [4]uint64
-	for i, f := range []struct {
-		key string
-		max uint64
-	}{{"min_frame_rate", 0xFFFF}, {"max_frame_rate", 0xFFFF}, {"min_bit_rate", 0xFFFFFFFF}, {"max_bit_rate", 0xFFFFFFFF}} {
-		if v[i], _, perr = h.number(f.key, "video."+f.key, f.max); perr != nil {
-			return nil, perr
-		}
+	if b.MinFrameRate, perr = stated[uint16](h, "min_frame_rate", "video.min_frame_rate"); perr != nil {
+		return nil, perr
 	}
-	b.MinFrameRate, b.MaxFrameRate = uint16(v[0]), uint16(v[1]) //nolint:gosec // G115: checked above
-	b.MinBitRate, b.MaxBitRate = uint32(v[2]), uint32(v[3])     //nolint:gosec // G115: checked above
+	if b.MaxFrameRate, perr = stated[uint16](h, "max_frame_rate", "video.max_frame_rate"); perr != nil {
+		return nil, perr
+	}
+	if b.MinBitRate, perr = stated[uint32](h, "min_bit_rate", "video.min_bit_rate"); perr != nil {
+		return nil, perr
+	}
+	if b.MaxBitRate, perr = stated[uint32](h, "max_bit_rate", "video.max_bit_rate"); perr != nil {
+		return nil, perr
+	}
 	if b.Overlays.Watermark, perr = h.boolean("watermark_enabled", "video.watermark_enabled"); perr != nil {
 		return nil, perr
 	}
@@ -442,20 +441,29 @@ func (a *cameraArgs) audioBounds() (*camera.AudioBounds, *protocol.Error) {
 	if b.Codecs, perr = h.strings("codecs", "audio.codecs"); perr != nil {
 		return nil, perr
 	}
-	channels, _, perr := h.number("channel_count", "audio.channel_count", 0xFF)
-	if perr != nil {
+	if b.ChannelCount, perr = stated[uint8](h, "channel_count", "audio.channel_count"); perr != nil {
 		return nil, perr
 	}
-	rate, _, perr := h.number("sample_rate", "audio.sample_rate", 0xFFFFFFFF)
-	if perr != nil {
+	if b.SampleRate, perr = stated[uint32](h, "sample_rate", "audio.sample_rate"); perr != nil {
 		return nil, perr
 	}
-	bitRate, _, perr := h.number("bit_rate", "audio.bit_rate", 0xFFFFFFFF)
-	if perr != nil {
+	if b.BitRate, perr = stated[uint32](h, "bit_rate", "audio.bit_rate"); perr != nil {
 		return nil, perr
 	}
-	b.ChannelCount, b.SampleRate, b.BitRate = uint8(channels), uint32(rate), uint32(bitRate) //nolint:gosec // G115: checked above
 	return b, nil
+}
+
+// stated reads a hint number fitting T, nil when the hint does not state
+// it: go-fabric holds a stated value to its field's range, so a stated 0
+// below a floor of 1 is refused there (controller/camera VideoBounds,
+// AudioBounds).
+func stated[T uint8 | uint16 | uint32](h *cameraArgs, key, field string) (*T, *protocol.Error) {
+	v, ok, perr := h.number(key, field, uint64(^T(0)))
+	if perr != nil || !ok {
+		return nil, perr
+	}
+	t := T(v)
+	return &t, nil
 }
 
 // iceServers reads ice_servers: entries {urls (one or a list), username?,
@@ -501,71 +509,17 @@ func (a *cameraArgs) iceServers() ([]wpdef.ICEServerStruct, *protocol.Error) {
 	return out, nil
 }
 
-// iceCandidates reads ice_candidates: at least one {candidate, sdpMid,
-// sdpMLineIndex}, the two nullable ones stated on every entry, keys
-// matched with case and separators ignored (docs/websockets_api.md:1660-1688).
+// iceCandidates reads ice_candidates through go-fabric's converter, the
+// one Provider.Send runs (camera.ParseICECandidates; matterjs-server
+// cameraCommands.ts:342-366 at 0bd06f2): at least one {candidate, sdpMid,
+// sdpMLineIndex}, keys matched with case and word separators ignored, a
+// refusal in its wording (docs/websockets_api.md:1660-1688).
 func (a *cameraArgs) iceCandidates() ([]wpdef.ICECandidateStruct, *protocol.Error) {
-	var entries []json.RawMessage
-	if t := bytes.TrimSpace(a.raw("ice_candidates")); len(t) == 0 || t[0] != '[' || json.Unmarshal(t, &entries) != nil || len(entries) == 0 {
-		return nil, protocol.Errorf(protocol.InvalidArguments, "%s requires ice_candidates to be an array of at least one candidate", a.command)
+	list, err := camera.ParseICECandidates(a.raw("ice_candidates"))
+	if err != nil {
+		return nil, cameraError(a.command, err)
 	}
-	out := make([]wpdef.ICECandidateStruct, 0, len(entries))
-	for i, raw := range entries {
-		field := fmt.Sprintf("ice_candidates[%d]", i)
-		t := bytes.TrimSpace(raw)
-		if len(t) == 0 || t[0] != '{' {
-			return nil, protocol.Errorf(protocol.InvalidArguments, "%s must be an object", field)
-		}
-		keys, fields, err := objectFields(t)
-		if err != nil {
-			return nil, protocol.Errorf(protocol.InvalidArguments, "%s: %v", field, err)
-		}
-		byName := map[string]json.RawMessage{}
-		for _, k := range keys {
-			canonical := strings.ToLower(strings.Map(func(r rune) rune {
-				if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
-					return r
-				}
-				return -1
-			}, k))
-			if canonical != "candidate" && canonical != "sdpmid" && canonical != "sdpmlineindex" {
-				return nil, protocol.Errorf(protocol.InvalidArguments, "unknown %s key: %s. Accepted: candidate, sdpMid, sdpMLineIndex", field, k)
-			}
-			if _, dup := byName[canonical]; dup {
-				return nil, protocol.Errorf(protocol.InvalidArguments, "%s names %s twice", field, canonical)
-			}
-			byName[canonical] = fields[k]
-		}
-		e := &cameraArgs{command: a.command, fields: byName}
-		var c wpdef.ICECandidateStruct
-		cand, perr := e.str("candidate", field+".candidate")
-		if perr != nil || cand == nil {
-			return nil, protocol.Errorf(protocol.InvalidArguments, "%s.candidate must be a string", field)
-		}
-		c.Candidate = *cand
-		switch mid := bytes.TrimSpace(e.raw("sdpmid")); {
-		case string(mid) == "null":
-			c.SdpMid.Null = true
-		default:
-			m, perr := e.str("sdpmid", field+".sdpMid")
-			if perr != nil || m == nil {
-				return nil, protocol.Errorf(protocol.InvalidArguments, "%s.sdpMid must be a string or null", field)
-			}
-			c.SdpMid.Value = *m
-		}
-		switch idx := bytes.TrimSpace(e.raw("sdpmlineindex")); {
-		case string(idx) == "null":
-			c.SdpmLineIndex.Null = true
-		default:
-			v, ok := uintOfJSON(idx, 0xFFFF)
-			if !ok {
-				return nil, protocol.Errorf(protocol.InvalidArguments, "%s.sdpMLineIndex must be an integer between 0 and 65535 or null", field)
-			}
-			c.SdpmLineIndex.Value = uint16(v) //nolint:gosec // G115: checked above
-		}
-		out = append(out, c)
-	}
-	return out, nil
+	return list, nil
 }
 
 // cmdCameraProvideICECandidates sends ProvideIceCandidates: by id on the
@@ -628,54 +582,22 @@ func cmdSendWebRTCProviderCommand(ctx context.Context, s *Server, c *call) (any,
 }
 
 // providerResponseJSON renders the generated ProvideOfferResponse or
-// SolicitOfferResponse as device_command renders a response: by the
-// schema's property names, an absent optional field left out, a null
-// one null (cmd_interact.go's responseJSON path). nil (ProvideAnswer,
+// SolicitOfferResponse as device_command renders a response, through
+// go-fabric's client.ValueOf: by the schema's property names, an absent
+// optional field left out, a null one null. nil (ProvideAnswer,
 // ProvideIceCandidates) is null.
 func providerResponseJSON(v any) any {
-	var (
-		name   string
-		fields = map[string]any{}
-	)
-	nullable := func(field string, null bool, value uint16) {
-		if null {
-			fields[field] = nil
-		} else {
-			fields[field] = value
-		}
-	}
-	switch r := v.(type) {
-	case wpdef.ProvideOfferResponse:
-		name = "ProvideOfferResponse"
-		fields["WebRtcSessionId"] = r.WebRtcSessionId
-		if p := r.VideoStreamId; p != nil {
-			nullable("VideoStreamId", p.Null, p.Value)
-		}
-		if p := r.AudioStreamId; p != nil {
-			nullable("AudioStreamId", p.Null, p.Value)
-		}
-	case wpdef.SolicitOfferResponse:
-		name = "SolicitOfferResponse"
-		fields["WebRtcSessionId"] = r.WebRtcSessionId
-		fields["DeferredOffer"] = r.DeferredOffer
-		if p := r.VideoStreamId; p != nil {
-			nullable("VideoStreamId", p.Null, p.Value)
-		}
-		if p := r.AudioStreamId; p != nil {
-			nullable("AudioStreamId", p.Null, p.Value)
-		}
-	default:
+	r, ok := v.(interface {
+		client.Encodable
+		ResponseCommand() (clusterID, commandID uint32)
+	})
+	if !ok {
 		return nil
 	}
-	resp := schema.ClusterByID(wpdef.ClusterID).ResponseByName(name)
-	if resp == nil {
+	value, err := client.ValueOf(r)
+	if err != nil {
 		return nil
 	}
-	pairs := make([]kv, 0, len(fields))
-	for _, f := range resp.Fields {
-		if value, ok := fields[f.Name]; ok {
-			pairs = append(pairs, kv{f.Property, value})
-		}
-	}
-	return json.RawMessage(orderedJSON(pairs...))
+	cluster, command := r.ResponseCommand()
+	return responseJSON(cluster, command, value)
 }

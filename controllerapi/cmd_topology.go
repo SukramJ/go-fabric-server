@@ -29,10 +29,11 @@ import (
 // 0bd06f22: debounced rebuilds, a periodic one, a refresh of the
 // diagnostics at a bounded concurrency, a hash-gated change event) — in
 // the wire shape of matterjs-server's NetworkTopology. The imported test
-// nodes join the graph as a topology.Source (testnodes.go). What
-// matterjs-server adds from a Thread border router registry and from
-// route tables is left out in go-fabric too (its controller/topology
-// doc, "Left out").
+// nodes join the graph as a topology.Source (testnodes.go); a neighbour
+// the controller's border-router registry knows is a border_router node
+// (go-fabric Controller.BorderRouters, on by default). What
+// matterjs-server adds from route tables is left out in go-fabric too
+// (its controller/topology doc, "Left out").
 
 // The test nodes' network attributes, by name from protocol/schema: the
 // dump's JSON is decoded into the typed cluster states of a
@@ -54,9 +55,11 @@ var (
 	attrWifiRssi      = wifiDiag.AttributeByName("Rssi")
 )
 
-// topologyNode is NetworkTopologyNode (python client models.py:318-347),
-// with our ip_addresses extension (the node's known addresses, brief S3
-// §3; an old client ignores the key).
+// topologyNode is NetworkTopologyNode (python client models.py:318-347;
+// ws-client model.ts:273-315 at 0bd06f2, the border router's host_name,
+// vendor_name, model_name and last_seen in epoch ms), with our
+// ip_addresses extension (the node's known addresses, brief S3 §3; an old
+// client ignores the key).
 type topologyNode struct {
 	ID          string   `json:"id"`
 	Kind        string   `json:"kind"`
@@ -71,6 +74,10 @@ type topologyNode struct {
 	NetworkName string   `json:"network_name,omitempty"`
 	SSID        string   `json:"ssid,omitempty"`
 	BSSID       string   `json:"bssid,omitempty"`
+	HostName    string   `json:"host_name,omitempty"`
+	VendorName  string   `json:"vendor_name,omitempty"`
+	ModelName   string   `json:"model_name,omitempty"`
+	LastSeen    *int64   `json:"last_seen,omitempty"`
 	IPAddresses []string `json:"ip_addresses,omitempty"`
 }
 
@@ -131,7 +138,8 @@ func cmdGetNetworkTopology(ctx context.Context, s *Server, c *call) (any, *proto
 // when set, the Thread addresses as 16 hex digits, lqi on Thread links
 // only (go-fabric's Direction.LQI is 0 on Wi-Fi, which has none), the
 // addresses without their zone, string-sorted, as get_node_ip_addresses
-// answers them (cmd_node.go addresses).
+// answers them (cmd_node.go addresses); a border router's last_seen in
+// epoch ms (NetworkTopologyService.ts:454-469 at 0bd06f2).
 func wireTopology(t topology.Topology) networkTopology {
 	out := networkTopology{
 		CollectedAt: t.CollectedAt.UnixMilli(),
@@ -143,6 +151,10 @@ func wireTopology(t topology.Topology) networkTopology {
 		w := topologyNode{
 			ID: n.ID, Kind: string(n.Kind), NetworkType: string(n.NetworkType), Role: string(n.Role),
 			NetworkName: n.NetworkName, SSID: n.SSID, BSSID: n.BSSID, IPAddresses: ipStrings(n.Addresses),
+			HostName: n.HostName, VendorName: n.VendorName, ModelName: n.ModelName,
+		}
+		if !n.LastSeen.IsZero() {
+			w.LastSeen = new(n.LastSeen.UnixMilli())
 		}
 		if n.Kind == topology.KindMatter {
 			id, avail := n.NodeID, n.Available

@@ -30,8 +30,8 @@ func TestSurfacePolicies(t *testing.T) {
 		t.Fatalf("%+v", p)
 	}
 	cfg, err := bridgeConfig(c, primaryNode(c), nil)
-	if err != nil || cfg.Surface.Digest() != p.Digest() {
-		t.Fatalf("bridgeConfig: %v", err)
+	if err != nil || cfg.Surface.Digest() != p.Digest() || cfg.Network.MDNS.Interfaces != nil {
+		t.Fatalf("bridgeConfig: %v %+v", err, cfg.Network)
 	}
 	if p, err := surfacePolicies(Config{}); err != nil || p.Extensions != nil || p.Level != "" || p.Profiles != nil {
 		t.Fatalf("zero flags: %+v %v", p, err)
@@ -50,5 +50,24 @@ func TestSurfacePolicies(t *testing.T) {
 	}
 	if _, err := surfacePolicies(Config{BridgeProfile: "nope"}); !errors.Is(err, surface.ErrUnknownProfile) || !strings.Contains(err.Error(), "apple-home") {
 		t.Errorf("unknown profile: %v", err)
+	}
+}
+
+// TestBridgeMDNSInterfaces: --bridge-mdns-interfaces reaches every device
+// node's node.MDNS.Interfaces — the configured node's and a registry
+// node's — trimmed, an empty name kept for Config.Validate to refuse.
+func TestBridgeMDNSInterfaces(t *testing.T) {
+	c, err := ParseFlags([]string{"--bridge-mdns-interfaces", " enp1s0, wlan0"}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []nodeSpec{primaryNode(c), {Listen: ":5541", Passcode: 20202022, Discriminator: 3841, VendorID: 0xFFF1, ProductID: 0x8001, Store: "nodes/n1"}} {
+		cfg, err := bridgeConfig(c, s, nil)
+		if err != nil || !slices.Equal(cfg.Network.MDNS.Interfaces, []string{"enp1s0", "wlan0"}) || cfg.Network.Listen != s.Listen {
+			t.Fatalf("%+v: %+v %v", s, cfg.Network, err)
+		}
+	}
+	if got := mdnsInterfaces("eth0,,eth1"); !slices.Equal(got, []string{"eth0", "", "eth1"}) {
+		t.Fatalf("an empty name dropped: %q", got)
 	}
 }

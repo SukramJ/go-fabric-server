@@ -104,14 +104,19 @@ var planned = map[string]string{
 	"check_node_update":         otaRoute,
 	"update_node":               otaRoute,
 	"initiate_ota_upload":       otaRoute,
-	"get_thread_border_routers": threadRoute,
+	"get_thread_border_routers": borderRouterRoute,
 	"get_thread_diagnostics":    threadRoute,
 }
 
-// The go-fabric routes the stubs wait for (brief S3 §3).
+// The go-fabric routes the stubs wait for (brief S3 §3; brief S9 §2 for
+// the border routers: go-fabric's registry, thread/brdiscovery.Entry at
+// v0.19.1, carries no addresses, sources, ports or the rest of matter.js's
+// BorderRouterEntry, packages/thread-br-client/src/discovery/BorderRouterEntry.ts:15-54
+// at db021da0, which get_thread_border_routers answers).
 const (
-	otaRoute    = "the OTA provider on go-fabric's controller (milestone 5 phase 25: a software update route on client.Node)"
-	threadRoute = "a Thread border router route in go-fabric (milestone 6, ADR 0027: the OTBR client and ThreadNetworkDiagnostics)"
+	otaRoute          = "the OTA provider on go-fabric's controller (milestone 5 phase 25: a software update route on client.Node)"
+	threadRoute       = "a Thread border router route in go-fabric (milestone 6, ADR 0027: the OTBR client and ThreadNetworkDiagnostics)"
+	borderRouterRoute = "go-fabric's border-router registry carrying the whole entry (milestone 6, ADR 0027: addresses, sources, the meshcop and TREL ports, the TXT tv, sv, rv, dd/ai, sb, at, pt and dn)"
 )
 
 // gap is the answer of a command whose route the backend does not offer:

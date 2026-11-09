@@ -7,14 +7,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"math"
-	"strconv"
 	"strings"
 
 	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
 	"github.com/SukramJ/go-fabric/controller/camera"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
 // The camera files of this package cite matterjs-server at 0bd06f2:
@@ -24,95 +22,6 @@ import (
 // packages/ws-controller/src/types/WebSocketMessageTypes.ts; model.ts
 // packages/ws-client/src/models/model.ts; wireNames.ts, cameraCommands.ts
 // and wireArgumentChecks.ts packages/ws-controller/src/camera/.
-
-// The wire names of the camera codecs: matterjs-server's SDP spellings,
-// not the enum member names the schema carries (Hevc, Vvc, Av1, AacLc) —
-// a wire-contract table (wireNames.ts:16-31 of matterjs-server at
-// 0bd06f2; docs/websockets_api.md:1843-1849), the ids and values staying
-// the defs'. A value without a name is its decimal digits both ways, and
-// a name matches without regard to case (wireNames.ts:44-73). go-fabric
-// holds the same table unexported (brief S8 §10(a)).
-var (
-	videoCodecNames = map[csdef.VideoCodecEnum]string{
-		csdef.VideoCodecH264: "H264", csdef.VideoCodecHevc: "H265", csdef.VideoCodecVvc: "H266", csdef.VideoCodecAv1: "AV1",
-	}
-	audioCodecNames = map[csdef.AudioCodecEnum]string{csdef.AudioCodecOpus: "OPUS", csdef.AudioCodecAacLc: "AAC"}
-	imageCodecNames = map[csdef.ImageCodecEnum]string{csdef.ImageCodecJpeg: "JPEG", csdef.ImageCodecHeic: "HEIC"}
-)
-
-func wireName[E ~uint8](names map[E]string, v E) string {
-	if n, ok := names[v]; ok {
-		return n
-	}
-	return strconv.Itoa(int(v))
-}
-
-func videoCodecName(v csdef.VideoCodecEnum) string { return wireName(videoCodecNames, v) }
-func audioCodecName(v csdef.AudioCodecEnum) string { return wireName(audioCodecNames, v) }
-func imageCodecName(v csdef.ImageCodecEnum) string { return wireName(imageCodecNames, v) }
-
-// imageCodecByName is the image codec a name spells, a known name or the
-// decimal digits of a value.
-func imageCodecByName(name string) (csdef.ImageCodecEnum, bool) {
-	for v, n := range imageCodecNames {
-		if strings.EqualFold(n, name) {
-			return v, true
-		}
-	}
-	if name != "" && strings.Trim(name, "0123456789") == "" {
-		if n, err := strconv.ParseUint(name, 10, 8); err == nil {
-			return csdef.ImageCodecEnum(n), true
-		}
-	}
-	return 0, false
-}
-
-// enumValues are the member names of the enum an AV Stream Management
-// attribute (or its list entry) is typed with, from protocol/schema: the
-// stream usages and the talkback modes are the enum member names
-// (wireNames.ts:41-42 reads them off the enum).
-func enumValues(attribute string) []schema.EnumValue {
-	a := schema.ClusterByID(csdef.ClusterID).AttributeByName(attribute)
-	if a == nil {
-		return nil
-	}
-	t := &a.Type
-	if t.Entry != nil {
-		t = t.Entry
-	}
-	if t.Enum == nil {
-		return nil
-	}
-	return t.Enum.Values
-}
-
-func enumName(values []schema.EnumValue, v uint64) string {
-	for _, e := range values {
-		if e.Value == v {
-			return e.Name
-		}
-	}
-	return strconv.FormatUint(v, 10)
-}
-
-func streamUsageName(v csdef.StreamUsageEnum) string {
-	return enumName(enumValues("SupportedStreamUsages"), uint64(v))
-}
-
-func twoWayTalkSupportName(v csdef.TwoWayTalkSupportTypeEnum) string {
-	return enumName(enumValues("TwoWayTalkSupport"), uint64(v))
-}
-
-// streamUsageByName is the usage a member name spells, without regard to
-// case; only member names are accepted.
-func streamUsageByName(name string) (csdef.StreamUsageEnum, bool) {
-	for _, e := range enumValues("SupportedStreamUsages") {
-		if strings.EqualFold(e.Name, name) {
-			return csdef.StreamUsageEnum(e.Value), true //nolint:gosec // G115: an 8-bit enum's value
-		}
-	}
-	return 0, false
-}
 
 // The results (docs/websockets_api.md:1286-1370, :1603-1630, :1743-1748;
 // packages/ws-client/src/models/model.ts:608-678, :704-764).
@@ -280,30 +189,30 @@ func wireCapabilities(c *camera.Capabilities) cameraCapabilities {
 			Sensor: resolutionPtr(c.Video.Sensor), MinViewport: resolutionPtr(c.Video.MinViewport),
 			MaxFPS: c.Video.MaxFPS, MaxHDRFPS: c.Video.MaxHDRFPS, HDRCapable: c.Video.HDRCapable,
 			RateDistortionPoints: mapped(c.Video.RateDistortionPoints, func(p csdef.RateDistortionTradeOffPointsStruct) cameraRateDistPoint {
-				return cameraRateDistPoint{Codec: videoCodecName(p.Codec), Resolution: resolutionOf(p.Resolution), MinBitRate: p.MinBitRate}
+				return cameraRateDistPoint{Codec: camera.VideoCodecName(p.Codec), Resolution: resolutionOf(p.Resolution), MinBitRate: p.MinBitRate}
 			}),
-			Codecs: mapped(c.Video.Codecs, videoCodecName),
+			Codecs: mapped(c.Video.Codecs, camera.VideoCodecName),
 		},
 		Audio: cameraAudioCaps{
-			Codecs: mapped(c.Audio.Codecs, audioCodecName), Channels: c.Audio.Channels,
+			Codecs: mapped(c.Audio.Codecs, camera.AudioCodecName), Channels: c.Audio.Channels,
 			SampleRates: nonNil(c.Audio.SampleRates), BitDepths: mapped(c.Audio.BitDepths, func(d uint8) int { return int(d) }),
 		},
 		Snapshot: cameraSnapCaps{Capabilities: mapped(c.Snapshot, func(s csdef.SnapshotCapabilitiesStruct) cameraSnapCapability {
 			return cameraSnapCapability{
-				Resolution: resolutionOf(s.Resolution), MaxFrameRate: s.MaxFrameRate, ImageCodec: imageCodecName(s.ImageCodec),
+				Resolution: resolutionOf(s.Resolution), MaxFrameRate: s.MaxFrameRate, ImageCodec: camera.ImageCodecName(s.ImageCodec),
 				RequiresEncodedPixels: s.RequiresEncodedPixels, RequiresHardwareEncoder: flag(s.RequiresHardwareEncoder),
 			}
 		})},
 		Limits: cameraLimits{
 			MaxEncodedPixelRate: c.Limits.MaxEncodedPixelRate, MaxConcurrentEncoders: c.Limits.MaxConcurrentEncoders,
 			MaxNetworkBandwidth:   c.Limits.MaxNetworkBandwidth,
-			SupportedStreamUsages: mapped(c.Limits.SupportedStreamUsages, streamUsageName),
-			StreamUsagePriorities: mapped(c.Limits.StreamUsagePriorities, streamUsageName),
+			SupportedStreamUsages: mapped(c.Limits.SupportedStreamUsages, camera.StreamUsageName),
+			StreamUsagePriorities: mapped(c.Limits.StreamUsagePriorities, camera.StreamUsageName),
 		},
 		Allocated: cameraAllocated{
 			Video: mapped(c.Allocated.Video, func(v camera.AllocatedVideo) cameraAllocatedVideo {
 				return cameraAllocatedVideo{
-					VideoStreamID: v.VideoStreamId, StreamUsage: streamUsageName(v.StreamUsage), VideoCodec: videoCodecName(v.VideoCodec),
+					VideoStreamID: v.VideoStreamId, StreamUsage: camera.StreamUsageName(v.StreamUsage), VideoCodec: camera.VideoCodecName(v.VideoCodec),
 					MinResolution: resolutionOf(v.MinResolution), MaxResolution: resolutionOf(v.MaxResolution),
 					MinFrameRate: v.MinFrameRate, MaxFrameRate: v.MaxFrameRate, MinBitRate: v.MinBitRate, MaxBitRate: v.MaxBitRate,
 					ReferenceCount: v.ReferenceCount, AllocatedByServer: v.AllocatedByUs,
@@ -312,14 +221,14 @@ func wireCapabilities(c *camera.Capabilities) cameraCapabilities {
 			}),
 			Audio: mapped(c.Allocated.Audio, func(a camera.AllocatedAudio) cameraAllocatedAudio {
 				return cameraAllocatedAudio{
-					AudioStreamID: a.AudioStreamId, StreamUsage: streamUsageName(a.StreamUsage), AudioCodec: audioCodecName(a.AudioCodec),
+					AudioStreamID: a.AudioStreamId, StreamUsage: camera.StreamUsageName(a.StreamUsage), AudioCodec: camera.AudioCodecName(a.AudioCodec),
 					ChannelCount: a.ChannelCount, SampleRate: a.SampleRate, BitRate: a.BitRate, BitDepth: a.BitDepth,
 					ReferenceCount: a.ReferenceCount, AllocatedByServer: a.AllocatedByUs,
 				}
 			}),
 			Snapshot: mapped(c.Allocated.Snapshot, func(s camera.AllocatedSnapshot) cameraAllocatedSnapshot {
 				return cameraAllocatedSnapshot{
-					SnapshotStreamID: s.SnapshotStreamId, ImageCodec: imageCodecName(s.ImageCodec),
+					SnapshotStreamID: s.SnapshotStreamId, ImageCodec: camera.ImageCodecName(s.ImageCodec),
 					MinResolution: resolutionOf(s.MinResolution), MaxResolution: resolutionOf(s.MaxResolution),
 					ReferenceCount: s.ReferenceCount, AllocatedByServer: s.AllocatedByUs, FrameRate: s.FrameRate,
 					EncodedPixels: s.EncodedPixels, HardwareEncoder: s.HardwareEncoder,
@@ -330,7 +239,7 @@ func wireCapabilities(c *camera.Capabilities) cameraCapabilities {
 		Sessions: mapped(c.Sessions, func(s camera.DeviceSession) cameraSession {
 			return cameraSession{
 				WebRTCSessionID: s.ID, PeerNodeID: s.PeerNodeID, PeerEndpointID: s.PeerEndpoint,
-				StreamUsage:    streamUsageName(csdef.StreamUsageEnum(s.StreamUsage)),
+				StreamUsage:    camera.StreamUsageName(csdef.StreamUsageEnum(s.StreamUsage)),
 				VideoStreamIDs: nonNil(s.VideoStreams), AudioStreamIDs: nonNil(s.AudioStreams), EstablishedByThisServer: s.EstablishedByUs,
 			}
 		}),
@@ -340,7 +249,7 @@ func wireCapabilities(c *camera.Capabilities) cameraCapabilities {
 		out.Features = &f
 	}
 	if t := c.Audio.TwoWayTalkSupport; t != nil {
-		n := twoWayTalkSupportName(*t)
+		n := camera.TwoWayTalkSupportName(*t)
 		out.Audio.TwoWayTalkSupport = &n
 	}
 	return out
@@ -397,7 +306,7 @@ func wireStartResult(s *camera.Session) cameraStartResult {
 		case l.Video != nil:
 			v := l.Video
 			r := &cameraVideoResult{
-				StreamID: l.ID, Codec: videoCodecName(v.Codec),
+				StreamID: l.ID, Codec: camera.VideoCodecName(v.Codec),
 				Resolution: minMax[wireResolution]{Min: resolutionOf(v.MinResolution), Max: resolutionOf(v.MaxResolution)},
 				FrameRate:  minMax[uint16]{Min: v.MinFrameRate, Max: v.MaxFrameRate},
 				BitRate:    minMax[uint32]{Min: v.MinBitRate, Max: v.MaxBitRate},
@@ -418,7 +327,7 @@ func wireStartResult(s *camera.Session) cameraStartResult {
 		case l.Audio != nil:
 			a := l.Audio
 			out.Audio = &cameraAudioResult{
-				StreamID: l.ID, Codec: audioCodecName(a.Codec), ChannelCount: a.ChannelCount, SampleRate: a.SampleRate,
+				StreamID: l.ID, Codec: camera.AudioCodecName(a.Codec), ChannelCount: a.ChannelCount, SampleRate: a.SampleRate,
 				BitRate: a.BitRate, BitDepth: a.BitDepth, Provenance: string(l.Provenance),
 			}
 		}
@@ -438,7 +347,7 @@ type cameraSnapshotResult struct {
 // wireSnapshot is camera_snapshot's result, the image in standard base64.
 func wireSnapshot(s *camera.Snapshot) cameraSnapshotResult {
 	return cameraSnapshotResult{
-		Data: nonNil(s.Data), Codec: imageCodecName(s.Codec), Resolution: resolutionOf(s.Resolution),
+		Data: nonNil(s.Data), Codec: camera.ImageCodecName(s.Codec), Resolution: resolutionOf(s.Resolution),
 		Degraded: s.Degraded, StreamID: s.StreamID, Provenance: string(s.Provenance),
 	}
 }
@@ -531,6 +440,9 @@ func wireSignal(sig camera.Signal, key string) webrtcCallbackData {
 		out.EventType = "end"
 		r := sig.Reason
 		out.Data.Reason = &r
+	case camera.SignalRefused:
+		// Never passed: go-fabric hands a refusal to the observer alone
+		// (camera.Service.onSignal), and Server.cameraSignal drops it.
 	}
 	return out
 }

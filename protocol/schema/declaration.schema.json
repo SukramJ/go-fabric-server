@@ -23365,7 +23365,7 @@
  ],
  "title": "go-fabric-server bridge declaration",
  "type": "object",
- "x-go-fabric-version": "v0.18.0",
+ "x-go-fabric-version": "v0.19.1",
  "x-matter-revision": "1.6.1",
  "x-matter-source-commit": "db021da06bafe6766cd1a05d505cea03b9ec5081"
 }

@@ -72,6 +72,8 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeVendorID: 70000, StoragePath: t.TempDir()}, "wider than its field"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeExtensions: "BD-nope", StoragePath: t.TempDir()}, `--bridge-extensions: "BD-nope" is no extension go-fabric declares; known: `},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeSpecLevel: "1.5", StoragePath: t.TempDir()}, "--bridge-spec-level: "},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeMDNSInterfaces: "eth0,", StoragePath: t.TempDir()}, "Network.MDNS.Interfaces[1] is empty"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeMDNSInterfaces: "eth0,eth0", StoragePath: t.TempDir()}, `Network.MDNS.Interfaces names "eth0" twice`},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeProfile: "nope", StoragePath: t.TempDir()}, "--bridge-profile: "},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, NodeLimit: -1, StoragePath: t.TempDir()}, "--node-limit -1 is negative"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "none", StoragePath: t.TempDir()}, "--trust"},

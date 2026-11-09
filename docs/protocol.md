@@ -124,7 +124,8 @@ The camera citations on this page are matterjs-server at `0bd06f2`:
 | `get_network_topology` | implemented | go-fabric's `controller/topology` graph with the test nodes as a source: Thread links from the neighbor tables, Wi-Fi access points, our `ip_addresses`; opts the connection in to `network_topology_updated` |
 | `import_test_node` | implemented | a diagnostics dump's nodes as test nodes (ids from `0xFFFFFFFE00000000`), in memory, answered as matterjs-server's TestNodeCommandHandler answers |
 | `check_node_update`, `update_node`, `initiate_ota_upload` | waits for go-fabric | the OTA provider on the controller (milestone 5 phase 25) |
-| `get_thread_border_routers`, `get_thread_diagnostics` | waits for go-fabric | a Thread border router route (milestone 6, ADR 0027) |
+| `get_thread_border_routers` | waits for go-fabric | the border-router registry carrying matter.js's whole `BorderRouterEntry` (`BorderRouterEntry.ts:15-54` at db021da0): go-fabric's `thread/brdiscovery.Entry` (v0.19.1) has the extended address and PAN id, the network, vendor, model and host names and `LastSeen`, not the required `addresses` and `sources`, the meshcop and TREL ports or the TXT `tv`, `sv`, `rv`, `dd`/`ai`, `sb`, `at`, `pt`, `dn` |
+| `get_thread_diagnostics` | waits for go-fabric | a Thread border router route (milestone 6, ADR 0027) |
 | `camera_get_capabilities`, `camera_snapshot`, `camera_release_stream` | implemented | go-fabric `controller/camera`'s `Capabilities`, `Snapshot`, `ReleaseStream`; the codecs in matterjs-server's SDP spellings (`H264`, `H265`, `H266`, `AV1`, `OPUS`, `AAC`, `JPEG`, `HEIC`, wireNames.ts:16-31), the usages and talkback modes the enum's member names; strict arguments: an unknown key is 8 naming it and the accepted keys (docs:1835-1841) |
 | `camera_start_stream`, `camera_stop_stream` | implemented | `StartStream` with the connection as the session's owner and `client_session_key` its key; `StopSession` by id or `StopByKey` by the connection's key (a running start is cancelled); every range and limit is go-fabric's |
 | `camera_provide_answer`, `camera_provide_ice_candidates` | implemented | by id on the provider's raw route (`Provider.Send`), the id need not be one this server opened; by key to the connection's session, queued while its start is unanswered (at most 64) and sent after the response |
@@ -162,8 +163,15 @@ before Wi-Fi before Ethernet), a Thread node's role, extended address,
 RLOC16, extended PAN id and network name, a Wi-Fi node's SSID and BSSID;
 one connection per pair of Thread nodes that see each other (each
 direction's LQI and RSSI, dead links dropped), unknown Thread neighbours as
-`thread_unknown` nodes, one `wifi_ap` node per BSSID with a link from each
-station. `refresh` reads the network diagnostics of every available
+`thread_unknown` nodes, a neighbour go-fabric's border-router registry knows
+(`Controller.BorderRouters`, a passive `_meshcop`/`_trel` browse, on by
+default) as a `border_router` node — `role: "router"`, its extended address
+and PAN id, network name, `host_name` (the mDNS host name without the
+trailing dot and `.local`), `vendor_name`, `model_name` and `last_seen` in
+epoch ms (NetworkTopologyService.ts:454-469 at 0bd06f2) — and a Thread node
+or neighbour without a network name of its own given the registry's for its
+extended PAN id (:309-317), one `wifi_ap` node per BSSID with a link from
+each station. `refresh` reads the network diagnostics of every available
 Thread and Wi-Fi node first, four at a time, 30 s at most; a refresh that
 fails answers the graph as it stands. The graph is rebuilt 2 s after the
 last node change (a report, a connection state, a commission, a removal,
@@ -171,8 +179,7 @@ a test node imported or removed) and every 60 s, matterjs-server's
 defaults. The connection then gets `network_topology_updated` whenever a
 rebuild moved the graph (the latest one wins on a slow connection). The
 same graph serves the controller pages' `/controller/topology`. What
-matterjs-server adds from a Thread border router registry and from route
-tables is left out, in go-fabric too.
+matterjs-server adds from route tables is left out, in go-fabric too.
 
 ## Node data and values
 
@@ -226,7 +233,12 @@ connection opts in by the commands it issues, before they run:
   nobody owns — opened on the raw route — reaches every connection that
   issued `camera_start_stream`, `camera_provide_answer`,
   `camera_provide_ice_candidates` or `send_webrtc_provider_command`, without
-  a key (docs:2261-2269).
+  a key (docs:2261-2269). A camera command the controller's requestor
+  refuses for a session it does not hold (go-fabric
+  `camera.SignalRefused`, v0.19.0) is no event: matterjs-server forwards
+  the requestor's offer, answer, ICE candidates and end alone
+  (`packages/ws-controller/src/controller/WebRtcCallbackBridge.ts:51-122`
+  at 0bd06f2); go-fabric logs it (`camera.requestor.refused`).
 - `camera_session_ended` (`{node_id, endpoint_id, webrtc_session_id, cause,
   reason?, client_session_key?}`): to the session's owner, held while its
   start is unanswered and after the session's last `webrtc_callback`; a
@@ -285,14 +297,6 @@ Ignorable by a client that does not know them:
   candidates (startingSessionSignalling.ts:178-227). The queue keeps the
   arrival order (docs:1682): a connection reads its next frame once the
   previous one registered its start or its keyed candidates.
-- A stated numeric hint of `0` (`video.min_frame_rate: 0`, …) is accepted as
-  unstated: go-fabric's bounds are plain integers with 0 for unstated
-  (`controller/camera/session.go:66`, `:473-478` at v0.18.0), and the server
-  checks no range of its own. matterjs-server refuses it with error 8
-  (cameraCommands.ts:115-118, :378-382; wireArgumentChecks.ts:24-35; the
-  floors cameraFieldRanges.ts:46-55, the model's "1 to maxFrameRate",
-  go-fabric `cluster/spec/cameraavstreammanagement/definition_gen.go:640`).
-  Raised with go-fabric (`docs/reports/S8.md`).
 - A backend started without a camera service (`controllerapi.Services.Camera`
   nil) leaves the eight camera commands out of `capabilities` and answers
   them `InvalidCommand` naming the missing service. matterjs-server composes

@@ -15,6 +15,9 @@ import (
 	"github.com/coder/websocket"
 
 	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
+	"github.com/SukramJ/go-fabric/contract"
+	"github.com/SukramJ/go-fabric/controller/camera"
+	"github.com/SukramJ/go-fabric/controller/camera/cameratest"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -172,23 +175,17 @@ func (r *rawConn) call(command string, args map[string]any) rawFrame {
 	return f
 }
 
-// cameraSignaller is the camera side of the device's WebRTC provider
-// (go-fabric cluster/camera Provider): the signals a camera sends to the
-// controller's requestor.
-type cameraSignaller interface {
-	Offer(ctx context.Context, sessionID uint16, sdp string) error
-	Answer(ctx context.Context, sessionID uint16, sdp string) error
-	IceCandidates(ctx context.Context, sessionID uint16, candidates []wpdef.ICECandidateStruct) error
-	End(ctx context.Context, sessionID uint16, reason uint8) error
-}
+// signaller is the camera side of the device's WebRTC provider: the
+// signals a camera sends to the controller's requestor (cameratest).
+func (e *env) signaller() *cameratest.Camera { return e.camera }
 
-func (e *env) signaller() cameraSignaller {
-	e.t.Helper()
-	p, ok := e.camera.WebRtcTransportProvider().Underlying().(cameraSignaller)
-	if !ok {
-		e.t.Fatal("the camera serves no signalling provider")
+// candidateNames are the candidate strings of what the camera got.
+func candidateNames(cs []wpdef.ICECandidateStruct) []string {
+	out := make([]string, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, c.Candidate)
 	}
-	return p
+	return out
 }
 
 // requestorHolds waits until the controller's requestor holds the
@@ -231,7 +228,14 @@ type endedData struct {
 // cameraSite is a commissioned camera and the arguments addressing it.
 func cameraSite(t *testing.T) (e *env, at func(map[string]any) map[string]any) {
 	t.Helper()
-	e = newEnv(t, envOptions{camera: true})
+	return cameraSiteWith(t, envOptions{})
+}
+
+// cameraSiteWith is cameraSite with the environment's options.
+func cameraSiteWith(t *testing.T, o envOptions) (e *env, at func(map[string]any) map[string]any) {
+	t.Helper()
+	o.camera = true
+	e = newEnv(t, o)
 	n := e.commission()
 	ep := e.cameraEndpoint()
 	return e, func(more map[string]any) map[string]any {
@@ -253,22 +257,15 @@ func TestCameraStartHoldsUntilResponse(t *testing.T) {
 	e, at := cameraSite(t)
 	a := e.raw()
 
-	gate, entered := make(chan struct{}), make(chan struct{})
-	e.port.mu.Lock()
-	e.port.gate, e.port.entered = gate, entered
-	e.port.mu.Unlock()
-	start := a.send("camera_start_stream", at(map[string]any{"stream_usage": "LiveView", "sdp": testOffer, "client_session_key": "living-room"}))
-	<-entered
 	cand := func(c string) map[string]any {
 		return at(map[string]any{"client_session_key": "living-room", "ice_candidates": []map[string]any{{"candidate": c, "sdpMid": "0", "sdpMLineIndex": 0}}})
 	}
-	// Each request runs on its own goroutine, so the two are spaced to
-	// queue in their order; both queue before the camera answers.
+	// The candidates follow the start at once, while its allocation and
+	// its offer are still under way; the connection reads each frame once
+	// the one before registered, so they queue in their order.
+	start := a.send("camera_start_stream", at(map[string]any{"stream_usage": "LiveView", "sdp": testOffer, "client_session_key": "living-room"}))
 	c1 := a.send("camera_provide_ice_candidates", cand("candidate:1"))
-	time.Sleep(50 * time.Millisecond)
 	c2 := a.send("camera_provide_ice_candidates", cand("candidate:2"))
-	time.Sleep(50 * time.Millisecond)
-	close(gate)
 
 	f, before := a.next(response(start))
 	if f.ErrorCode != nil {
@@ -288,9 +285,7 @@ func TestCameraStartHoldsUntilResponse(t *testing.T) {
 			t.Fatalf("candidates %s: %s", id, f.Details)
 		}
 	}
-	e.port.mu.Lock()
-	got := e.port.cands[res.WebRTCSessionID]
-	e.port.mu.Unlock()
+	got := candidateNames(e.port.Candidates(res.WebRTCSessionID))
 	if len(got) != 2 || got[0] != "candidate:1" || got[1] != "candidate:2" {
 		t.Fatalf("the camera got %v", got)
 	}
@@ -390,9 +385,7 @@ func TestCameraOwnership(t *testing.T) {
 	_ = owner.ws.Close(websocket.StatusNormalClosure, "")
 	deadline := time.Now().Add(30 * time.Second)
 	for {
-		e.port.mu.Lock()
-		_, ended := e.port.ends[fourth.WebRTCSessionID]
-		e.port.mu.Unlock()
+		_, ended := e.port.Ended(fourth.WebRTCSessionID)
 		if ended {
 			break
 		}
@@ -457,9 +450,7 @@ func TestCameraRawRoute(t *testing.T) {
 	if f := a.call("camera_provide_answer", at(map[string]any{"webrtc_session_id": res.WebRTCSessionID, "sdp": "v=0 host answer"})); f.ErrorCode != nil {
 		t.Fatalf("answer: %s", f.Details)
 	}
-	e.port.mu.Lock()
-	answer := e.port.answers[res.WebRTCSessionID]
-	e.port.mu.Unlock()
+	answer, _ := e.port.Answered(res.WebRTCSessionID)
 	if answer != "v=0 host answer" {
 		t.Fatalf("the camera got %q", answer)
 	}
@@ -488,6 +479,11 @@ func TestCameraStartRefusals(t *testing.T) {
 		{"stream_usage": "LiveView", "video": true},
 		{"stream_usage": "LiveView", "video": map[string]any{"frames": 1}},
 		{"stream_usage": "LiveView", "video": map[string]any{"min_frame_rate": 70000}},
+		// A stated 0 below the model's floor of 1 (go-fabric holds a stated
+		// bound to its field's range, as matterjs-server's toOptionalNumber
+		// does, cameraCommands.ts:378-382 at 0bd06f2).
+		{"stream_usage": "LiveView", "sdp": testOffer, "video": map[string]any{"min_frame_rate": 0}},
+		{"stream_usage": "LiveView", "sdp": testOffer, "audio": map[string]any{"channel_count": 0}},
 		{"stream_usage": "LiveView", "ice_servers": []any{map[string]any{"urls": 1}}},
 		{"stream_usage": "LiveView", "ice_transport_policy": ""},
 		{"stream_usage": "LiveView", "client_session_key": ""},
@@ -543,12 +539,15 @@ func TestCameraStartRefusals(t *testing.T) {
 // the requester included, and the response lists it.
 func TestCameraStreamEvicted(t *testing.T) {
 	t.Parallel()
-	e, at := cameraSite(t)
+	// The camera has no encoder free until a stream is evicted: it
+	// refuses video allocations with RESOURCE_EXHAUSTED (0x89, Matter Core
+	// §8.10.1) until then.
+	var port *cameratest.Port
+	e, at := cameraSiteWith(t, envOptions{onEvicted: func(camera.StreamEvicted) { port.Refuse(cameratest.OpVideoStreamAllocate, nil) }})
+	port = e.port
 	a, b := e.raw(), e.raw()
 	b.call("camera_get_capabilities", at(nil))
-	e.port.mu.Lock()
-	e.port.exhausted = 2
-	e.port.mu.Unlock()
+	e.port.Refuse(cameratest.OpVideoStreamAllocate, contract.StatusError{Status: 0x89, Message: "no encoder free"})
 	f := a.call("camera_start_stream", at(map[string]any{
 		"stream_usage": "LiveView", "sdp": testOffer,
 		"video": map[string]any{"min_resolution": map[string]any{"width": 1280, "height": 720}, "min_frame_rate": 30},
@@ -584,17 +583,11 @@ func TestCameraStartRegisteredInArrivalOrder(t *testing.T) {
 	t.Parallel()
 	e, at := cameraSite(t)
 	a := e.raw()
-	gate, entered := make(chan struct{}), make(chan struct{})
-	e.port.mu.Lock()
-	e.port.gate, e.port.entered = gate, entered
-	e.port.mu.Unlock()
 	// Whitespace inside the start's frame makes its decoding long — the
 	// window a registration out of arrival order would fall into — and
 	// leaves what the camera gets as it is.
 	start := a.sendPadded("camera_start_stream", at(map[string]any{"stream_usage": "LiveView", "sdp": testOffer, "client_session_key": "early"}), 8<<20)
 	ice := a.send("camera_provide_ice_candidates", at(map[string]any{"client_session_key": "early", "ice_candidates": []map[string]any{{"candidate": "candidate:early", "sdpMid": "0", "sdpMLineIndex": 0}}}))
-	<-entered
-	close(gate)
 	f, _ := a.next(response(start))
 	var res startResult
 	if f.ErrorCode != nil || json.Unmarshal(f.Result, &res) != nil {
@@ -603,9 +596,7 @@ func TestCameraStartRegisteredInArrivalOrder(t *testing.T) {
 	if g, _ := a.next(response(ice)); g.ErrorCode != nil {
 		t.Fatalf("candidates: %s", g.Details)
 	}
-	e.port.mu.Lock()
-	got := e.port.cands[res.WebRTCSessionID]
-	e.port.mu.Unlock()
+	got := candidateNames(e.port.Candidates(res.WebRTCSessionID))
 	if len(got) != 1 || got[0] != "candidate:early" {
 		t.Fatalf("the camera got %v", got)
 	}

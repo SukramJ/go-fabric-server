@@ -60,6 +60,12 @@ type Config struct {
 	BridgeProductID     uint
 	BridgeLabel         string
 	BridgeResultTimeout time.Duration
+	// BridgeMDNSInterfaces are the host interfaces every device node's
+	// mDNS responder announces and answers on, comma-separated
+	// (--bridge-mdns-interfaces; go-fabric node.MDNS.Interfaces): empty is
+	// every multicast-capable interface. One host, one set: the configured
+	// node and every registry node take it.
+	BridgeMDNSInterfaces string
 	// The bridge node's surface policies (node.Config.Surface, go-fabric
 	// ADR 0030), comma-separated: the enabled "Ahead of matter.js"
 	// register IDs (--bridge-extensions), the specification level
@@ -135,6 +141,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.UintVar(&c.BridgeVendorID, "bridge-vendor-id", 0xFFF1, "the bridge node's vendor id (the CSA test vendor by default)")
 	fs.UintVar(&c.BridgeProductID, "bridge-product-id", 0x8001, "the bridge node's product id")
 	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel")
+	fs.StringVar(&c.BridgeMDNSInterfaces, "bridge-mdns-interfaces", "", "the host interfaces the device nodes announce and answer mDNS on, name[,name...] (a dual-homed host behind an mDNS reflector names its LAN interface); empty is every multicast-capable interface")
 	fs.DurationVar(&c.BridgeResultTimeout, "bridge-result-timeout", 5*time.Second, "how long a write or command event waits for the bridge client's result")
 	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
 	fs.StringVar(&c.BridgeSpecLevel, "bridge-spec-level", "", "the specification level the bridge node composes at (default the pin's): "+levelList())
@@ -410,7 +417,8 @@ const (
 // bridgeConfig is a device node's configuration: its commissioning
 // identity from its spec (the --bridge-* flags or its registry entry),
 // its store under --storage-path, the daemon's logger, the
-// surface policies every node shares (surfacePolicies).
+// surface policies and the mDNS interfaces every node shares
+// (surfacePolicies, mdnsInterfaces).
 func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 	// Widths only: node.New validates the values (Config.Validate).
 	if s.Passcode > math.MaxUint32 || s.Discriminator > math.MaxUint16 || s.VendorID > math.MaxUint16 || s.ProductID > math.MaxUint16 {
@@ -421,7 +429,7 @@ func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 		return node.Config{}, err
 	}
 	return node.Config{
-		Network: node.Network{Listen: s.Listen},
+		Network: node.Network{Listen: s.Listen, MDNS: node.MDNS{Interfaces: mdnsInterfaces(c.BridgeMDNSInterfaces)}},
 		Commissioning: node.Commissioning{
 			Passcode: uint32(s.Passcode), Discriminator: uint16(s.Discriminator), //nolint:gosec // checked above
 			PBKDFIterations: 1000, Salt: bridgeSalt,
@@ -435,6 +443,20 @@ func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 		Logger:  log,
 		Surface: policies,
 	}, nil
+}
+
+// mdnsInterfaces is --bridge-mdns-interfaces as a list, each name
+// trimmed; nil for none. An empty name stays, so node.Config.Validate
+// refuses it ("eth0,," is a typo, not every interface).
+func mdnsInterfaces(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	var out []string
+	for name := range strings.SplitSeq(value, ",") {
+		out = append(out, strings.TrimSpace(name))
+	}
+	return out
 }
 
 // startBridge builds one device node with its bridge half's observers,

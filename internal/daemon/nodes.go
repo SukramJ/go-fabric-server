@@ -134,6 +134,19 @@ type eraseFailure struct {
 	since time.Time
 }
 
+// rename sets the half's label: the spec an erase restarts the node with,
+// and the running node's NodeLabel (Node.SetNodeLabel). An ended half
+// changes its spec only.
+func (h *bridgeHalf) rename(ctx context.Context, label string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.spec.Label = label
+	if run := h.live(); run != nil && !h.ended {
+		return run.node.SetNodeLabel(ctx, label)
+	}
+	return nil
+}
+
 // fail records an erase's failure; a failure of the same kind again keeps
 // its first sighting. h.mu is held.
 func (h *bridgeHalf) fail(code string, err error, now time.Time) {

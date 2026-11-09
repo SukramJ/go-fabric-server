@@ -6,6 +6,51 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-09
+
+### Added
+
+- `get_network_topology`: a Thread neighbour that go-fabric's border-router
+  registry knows (a passive `_meshcop`/`_trel` browse, on by default) is a
+  `border_router` node with `host_name`, `vendor_name`, `model_name` and
+  `last_seen`, in matterjs-server's shape, and a Thread node without a
+  network name of its own takes the registry's for its extended PAN id
+  (#56 a). The controller pages' Network page draws them (go-fabric-ui
+  0.8.0).
+- `--bridge-mdns-interfaces` (`FABRIC_SERVER_BRIDGE_MDNS_INTERFACES`): the
+  host interfaces every device node announces and answers mDNS on,
+  comma-separated; empty is every multicast-capable interface — for a
+  dual-homed host behind an mDNS reflector (#57). An empty or repeated
+  name stops the start.
+
+### Changed
+
+- go-fabric `v0.18.0` → `v0.19.1`, go-fabric-ui `v0.7.1` → `v0.8.0` (no new
+  module). `protocol/schema` regenerated (provenance only).
+- A camera hint stated as `0` below its field's floor of 1
+  (`video.min_frame_rate: 0`, `audio.channel_count: 0`, …) is refused with
+  error 8, as matterjs-server refuses it; it was taken as unstated (#56 b).
+- The camera's wire names, the ICE candidate conversion and the
+  `send_webrtc_provider_command` response come from go-fabric
+  (`controller/camera`, `client.ValueOf`); the server's own copies are gone
+  (#56 c). Two refusal wordings follow go-fabric's: an empty
+  `ice_candidates` is "ice_candidates must be an array of 1 or more
+  entries", an unknown candidate key lists the accepted keys as go-fabric
+  spells them.
+- A registry node's rename in the pages reaches the running node as its
+  NodeLabel (go-fabric `Node.SetNodeLabel`): controllers see it without a
+  restart.
+- `get_thread_border_routers` names what it waits for: go-fabric's
+  border-router registry carrying matter.js's whole entry.
+
+### Fixed
+
+- `get_nodes` drops a node when it leaves the server's fabric (its Leave
+  event, a device node's erase) at once, with `node_removed`, as
+  matterjs-server does; the node could stay listed until a restart, since
+  the controller deletes it only after the hook the server refreshed on
+  (#54).
+
 ## [0.7.0] - 2026-11-08
 
 ### Added

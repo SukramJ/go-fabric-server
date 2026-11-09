@@ -274,6 +274,18 @@ func (s *Server) stateByNodeID(id uint64) *nodeState {
 
 // --- following the controller ---
 
+// decommissioned is a node's Decommissioned hook: the node leaves the
+// cache with its next refresh (Server.left); an empty id, which cannot
+// name the node, refreshes every node.
+func (s *Server) decommissioned(id string) {
+	if id != "" {
+		s.mu.Lock()
+		s.left[id] = true
+		s.mu.Unlock()
+	}
+	s.markDirty(id)
+}
+
 func (s *Server) markDirty(id string) {
 	s.dirtyMu.Lock()
 	s.dirty[id] = true
@@ -348,8 +360,11 @@ func (s *Server) refresh(id string) {
 		return
 	}
 	old := s.nodes[id]
+	if n == nil {
+		delete(s.left, id)
+	}
 	var st *nodeState
-	if n != nil && n.IsCommissioned() {
+	if n != nil && n.IsCommissioned() && !s.left[id] {
 		st = s.snapshot(n, old)
 	}
 	switch {

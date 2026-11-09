@@ -13,6 +13,7 @@ import (
 	netcommdef "github.com/SukramJ/go-fabric/cluster/spec/networkcommissioning"
 	threaddiagdef "github.com/SukramJ/go-fabric/cluster/spec/threadnetworkdiagnostics"
 	"github.com/SukramJ/go-fabric/controller/topology"
+	"github.com/SukramJ/go-fabric/thread/brdiscovery"
 )
 
 func attrsOf(t *testing.T, doc string) map[string]json.RawMessage {
@@ -30,7 +31,10 @@ func attrsOf(t *testing.T, doc string) map[string]json.RawMessage {
 // (testNodeImage), built by go-fabric (topology.Build, which its own
 // tests hold to matterjs-server's rules, NetworkTopologyService.ts:304-430),
 // mapped by wireTopology — two Thread nodes that see each other, an
-// unknown router neighbour, a dead link dropped, a Wi-Fi station and its
+// unknown router neighbour, a border router the registry knows
+// (NetworkTopologyService.ts:454-469 at 0bd06f2) and whose network name
+// the unknown neighbour of its extended PAN id takes (:309-317), a dead
+// link dropped, a Wi-Fi station and its
 // access point, an Ethernet node without links.
 func TestWireTopology(t *testing.T) {
 	// Node 1: a Thread router, ext address 0x0102030405060708 (base64
@@ -38,7 +42,7 @@ func TestWireTopology(t *testing.T) {
 	// 3), an unknown router (lqi 1), a dead one (lqi 0).
 	n1 := attrsOf(t, `{"0/49/65532":2,"0/53/1":5,"0/53/64":1024,"0/53/4":1229782938247303441,"0/53/2":"Mesh",
 		"0/51/0":[{"4":"AQIDBAUGBwg=","7":4}],
-		"0/53/7":[{"0":1157726452361532951,"2":2048,"5":3,"6":-40,"10":true},{"0":3735928559,"2":0,"5":1,"10":true},{"0":4276215469,"2":0,"5":0}]}`)
+		"0/53/7":[{"0":1157726452361532951,"2":2048,"5":3,"6":-40,"10":true},{"0":3735928559,"2":0,"5":1,"10":true},{"0":4276215469,"2":0,"5":0},{"0":723685415333072913,"2":0,"5":3,"10":true}]}`)
 	// Node 2: ext address 0x1011121314151617, rloc16 0x800, sees node 1
 	// by rloc16 (lqi 2).
 	n2 := attrsOf(t, `{"0/49/65532":2,"0/53/1":2,"0/53/64":2048,"0/51/0":[{"4":"EBESExQVFhc=","7":4}],
@@ -55,7 +59,10 @@ func TestWireTopology(t *testing.T) {
 		testNodeImage(2, false, true, n2),
 		img3,
 		testNodeImage(4, true, false, n4),
-	}, time.UnixMilli(1735689600000)))
+	}, []brdiscovery.Entry{{
+		ExtAddress: "0A0B0C0D0E0F1011", ExtPanID: "1111111111111111", NetworkName: "Mesh",
+		HostName: "Kitchen.local.", VendorName: "Example", ModelName: "BR", LastSeen: time.UnixMilli(1735689590000),
+	}}, time.UnixMilli(1735689600000)))
 	b, err := json.Marshal(topo)
 	if err != nil {
 		t.Fatal(err)
@@ -68,9 +75,11 @@ func TestWireTopology(t *testing.T) {
 		`{"id":"3","kind":"matter","network_type":"wifi","node_id":3,"role":"station","available":true,"ssid":"home","bssid":"00:11:22:33:44:55","ip_addresses":["192.168.1.3","fe80::1"]}`,
 		`{"id":"4","kind":"matter","network_type":"ethernet","node_id":4,"available":true}`,
 		`{"source":"1","target":"2","network":"thread","strength":"strong","source_to_target":{"strength":"strong","lqi":3,"rssi":-40},"target_to_source":{"strength":"medium","lqi":2}}`,
-		`{"id":"unknown_00000000DEADBEEF","kind":"thread_unknown","network_type":"thread","role":"router","ext_address":"00000000DEADBEEF","ext_pan_id":"1111111111111111"}`,
+		`{"id":"unknown_00000000DEADBEEF","kind":"thread_unknown","network_type":"thread","role":"router","ext_address":"00000000DEADBEEF","ext_pan_id":"1111111111111111","network_name":"Mesh"}`,
 		`{"source":"1","target":"unknown_00000000DEADBEEF","network":"thread","strength":"weak","source_to_target":{"strength":"weak","lqi":1}}`,
 		`{"id":"ap_001122334455","kind":"wifi_ap","network_type":"wifi","role":"ap","network_name":"00:11:22:33:44:55","ssid":"home","bssid":"00:11:22:33:44:55"}`,
+		`{"id":"br_0A0B0C0D0E0F1011","kind":"border_router","network_type":"thread","role":"router","ext_address":"0A0B0C0D0E0F1011","ext_pan_id":"1111111111111111","network_name":"Mesh","host_name":"Kitchen","vendor_name":"Example","model_name":"BR","last_seen":1735689590000}`,
+		`{"source":"1","target":"br_0A0B0C0D0E0F1011","network":"thread","strength":"strong","source_to_target":{"strength":"strong","lqi":3}}`,
 		`{"source":"3","target":"ap_001122334455","network":"wifi","strength":"strong","source_to_target":{"strength":"strong","rssi":-60}}`,
 	} {
 		if !strings.Contains(got, want) {

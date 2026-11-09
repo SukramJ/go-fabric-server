@@ -32,6 +32,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-discriminator` | `3840` | the bridge node's discriminator |
 | `--bridge-vendor-id`, `--bridge-product-id` | `0xFFF1`, `0x8001` | the bridge node's vendor and product (the CSA test vendor) |
 | `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel |
+| `--bridge-mdns-interfaces` | — | the host interfaces every device node (the bridge node and each registry node) announces and answers mDNS on, `name[,name…]`; empty is every multicast-capable interface ([Ports and network](#ports-and-network)); an empty or repeated name stops the start |
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
 | `--bridge-extensions` | — | the features go-fabric implements ahead of matter.js that the bridge node serves, by register ID, `id[,id…]`: `BD-Thread-NetComm-ThreadVariant`, `BD-chip-Thermostat-Events`, `BD-chip-Thermostat-Schedules`, `BD-chip-TimeSynchronization-Features` at go-fabric v0.15.2 ([Surface policies](#surface-policies)); an unknown ID stops the start with the known ones |
 | `--bridge-spec-level` | the pin's (`1.6.1`) | the Matter specification level the bridge node composes at: `1.4`, `1.4.1`, `1.4.2`, `1.5.1`, `1.6.0`, `1.6.1` at go-fabric v0.15.2; another value stops the start with the list |
@@ -76,6 +77,8 @@ attestation chain, so a controller may warn that it is uncertified; set
 `--bridge-passcode` and `--bridge-discriminator` before pairing for real.
 The declared devices are not stored by the server: the client declares
 them after every connect, and each keeps its endpoint number under its key.
+On a host with more than one network, `--bridge-mdns-interfaces` names the
+interfaces the device nodes advertise on ([Ports and network](#ports-and-network)).
 
 ### Several device nodes
 
@@ -114,8 +117,11 @@ pages can still delete it. `--node-limit` (8) caps the registry; above it
 the pages answer `node_limit`.
 
 The key is the node's identity (`docs/by_design.md` B23): a rename changes
-the label only, which the pages show at once (the running node keeps the
-NodeLabel it started with). **Deleting a node is final**: its client
+the label only, which the pages show at once and the running node takes as
+its NodeLabel (go-fabric `Node.SetNodeLabel`: persisted and reported to the
+controllers' subscriptions, so a controller sees it without a restart). A
+label the node refuses — more than 32 bytes, NodeLabel's limit — stays the
+registry's label and is logged (`fabricserver.registry.rename_label`). **Deleting a node is final**: its client
 receives `server_shutdown`, `/bridge/<key>` answers 404, the node removes
 every fabric it holds (go-fabric's `node.FactoryReset`: each controller
 that paired it loses it) and stops, and its store files and its entry are
@@ -131,7 +137,11 @@ It returns the node to its factory state and brings it back in place:
 
 - every fabric is removed (go-fabric's `node.FactoryReset`: every
   controller that paired the node loses it), the node stops, and its store
-  and endpoint records are erased;
+  and endpoint records are erased. A controller learns of the erase through
+  the Leave event when its subscription to the node is live; else it learns
+  when it next finds the node unreachable. This server's own controller
+  (`/ws`) drops the node from `get_nodes` with `node_removed` when the Leave
+  reaches it;
 - a new node starts on the erased store under the same key, port,
   discriminator and passcode, uncommissioned and with a new UniqueID; the
   pages follow it (they poll the status until it answers again);
@@ -229,6 +239,18 @@ fabric: every node must be commissioned again.
 - Matter over TCP: the controller dials out to a peer that serves TCP (a
   camera: its offers and answers carry the Large Message quality) and
   falls back to UDP for a peer without; it listens on no TCP port.
+- A dual-homed host behind an mDNS reflector (a VM on two VLANs, the
+  gateway relaying one VLAN's records onto the other) leaves controllers
+  with two addresses for each device node, one of them behind the router.
+  `--bridge-mdns-interfaces enp1s0` (`FABRIC_SERVER_BRIDGE_MDNS_INTERFACES`)
+  makes every device node announce and answer on the named interfaces
+  alone, with their addresses (go-fabric `node.MDNS.Interfaces`); empty
+  keeps every multicast-capable interface. go-fabric's container filter
+  still applies (a named `docker0` or `hassio` stays filtered), the UDP
+  listen socket is not scoped, and the controller's own mDNS browse is not
+  affected. A name the host does not have is accepted: the pages' node
+  Diagnostics (`GET …/node/mdns`, go-fabric `Node.DiagnoseMDNS`) report it, a named bridge and a
+  named interface without an advertised address.
 
 ## Authentication
 
@@ -260,6 +282,15 @@ fabric: every node must be commissioned again.
 ```sh
 docker run -d --name fabric-server --network host \
   -v fabric-server:/data ghcr.io/sukramj/go-fabric-server:0.1.0
+```
+
+Host networking is what the device nodes advertise on; on a dual-homed
+host, name the LAN interface beside it:
+
+```sh
+docker run -d --name fabric-server --network host \
+  -e FABRIC_SERVER_BRIDGE=true -e FABRIC_SERVER_BRIDGE_MDNS_INTERFACES=enp1s0 \
+  -v fabric-server:/data ghcr.io/sukramj/go-fabric-server:0.8.0
 ```
 
 The image (`deploy/Dockerfile`) is distroless and runs as `nonroot`; it
