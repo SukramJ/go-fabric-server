@@ -11,9 +11,10 @@ wire-compatible with the API Home Assistant's Matter integration speaks (the
 python-matter-server / matterjs-server contract, schema 14), and a
 **bridge door** (`/bridge`) for hosts that are not written in Go.
 
-> **Status: S8 (v0.7.0).** The controller half (`/ws`) answers every
+> **Status: S9 (v0.8.0).** The controller half (`/ws`) answers every
 > command of matterjs-server's dispatch Home Assistant's Matter integration
-> uses, the ICD commands, the network topology, test nodes and the camera
+> uses, the ICD commands, the network topology (with Thread border routers),
+> test nodes and the camera
 > commands (schema 14's `camera_*`, `send_webrtc_provider_command` and their
 > events, on go-fabric's `controller/camera`); the OTA commands and the two
 > Thread border router commands answer `InvalidCommand` naming what they

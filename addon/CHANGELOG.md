@@ -3,6 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.8.0
+
+- Library updates (go-fabric 0.19.1, go-fabric-ui 0.8.0): the network
+  topology and the Network page show the Thread border routers on the LAN.
+- A device node that is erased, or that leaves the server's fabric, leaves
+  the controller's node list at once.
+
 ## 0.7.0
 
 - Cameras: Home Assistant's Matter integration can stream from and take
