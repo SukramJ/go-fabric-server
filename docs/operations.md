@@ -117,8 +117,11 @@ pages can still delete it. `--node-limit` (8) caps the registry; above it
 the pages answer `node_limit`.
 
 The key is the node's identity (`docs/by_design.md` B23): a rename changes
-the label only, which the pages show at once (the running node keeps the
-NodeLabel it started with). **Deleting a node is final**: its client
+the label only, which the pages show at once and the running node takes as
+its NodeLabel (go-fabric `Node.SetNodeLabel`: persisted and reported to the
+controllers' subscriptions, so a controller sees it without a restart). A
+label the node refuses — more than 32 bytes, NodeLabel's limit — stays the
+registry's label and is logged (`fabricserver.registry.rename_label`). **Deleting a node is final**: its client
 receives `server_shutdown`, `/bridge/<key>` answers 404, the node removes
 every fabric it holds (go-fabric's `node.FactoryReset`: each controller
 that paired it loses it) and stops, and its store files and its entry are
@@ -134,7 +137,11 @@ It returns the node to its factory state and brings it back in place:
 
 - every fabric is removed (go-fabric's `node.FactoryReset`: every
   controller that paired the node loses it), the node stops, and its store
-  and endpoint records are erased;
+  and endpoint records are erased. A controller learns of the erase through
+  the Leave event when its subscription to the node is live; else it learns
+  when it next finds the node unreachable. This server's own controller
+  (`/ws`) drops the node from `get_nodes` with `node_removed` when the Leave
+  reaches it;
 - a new node starts on the erased store under the same key, port,
   discriminator and passcode, uncommissioned and with a new UniqueID; the
   pages follow it (they poll the status until it answers again);

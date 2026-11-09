@@ -218,10 +218,16 @@ func TestTwoNodes(t *testing.T) {
 	}
 
 	// The pages' selector: both nodes, the default first, each enabled,
-	// the registry's managed; a rename shows at once, and the second's
+	// the registry's managed; a rename shows at once, on the pages and on
+	// the running node, and the second's
 	// routes serve the second node with its configuration block.
 	if code := pageWrite(t, http.MethodPut, pages.URL+fabricui.DefaultPrefix+"/nodes/second/label", token, `{"label":"Kitchen"}`, nil); code != http.StatusNoContent {
 		t.Fatalf("PUT /nodes/second/label: %d", code)
+	}
+	// The running node takes the label as its NodeLabel (Node.SetNodeLabel):
+	// a controller reads it without a restart.
+	if v, err := ws.ReadAttribute(ctx, ids["second"], "0/40/5"); err != nil || v["0/40/5"] != "Kitchen" {
+		t.Fatalf("the second node's NodeLabel after the rename: %v %v", v, err)
 	}
 	var list struct {
 		Nodes []struct {

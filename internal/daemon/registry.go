@@ -258,8 +258,12 @@ func (r *nodeRegistry) Create(ctx context.Context, spec fabricui.NodeSpec) (fabr
 }
 
 // Rename sets the label of the node key: the pages and the registry show
-// it at once; the running node keeps the NodeLabel it started with.
-func (r *nodeRegistry) Rename(_ context.Context, key, label string) error {
+// it at once, and the running node takes it as its NodeLabel (go-fabric
+// Node.SetNodeLabel, v0.19.0: validated to 32 bytes, persisted, reported
+// to its subscribers), so a controller sees the rename without a restart.
+// A node that refuses it — a label beyond 32 bytes, a store that fails —
+// is logged and keeps the registry's rename.
+func (r *nodeRegistry) Rename(ctx context.Context, key, label string) error {
 	if key == fabricui.DefaultNodeKey {
 		return fmt.Errorf("%w: the default node's label is --bridge-label", fabricui.ErrDefaultNode)
 	}
@@ -276,6 +280,11 @@ func (r *nodeRegistry) Rename(_ context.Context, key, label string) error {
 	}
 	r.entries = entries
 	r.publish()
+	if h := r.running[key]; h != nil {
+		if err := h.rename(context.WithoutCancel(ctx), entries[i].Label); err != nil {
+			r.log.Warn("fabricserver.registry.rename_label", slog.String("node", key), slog.Any("error", err))
+		}
+	}
 	return nil
 }
 
