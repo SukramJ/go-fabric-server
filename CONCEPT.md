@@ -103,6 +103,10 @@ the two are separate composition roots in go-fabric (`controller.New`,
   `camera_release_stream`, `camera_provide_answer`,
   `camera_provide_ice_candidates`, `send_webrtc_provider_command`) and their
   events, on go-fabric's `controller/camera` (brief S8).
+- **With go-fabric v0.19.1 (S9):** `border_router` nodes in
+  `get_network_topology` from go-fabric's border-router registry;
+  `get_thread_border_routers` still waits, for the registry to carry
+  matter.js's whole `BorderRouterEntry` (`docs/protocol.md`).
 - **Never:** a BLE proxy endpoint.
 - **Values:** `attributes` keyed `"endpoint/cluster/attribute"` in decimal;
   matterjs-server's conversion rules (read map §2.2-2.5). Planned additions,

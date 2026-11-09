@@ -52,6 +52,10 @@ var facade = map[string]bool{
 	// service get_network_topology and the controller pages answer from
 	// (go-fabric-ui's gofabric.ControllerOptions.Topology takes it).
 	"controller/topology": true,
+	// The border-router registry's entries (brief S9 §2, go-fabric #461):
+	// the type of controller.Controller.BorderRouters and of
+	// topology.Build's second input.
+	"thread/brdiscovery": true,
 	// The controller side of cameras (brief S8, go-fabric #410): the
 	// service camera_* and send_webrtc_provider_command map onto; #410
 	// expects the server to import this package only.
@@ -91,6 +95,9 @@ var testOnly = map[string]bool{
 	// S5, Questions).
 	"ble/esphome/esphometest": true, "controller/ble/bletest": true,
 	"bridge/bridgetest": true, "transport/btp": true,
+	// go-fabric's test camera for a host's in-process tests (brief S9 §3,
+	// go-fabric #460 (d)): the camera of the controllerapi env.
+	"controller/camera/cameratest": true,
 }
 
 // layers are the module's own import rules: a package may import only the
@@ -197,6 +204,7 @@ func TestGuardRefuses(t *testing.T) {
 		{"controllerapi", "cluster/spec", false},
 		{"controllerapi", "im", false},
 		{"controllerapi", "fabrictest", false},
+		{"controllerapi", "controller/camera/cameratest", false},
 		{"protocol", "transport/udp", false},
 		{"client", "secure/setup", true},
 		{"controllerapi", "cluster/spec/onoff/internal", false},
@@ -220,6 +228,8 @@ func TestGuardRefuses(t *testing.T) {
 		{"controllerapi", "controller/topology", false},
 		{"controllerapi", "cluster/spec/onoff", false},
 		{"controllerapi", "fabrictest", true},
+		{"controllerapi", "controller/camera/cameratest", true},
+		{"controllerapi", "thread/brdiscovery", false},
 		{"bridgeapi", "cluster/spec/powersource", false},
 		{"bridgeapi", "device", false},
 		{"bridgeapi", "node", false},
