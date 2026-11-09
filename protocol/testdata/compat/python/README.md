@@ -15,7 +15,7 @@ partial one), recorded in the shape of matterjs-server's python client
 | `icd_state.unsupported.value.json` | `IcdStateData` :293-303 | `ControllerCommandHandler.ts:2581-2594` |
 | `register_icd.error.json` | `ErrorResultMessage` :216-224, code 100 | `WebSocketMessageTypes.ts:266-272` |
 | `commission_with_code.error.attestation.json` | `ErrorResultMessage`, reason `attestation-rejected` | `ControllerCommandHandler.ts:305-345` |
-| `get_network_topology.value.json` | `NetworkTopology` :369-380 and its nodes and connections :306-366 | `NetworkTopologyService.ts:304-430` |
+| `get_network_topology.value.json` | `NetworkTopology` :369-380 and its nodes and connections :306-366, a `border_router` node with `host_name`, `vendor_name`, `model_name`, `last_seen` :343-347 | `NetworkTopologyService.ts:304-430`, the border router `:454-469` |
 | `network_topology_updated.event.json` | `EventType.NETWORK_TOPOLOGY_UPDATED` :29 | `NetworkTopologyService.ts` |
 | `import_test_node.request.python.json` | `import_test_node` (client.py, `APICommand.IMPORT_TEST_NODE`) | `TestNodeCommandHandler.ts:117-185` |
 | `get_all_credentials.value.json` | `get_all_credentials` (client.py:333-336) | `WebSocketControllerHandler.ts:2250-2302` |
