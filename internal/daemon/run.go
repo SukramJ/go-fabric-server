@@ -448,12 +448,12 @@ func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 // mdnsInterfaces is --bridge-mdns-interfaces as a list, each name
 // trimmed; nil for none. An empty name stays, so node.Config.Validate
 // refuses it ("eth0,," is a typo, not every interface).
-func mdnsInterfaces(flag string) []string {
-	if strings.TrimSpace(flag) == "" {
+func mdnsInterfaces(value string) []string {
+	if strings.TrimSpace(value) == "" {
 		return nil
 	}
 	var out []string
-	for name := range strings.SplitSeq(flag, ",") {
+	for name := range strings.SplitSeq(value, ",") {
 		out = append(out, strings.TrimSpace(name))
 	}
 	return out

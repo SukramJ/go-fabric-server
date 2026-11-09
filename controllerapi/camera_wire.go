@@ -440,6 +440,9 @@ func wireSignal(sig camera.Signal, key string) webrtcCallbackData {
 		out.EventType = "end"
 		r := sig.Reason
 		out.Data.Reason = &r
+	case camera.SignalRefused:
+		// Never passed: go-fabric hands a refusal to the observer alone
+		// (camera.Service.onSignal), and Server.cameraSignal drops it.
 	}
 	return out
 }
