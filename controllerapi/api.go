@@ -96,8 +96,17 @@ type Server struct {
 	// mu guards the node cache, the connections and their listening
 	// flags; every event is emitted under it, so a start_listening that
 	// holds it answers with a dump no event overtakes.
-	mu      sync.Mutex
-	nodes   map[string]*nodeState // by the registry's local id
+	mu    sync.Mutex
+	nodes map[string]*nodeState // by the registry's local id
+	// left are the nodes whose Decommissioned hook ran — the peer left
+	// our fabric or a decommission removed it —, dropped from the cache
+	// at once, as matterjs-server drops a node on its decommissioned event
+	// (ControllerCommandHandler.ts:941-947, :2347-2368 at 0bd06f2): the
+	// registry deletes the node only after its subscription ended
+	// (go-fabric client.Registry onLeave, deleteNode), and no hook
+	// follows that deletion (#54). An entry goes once the registry no
+	// longer holds the node.
+	left    map[string]bool
 	conns   map[*wsConn]struct{}
 	history []any // the last node events, for diagnostics
 	closing bool
@@ -189,7 +198,7 @@ func New(opts Options) (*Server, error) {
 	}
 	return &Server{
 		opts: opts, log: log, meter: protocol.NewMeter(opts.Metrics), cfg: cfg,
-		nodes: map[string]*nodeState{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{}, camConns: map[string]*wsConn{},
+		nodes: map[string]*nodeState{}, left: map[string]bool{}, conns: map[*wsConn]struct{}{}, testNodes: map[uint64]*testNode{}, camConns: map[string]*wsConn{},
 		dirty: map[string]bool{}, wake: make(chan struct{}, 1), stop: make(chan struct{}), loopDone: make(chan struct{}),
 	}, nil
 }
@@ -210,7 +219,7 @@ func (s *Server) Hooks(id string) client.Hooks {
 		Changed:                mark,
 		ConnectionStateChanged: func(client.ConnectionState) { mark() },
 		Seeded:                 mark,
-		Decommissioned:         mark,
+		Decommissioned:         func() { s.decommissioned(id) },
 		Commissioned:           mark,
 	}
 	if id != "" {
