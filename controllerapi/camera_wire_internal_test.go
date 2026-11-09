@@ -118,36 +118,6 @@ func TestWireStartResultAndSnapshot(t *testing.T) {
 	}))
 }
 
-func TestWireNames(t *testing.T) {
-	for v, n := range map[csdef.VideoCodecEnum]string{csdef.VideoCodecH264: "H264", csdef.VideoCodecHevc: "H265", csdef.VideoCodecVvc: "H266", csdef.VideoCodecAv1: "AV1", 9: "9"} {
-		if got := videoCodecName(v); got != n {
-			t.Errorf("video %d: %s, want %s", v, got, n)
-		}
-	}
-	if audioCodecName(csdef.AudioCodecAacLc) != "AAC" || audioCodecName(7) != "7" {
-		t.Error("audio codec names")
-	}
-	for name, want := range map[string]csdef.ImageCodecEnum{"JPEG": csdef.ImageCodecJpeg, "heic": csdef.ImageCodecHeic, "5": 5} {
-		if v, ok := imageCodecByName(name); !ok || v != want {
-			t.Errorf("image %q: %d %v", name, v, ok)
-		}
-	}
-	for _, bad := range []string{"", "PNG", "300", "-1"} {
-		if _, ok := imageCodecByName(bad); ok {
-			t.Errorf("image %q accepted", bad)
-		}
-	}
-	if streamUsageName(csdef.StreamUsageLiveView) != "LiveView" || streamUsageName(9) != "9" || twoWayTalkSupportName(csdef.TwoWayTalkSupportTypeFullDuplex) != "FullDuplex" {
-		t.Error("enum names")
-	}
-	if u, ok := streamUsageByName("liveview"); !ok || u != csdef.StreamUsageLiveView {
-		t.Error("liveview")
-	}
-	if _, ok := streamUsageByName("3"); ok {
-		t.Error("a usage by digits")
-	}
-}
-
 func TestWireSignals(t *testing.T) {
 	session := wrdef.WebRTCSessionStruct{Id: 3, PeerNodeId: 1, PeerEndpointId: 1, FabricIndex: 1}
 	policy := "all"

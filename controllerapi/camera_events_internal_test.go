@@ -116,3 +116,15 @@ func TestEndHeldByID(t *testing.T) {
 		t.Fatalf("sessions %d starts %d", len(c.cam.sessions), len(c.cam.starts))
 	}
 }
+
+// TestSignalRefusedIsNoEvent: the requestor's refusal of a command for a
+// session it does not hold (camera.SignalRefused, go-fabric v0.19.1)
+// reaches no connection — matterjs-server forwards the requestor's offer,
+// answer, iceCandidates and end alone (WebRtcCallbackBridge.ts:51-122 at
+// 0bd06f2). The opted-in connection has no send path: a frame would panic.
+func TestSignalRefusedIsNoEvent(t *testing.T) {
+	c := &wsConn{id: "c"}
+	c.cam.webrtc.Store(true)
+	s := &Server{camConns: map[string]*wsConn{"c": c}}
+	s.cameraSignal(camera.Signal{Kind: camera.SignalRefused})
+}

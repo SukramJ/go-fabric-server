@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
+	"github.com/SukramJ/go-fabric/contract"
+	"github.com/SukramJ/go-fabric/controller/camera/cameratest"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -16,7 +18,7 @@ import (
 // cameraEndpoint is the camera's endpoint number on the site device.
 func (e *env) cameraEndpoint() uint16 {
 	e.t.Helper()
-	ep, ok := e.camera.EndpointNumber()
+	ep, ok := e.camera.Device().EndpointNumber()
 	if !ok {
 		e.t.Fatal("the camera has no endpoint")
 	}
@@ -85,7 +87,7 @@ func TestCameraCommands(t *testing.T) {
 	}
 	if strings.Join(caps.Features, ",") != "Audio,Video,Snapshot" || strings.Join(caps.Video.Codecs, ",") != "H264" || caps.Video.Sensor.Width != 1920 ||
 		len(caps.Snapshot.Capabilities) != 1 || caps.Snapshot.Capabilities[0].ImageCodec != "JPEG" ||
-		strings.Join(caps.Limits.SupportedStreamUsages, ",") != "LiveView,Recording" || len(caps.Allocated.Video) != 2 ||
+		strings.Join(caps.Limits.SupportedStreamUsages, ",") != "LiveView,Recording" || len(caps.Allocated.Video) != 1 ||
 		caps.Allocated.Video[0].StreamUsage != "LiveView" || caps.Allocated.Video[0].AllocatedByServer || caps.Sessions == nil {
 		t.Fatalf("capabilities %+v", caps)
 	}
@@ -105,10 +107,12 @@ func TestCameraCommands(t *testing.T) {
 	if _, err := e.client.CallRaw(ctx, "camera_release_stream", at(map[string]any{"kind": "snapshot", "stream_id": snap.StreamID})); err != nil {
 		t.Fatalf("release the snapshot stream: %v", err)
 	}
-	// The second video stream is still referenced: the camera answers
-	// INVALID_IN_STATE, which is error 104.
-	_, err := e.client.CallRaw(ctx, "camera_release_stream", at(map[string]any{"kind": "video", "stream_id": 2}))
-	wantCode(t, err, protocol.CameraStreamInUse, `"stream_id":2`)
+	// A video stream the camera still references: it answers
+	// INVALID_IN_STATE (0xCB, Matter Core §8.10.1), which is error 104.
+	e.port.Refuse(cameratest.OpVideoStreamDeallocate, contract.StatusError{Status: 0xCB, Message: "stream 1 is in use"})
+	_, err := e.client.CallRaw(ctx, "camera_release_stream", at(map[string]any{"kind": "video", "stream_id": cameratest.AllocatedVideoStream}))
+	wantCode(t, err, protocol.CameraStreamInUse, `"stream_id":1`)
+	e.port.Refuse(cameratest.OpVideoStreamDeallocate, nil)
 
 	var stop struct {
 		Ended bool `json:"ended"`

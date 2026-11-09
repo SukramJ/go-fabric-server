@@ -17,6 +17,7 @@ import (
 	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/camera"
+	"github.com/SukramJ/go-fabric/controller/camera/cameratest"
 	"github.com/SukramJ/go-fabric/controller/topology"
 	"github.com/SukramJ/go-fabric/device"
 	"github.com/SukramJ/go-fabric/fabrictest"
@@ -39,9 +40,10 @@ type env struct {
 	client *fsclient.Client
 	ctrl   *controller.Controller
 	cam    *camera.Service
-	// camera is the site's camera and port, with envOptions.camera.
-	camera *device.Camera
-	port   *cameraPort
+	// camera is the site's camera and port, with envOptions.camera:
+	// go-fabric's test camera (controller/camera/cameratest).
+	camera *cameratest.Camera
+	port   *cameratest.Port
 }
 
 type envOptions struct {
@@ -51,12 +53,16 @@ type envOptions struct {
 	noDial bool
 	// configure edits the controller's configuration.
 	configure func(*controller.Config)
-	// camera adds a camera beside the light (newTestCamera): the site
+	// camera adds a camera beside the light (cameratest): the site
 	// runs on loopback sockets then, since the camera's offers need the
 	// device's TCP.
 	camera bool
 	// noCameraService starts the server without its camera service.
 	noCameraService bool
+	// onEvicted, when set, runs on the eviction path before the server
+	// hears of an evicted stream — before the start that evicted it
+	// allocates again.
+	onEvicted func(camera.StreamEvicted)
 }
 
 func logger() *slog.Logger {
@@ -78,13 +84,15 @@ func newEnv(t *testing.T, o envOptions) *env {
 	}
 	top := fabrictest.Topology{Bridged: []node.Endpoint{light}}
 	var (
-		cam  *device.Camera
-		port *cameraPort
+		cam  *cameratest.Camera
+		port *cameratest.Port
 	)
 	if o.camera {
-		port = newCameraPort()
-		cam = newTestCamera(t, port)
-		top.Bridged = append(top.Bridged, cam)
+		if cam, err = cameratest.New(cameratest.Options{}); err != nil {
+			t.Fatal(err)
+		}
+		port = cam.Port()
+		top.Bridged = append(top.Bridged, cam.Device())
 		top.Configure = func(cfg *node.Config) { cfg.Network.TCP = node.TCPConfig{Incoming: true} }
 	}
 	dev := site.AddDevice(top)
@@ -127,7 +135,14 @@ func newEnv(t *testing.T, o envOptions) *env {
 		t.Fatal(err)
 	}
 	topo := topology.New(ctrl, topology.Config{Changes: &changes, Clock: cfg.Clock})
-	svc, err := camera.New(ctx, ctrl, camera.Config{Reports: &reports, Observer: api.CameraObserver(), Logger: logger()})
+	observer := api.CameraObserver()
+	if hook, forward := o.onEvicted, observer.StreamEvicted; hook != nil {
+		observer.StreamEvicted = func(ev camera.StreamEvicted) {
+			hook(ev)
+			forward(ev)
+		}
+	}
+	svc, err := camera.New(ctx, ctrl, camera.Config{Reports: &reports, Observer: observer, Logger: logger()})
 	if err != nil {
 		t.Fatal(err)
 	}

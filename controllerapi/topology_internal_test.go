@@ -55,7 +55,7 @@ func TestWireTopology(t *testing.T) {
 		testNodeImage(2, false, true, n2),
 		img3,
 		testNodeImage(4, true, false, n4),
-	}, time.UnixMilli(1735689600000)))
+	}, nil, time.UnixMilli(1735689600000)))
 	b, err := json.Marshal(topo)
 	if err != nil {
 		t.Fatal(err)

@@ -169,8 +169,15 @@ func (s *Server) cameraReleased(ctx context.Context, conn *wsConn) {
 
 // cameraSignal is a signal of a session nobody owns (the raw route): to
 // every connection opted in for webrtc_callback, without a key
-// (docs/websockets_api.md:2261-2269; handler.ts:776-793).
+// (docs/websockets_api.md:2261-2269; handler.ts:776-793). The requestor's
+// refusal of a command for a session it does not hold (camera.SignalRefused)
+// is not an event: matterjs-server forwards the requestor's offer, answer,
+// iceCandidates and end alone (WebRtcCallbackBridge.ts:51-122 at
+// 0bd06f2), and go-fabric logs the refusal (camera.requestor.refused).
 func (s *Server) cameraSignal(sig camera.Signal) {
+	if sig.Kind == camera.SignalRefused {
+		return
+	}
 	frame := protocol.MustEncode(protocol.Event{Event: "webrtc_callback", Data: wireSignal(sig, "")})
 	for _, c := range s.cameraConns(func(c *wsConn) bool { return c.cam.webrtc.Load() }) {
 		c.send.SendReliable(frame)
