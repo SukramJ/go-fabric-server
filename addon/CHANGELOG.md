@@ -3,6 +3,12 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.9.1
+
+- Library update (go-fabric BlueZ central 0.21.0): commissioning over a
+  local Bluetooth adapter uses the larger packet size BlueZ negotiates
+  (BlueZ 5.62 and later) instead of the minimum.
+
 ## 0.9.0
 
 - Library updates (go-fabric 0.21.0, go-fabric-ui 0.9.0): the controller

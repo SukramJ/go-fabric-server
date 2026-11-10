@@ -5,8 +5,8 @@ go 1.27.3
 require (
 	github.com/SukramJ/go-fabric v0.21.0
 	github.com/SukramJ/go-fabric-ui v0.9.0
-	github.com/SukramJ/go-fabric/ble/bluez v0.12.1
-	github.com/SukramJ/go-fabric/ble/esphome v0.13.10
+	github.com/SukramJ/go-fabric/ble/bluez v0.21.0
+	github.com/SukramJ/go-fabric/ble/esphome v0.21.0
 	github.com/coder/websocket v1.8.15
 )
 
