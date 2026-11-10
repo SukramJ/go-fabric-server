@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-10
+
+### Changed
+
+- go-fabric `v0.19.1` → `v0.20.0` (no new module): the fabric-leaving flush
+  of an erase sends one report and waits at most 500 ms (0.19.2, #473); the
+  controller reconnects to a node through the host its last session proved
+  first, a failed attempt moves to the next address at once, and the
+  discovery log carries the SRV targets (`targets`,
+  `matter.discovery.srv_target_changed`) — a Thread node behind a border
+  router that answers its instance with its own host no longer costs each
+  reconnect 45 s (0.20.0). `protocol/schema` regenerated (provenance only).
+- go-fabric-ui `v0.8.0` → `v0.8.1`: the controller pages' node page shows
+  the node's operational host. The `/ws` wire does not change.
+
+### Fixed
+
+- Erasing a device node no longer waits about 14 s for a report the
+  controller never answers (S9's question, go-fabric #473).
+
 ## [0.8.0] - 2026-11-09
 
 ### Added

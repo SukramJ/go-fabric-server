@@ -3,6 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.8.1
+
+- Library updates (go-fabric 0.20.0, go-fabric-ui 0.8.1): the controller
+  reconnects to Thread nodes behind a border router without a 45 s detour;
+  the node page shows the node's operational host.
+- Erasing a device node no longer takes about 14 s.
+
 ## 0.8.0
 
 - Library updates (go-fabric 0.19.1, go-fabric-ui 0.8.0): the network
