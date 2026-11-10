@@ -359,9 +359,10 @@ func TestTwoNodes(t *testing.T) {
 }
 
 // leaveWindow bounds the wait for the controller to drop an erased node:
-// the Leave report usually lands within a second, and a lost one is not
-// retried (#54).
-const leaveWindow = 10 * time.Second
+// since go-fabric v0.19.2 the fabric-leaving flush sends one report and
+// waits at most 500 ms for its answer (#473), and a lost report is not
+// retried (#54); the drop measured about 20 ms (S10), the rest is margin.
+const leaveWindow = 3 * time.Second
 
 // awaitNodeGone waits at most within until the controller's get_nodes no
 // longer lists id, and reports whether it does not.

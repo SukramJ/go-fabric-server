@@ -251,6 +251,17 @@ fabric: every node must be commissioned again.
   affected. A name the host does not have is accepted: the pages' node
   Diagnostics (`GET …/node/mdns`, go-fabric `Node.DiagnoseMDNS`) report it, a named bridge and a
   named interface without an advertised address.
+- A Thread node behind a border router that also answers the node's
+  operational instance with an SRV to its own host (seen with a tvOS
+  border router) has two hosts in discovery, one of them the router's
+  link-local address. Since go-fabric v0.20.0 the controller records the
+  host that owned the session's address when the node was last reached
+  (`client.Record.OperationalHost`, shown on the controller pages' node
+  page) and tries its addresses first while discovery still advertises it;
+  the other hosts stay candidates after it, and a failed attempt moves to
+  the next address at once. In the log the two hosts show as
+  `targets` on `matter.discovery.status.resolved` and as
+  `matter.discovery.srv_target_changed` when the answer flips (Logs).
 
 ## Authentication
 
@@ -315,6 +326,14 @@ memory), which the pages' Operation page shows and streams. One level gates
 both: `--log-level` at start, then `set_loglevel` over `/ws` or the
 Operation page, each seen by the other's `get_loglevel`/level read; no log
 file is written (`file_loglevel` is `null`).
+
+The controller's operational discovery (go-fabric `client/discovery`)
+logs the SRV targets it resolves a node's instance to:
+`matter.discovery.status.resolving` and `matter.discovery.status.resolved`
+carry `targets`, the service's current SRV targets, and a change of them
+is `matter.discovery.srv_target_changed` with `service`, `from` and `to`
+— two responders answering one instance show as a target flipping
+between two hosts, without a packet capture.
 
 ## The pages
 
