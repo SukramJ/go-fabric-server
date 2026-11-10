@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
 	"github.com/SukramJ/go-fabric/clock"
+	"github.com/SukramJ/go-fabric/contract"
 	"github.com/SukramJ/go-fabric/controller"
 	"github.com/SukramJ/go-fabric/controller/ble"
 	"github.com/SukramJ/go-fabric/controller/topology"
@@ -36,14 +38,16 @@ import (
 // half's hooks with the pages' chained after them, /ws and the pages'
 // handler side by side.
 type pagesEnv struct {
-	t      *testing.T
-	ctx    context.Context
-	dev    *fabrictest.Device
-	api    *controllerapi.Server
-	ws     *fsclient.Client
-	pages  *httptest.Server
-	token  string
-	events chan fabricui.ControllerEvent
+	t   *testing.T
+	ctx context.Context
+	dev *fabrictest.Device
+	api *controllerapi.Server
+	ws  *fsclient.Client
+	// httpURL is the API listener's (Mux: /ws, /health, /metrics).
+	httpURL string
+	pages   *httptest.Server
+	token   string
+	events  chan fabricui.ControllerEvent
 	// log is the daemon's logger (newLogger over io.Discard), lvl its one
 	// level source: the half's LogLevel and the pages' Operations.
 	log *slog.Logger
@@ -87,6 +91,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	hooks := gofabric.NewHooks()
 	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: slog.New(slog.DiscardHandler)})
 	cfg.HooksFor = hooks.Wrap(api.Hooks) // as Run wires them
+	controllerTelemetry(&cfg, c)         // as Run sets them
 	var changes topology.Changes
 	changes.Install(&cfg)
 	ctrl, err := controller.New(ctx, cfg)
@@ -118,7 +123,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		ws.Close()
 		pages.Close()
 	})
-	e := &pagesEnv{t: t, ctx: ctx, dev: dev, api: api, pages: pages, events: make(chan fabricui.ControllerEvent, 256), log: log, lvl: lvl}
+	e := &pagesEnv{t: t, ctx: ctx, dev: dev, api: api, httpURL: ws.URL, pages: pages, events: make(chan fabricui.ControllerEvent, 256), log: log, lvl: lvl}
 	e.ws, err = fsclient.Dial(ctx, "ws"+strings.TrimPrefix(ws.URL, "http")+"/ws", fsclient.Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -385,4 +390,74 @@ func waitWSEvent(t *testing.T, c *fsclient.Client, name string) {
 			t.Fatalf("no %s on /ws", name)
 		}
 	}
+}
+
+// TestControllerTelemetry: --controller-diagnostics-capacity bounds the
+// trace the pages' Diagnostics tab reads (GET /controller/events), the
+// tab's routes answer through controllerSource, and GET /metrics carries
+// go-fabric's controller metric names under fabricserver.controller.
+func TestControllerTelemetry(t *testing.T) {
+	const capacity = 3
+	e := newPagesEnv(t, Config{WebAdmin: true, ControllerDiagnosticsCapacity: capacity})
+	var st struct {
+		Capabilities struct {
+			Diagnostics bool `json:"diagnostics"`
+		} `json:"capabilities"`
+	}
+	e.json(http.MethodGet, "/controller/status", "", http.StatusOK, &st)
+	if !st.Capabilities.Diagnostics {
+		t.Fatal("capabilities.diagnostics is false")
+	}
+	payload, err := e.dev.Node().SetupPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ws.CommissionWithCode(e.ctx, payload.QR, true); err != nil {
+		t.Fatalf("commission_with_code: %v", err)
+	}
+	var trace struct {
+		Events []json.RawMessage `json:"events"`
+	}
+	e.json(http.MethodGet, "/controller/events", "", http.StatusOK, &trace)
+	if n := len(trace.Events); n < 1 || n > capacity {
+		t.Fatalf("%d events in the trace, want 1..%d", n, capacity)
+	}
+	var diagnostics struct {
+		Peers []json.RawMessage `json:"peers"`
+	}
+	e.json(http.MethodGet, "/controller/diagnostics", "", http.StatusOK, &diagnostics)
+	if len(diagnostics.Peers) != 1 {
+		t.Fatalf("%d peers in the diagnostics, want 1", len(diagnostics.Peers))
+	}
+
+	resp, err := http.Get(e.httpURL + "/metrics") //nolint:noctx // a test
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var vars map[string]json.RawMessage
+	if err := json.NewDecoder(resp.Body).Decode(&vars); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range contract.MetricNames() {
+		if _, ok := vars[controllerMetricsPrefix+name]; !ok {
+			t.Errorf("GET /metrics has no %s", controllerMetricsPrefix+name)
+		}
+	}
+	for _, name := range []string{
+		controller.MetricSessionsOpen, controller.MetricMRPRetransmits, controller.MetricPairFailures,
+		controller.MetricCASEUnresponsive, controller.MetricReachabilityProbes, controller.MetricICDCheckInsMissed,
+	} {
+		if _, ok := vars[controllerMetricsPrefix+name]; !ok {
+			t.Errorf("GET /metrics has no %s", controllerMetricsPrefix+name)
+		}
+	}
+	var keys []string
+	for k, v := range vars {
+		if strings.HasPrefix(k, controllerMetricsPrefix) {
+			keys = append(keys, k+"="+string(v))
+		}
+	}
+	sort.Strings(keys)
+	t.Logf("GET /metrics: %s", strings.Join(keys, " "))
 }

@@ -38,6 +38,12 @@ func TestParseFlagsAndEnvironment(t *testing.T) {
 	if c.NodeLimit != defaultNodeLimit {
 		t.Fatalf("--node-limit %d", c.NodeLimit)
 	}
+	if c.ControllerDiagnosticsCapacity != 0 {
+		t.Fatalf("--controller-diagnostics-capacity %d, want 0 (go-fabric's default)", c.ControllerDiagnosticsCapacity)
+	}
+	if c, err := ParseFlags([]string{"--controller-diagnostics-capacity", "1024"}, io.Discard); err != nil || c.ControllerDiagnosticsCapacity != 1024 {
+		t.Fatalf("--controller-diagnostics-capacity 1024: %d %v", c.ControllerDiagnosticsCapacity, err)
+	}
 	// The flags the node registry replaced stop the start with their
 	// migration, on the command line and through the environment.
 	for _, args := range [][]string{{"--bridge-node", "second,listen=:5541"}, {"--node-default", "second"}} {
@@ -76,6 +82,7 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeMDNSInterfaces: "eth0,eth0", StoragePath: t.TempDir()}, `Network.MDNS.Interfaces names "eth0" twice`},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, BridgeProfile: "nope", StoragePath: t.TempDir()}, "--bridge-profile: "},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Bridge: true, NodeLimit: -1, StoragePath: t.TempDir()}, "--node-limit -1 is negative"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, ControllerDiagnosticsCapacity: -1, StoragePath: t.TempDir()}, "--controller-diagnostics-capacity -1 is negative"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "none", StoragePath: t.TempDir()}, "--trust"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", VendorID: 70000, StoragePath: t.TempDir()}, "--vendor-id"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "production", BluetoothAdapter: "0", StoragePath: t.TempDir()}, "--bluetooth-adapter 0: bluez: no such adapter"},

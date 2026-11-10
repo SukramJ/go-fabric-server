@@ -29,6 +29,7 @@ import (
 	"github.com/SukramJ/go-fabric/controller/camera"
 	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
 	"github.com/SukramJ/go-fabric/controller/topology"
+	"github.com/SukramJ/go-fabric/diag"
 	"github.com/SukramJ/go-fabric/node"
 	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
 
@@ -77,8 +78,12 @@ type Config struct {
 	// NodeLimit is the most device nodes the pages may create beside the
 	// --bridge-* one (--node-limit): the node registry's (nodes.json)
 	// cap.
-	NodeLimit   int
-	ShowVersion bool
+	NodeLimit int
+	// ControllerDiagnosticsCapacity is the controller's diagnostic trace
+	// size in events (--controller-diagnostics-capacity): 0 keeps
+	// go-fabric's diag.DefaultDiagnosticsCapacity; negative is refused.
+	ControllerDiagnosticsCapacity int
+	ShowVersion                   bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
 	// shell or curl).
@@ -147,6 +152,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.BridgeSpecLevel, "bridge-spec-level", "", "the specification level the bridge node composes at (default the pin's): "+levelList())
 	fs.StringVar(&c.BridgeProfile, "bridge-profile", "", "the controller profiles the bridge node composes for, name[,name...]: "+profileList())
 	fs.IntVar(&c.NodeLimit, "node-limit", defaultNodeLimit, "the most device nodes the pages may create beside the --bridge-* one (the node registry, nodes.json)")
+	fs.IntVar(&c.ControllerDiagnosticsCapacity, "controller-diagnostics-capacity", 0, "the events the controller's diagnostic trace keeps (the pages' Diagnostics tab), the oldest dropped first; 0 is go-fabric's default ("+strconv.Itoa(diag.DefaultDiagnosticsCapacity)+")")
 	fs.Var(removedFlag(removedBridgeNode), "bridge-node", "removed: "+removedBridgeNode)
 	fs.Var(removedFlag(removedNodeDefault), "node-default", "removed: "+removedNodeDefault)
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
@@ -231,6 +237,9 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	var ctrl *controller.Controller
 	var ctrlPages fabricui.ControllerSource
 	if c.Controller {
+		if c.ControllerDiagnosticsCapacity < 0 {
+			return fmt.Errorf("--controller-diagnostics-capacity %d is negative", c.ControllerDiagnosticsCapacity)
+		}
 		trust, err := trustStore(c)
 		if err != nil {
 			return err
@@ -266,6 +275,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			// closed in v0.12.1): node_event names its node.
 			HooksFor: api.Hooks,
 		}
+		controllerTelemetry(&cfg, c)
 		// The controller pages' stream: go-fabric-ui's hooks chained
 		// after the half's (Hooks.Wrap: each of api.Hooks(id) runs, then
 		// the stream's; Event stays the half's), never instead of them.
@@ -516,6 +526,20 @@ func bridgeMetricsPrefix(key string) string {
 		return "fabricserver.bridge."
 	}
 	return "fabricserver.bridge." + key + "."
+}
+
+// controllerMetricsPrefix is the controller's expvar prefix on
+// GET /metrics: go-fabric's controller metric names (contract.MetricNames)
+// under it, apart from the controller half's own fabricserver. ones.
+const controllerMetricsPrefix = "fabricserver.controller."
+
+// controllerTelemetry gives the controller its diagnostic trace's
+// capacity (--controller-diagnostics-capacity; the pages' Diagnostics tab
+// reads the trace) and its metrics (GET /metrics, under
+// controllerMetricsPrefix).
+func controllerTelemetry(cfg *controller.Config, c Config) {
+	cfg.Diagnostics = diag.Diagnostics{Capacity: c.ControllerDiagnosticsCapacity}
+	cfg.Metrics = expvarmetrics.New(controllerMetricsPrefix)
 }
 
 // probe is --health-check: GET url (with the token) and want 200.

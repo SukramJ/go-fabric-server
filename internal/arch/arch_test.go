@@ -52,6 +52,9 @@ var facade = map[string]bool{
 	// service get_network_topology and the controller pages answer from
 	// (go-fabric-ui's gofabric.ControllerOptions.Topology takes it).
 	"controller/topology": true,
+	// The type of controller.Config.Diagnostics (brief S11 §3, go-fabric
+	// #483): the diagnostic trace's capacity, --controller-diagnostics-capacity.
+	"diag": true,
 	// The border-router registry's entries (brief S9 §2, go-fabric #461):
 	// the type of controller.Controller.BorderRouters and of
 	// topology.Build's second input.
