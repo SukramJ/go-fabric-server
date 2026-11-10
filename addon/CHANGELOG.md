@@ -3,6 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.9.0
+
+- Library updates (go-fabric 0.21.0, go-fabric-ui 0.9.0): the controller
+  pages gain a Diagnostics tab (sessions per node, mDNS findings, a trace of
+  pairing, session, discovery, reachability, ICD, OTA and camera events);
+  further reconnect fixes for nodes several responders answer for.
+
 ## 0.8.1
 
 - Library updates (go-fabric 0.20.0, go-fabric-ui 0.8.1): the controller
