@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-10
+
 ### Changed
 
 - go-fabric `ble/bluez` `v0.12.1` → `v0.21.0` (brief S12, no report: a
