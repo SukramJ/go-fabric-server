@@ -6,6 +6,40 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-10
+
+### Added
+
+- The controller pages' Diagnostics tab (go-fabric-ui 0.9.0 over go-fabric
+  0.21.0's controller diagnostics, #60): the sessions per peer with the
+  peer's connection state, address, DNS-SD names and ICD Check-Ins, the
+  mDNS findings (`no_operational_names` among them) and the bounded trace
+  of pairing, session, discovery, reachability, ICD, OTA and camera
+  events. The `/ws` wire does not change.
+- Controller metrics on `GET /metrics` under `fabricserver.controller.`:
+  `sessions.open`, `mrp.retransmits`, `pair.failures`, `case.unresponsive`,
+  `reachability.probes`, `icd.checkins_missed`.
+- `--controller-diagnostics-capacity`
+  (`FABRIC_SERVER_CONTROLLER_DIAGNOSTICS_CAPACITY`): the events the
+  controller's diagnostic trace keeps; `0` is go-fabric's default (256), a
+  negative value stops the start.
+
+### Changed
+
+- go-fabric `v0.20.0` → `v0.21.0` (no new module; `ble/bluez` and
+  `ble/esphome` have no newer tag): the residual reconnect cases of #488 —
+  a node's proven operational host is learnt from discovery, a reconnect
+  tries the last operational address first while another responder's
+  cache flush hid that host, a link-local address leaves every interface
+  it was heard on, and `matter.controller.peer.probe` names the probed
+  address (`target`).
+- go-fabric `v0.21.0` also serves the controller's diagnostics
+  (`Controller.SessionDiagnostics`, `DiagnosticEvents`, `DiagnoseMDNS`) and
+  its metrics (go-fabric #483), which the Diagnostics tab and
+  `GET /metrics` read. `protocol/schema` regenerated (provenance only).
+- go-fabric-ui `v0.8.1` → `v0.9.0` (contract 0.9.0): the controller
+  family's Diagnostics tab.
+
 ## [0.8.1] - 2026-11-10
 
 ### Changed

@@ -38,6 +38,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-spec-level` | the pin's (`1.6.1`) | the Matter specification level the bridge node composes at: `1.4`, `1.4.1`, `1.4.2`, `1.5.1`, `1.6.0`, `1.6.1` at go-fabric v0.15.2; another value stops the start with the list |
 | `--bridge-profile` | — | the controller profiles the bridge node composes for, `name[,name…]`: `alexa`, `apple-home`, `google-home`, `home-assistant`, `smartthings` at go-fabric v0.15.2; an unknown name, or two whose levels differ without `--bridge-spec-level`, stops the start |
 | `--node-limit` | `8` | the most device nodes the pages may create beside the `--bridge-*` one ([Several device nodes](#several-device-nodes)); `0` creates none |
+| `--controller-diagnostics-capacity` | `0` (go-fabric's `256`) | the events the controller's diagnostic trace keeps, the oldest dropped first (the controller pages' Diagnostics tab, [The pages](#the-pages)); `0` is go-fabric's `diag.DefaultDiagnosticsCapacity`; a negative value stops the start. No add-on option |
 | `--bridge-node`, `--node-default` | — | removed: further device nodes are created in the pages; either flag (or its environment variable) stops the start with that message |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
 | `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened |
@@ -284,7 +285,7 @@ fabric: every node must be commissioned again.
 | `/ws` | the controller half (WebSocket) |
 | `/bridge` | the bridge half (WebSocket), with `--bridge`; one client at a time |
 | `GET /health` | `{"version", "node_count", "healthy"}`, with `--bridge` also `"device_count"`; 503 while a half is not healthy |
-| `GET /metrics` | expvar: `fabricserver.ws.connections`, `fabricserver.ws.queued_bytes`, `fabricserver.ws.dropped`, `fabricserver.ws.closed_overflow`, the Go runtime's `memstats` |
+| `GET /metrics` | expvar: `fabricserver.ws.connections`, `fabricserver.ws.queued_bytes`, `fabricserver.ws.dropped`, `fabricserver.ws.closed_overflow`; the controller's (go-fabric `controller.Config.Metrics`) under `fabricserver.controller.`: `sessions.open` (a gauge), `mrp.retransmits`, `pair.failures`, `case.unresponsive`, `reachability.probes`, `icd.checkins_missed` (counters) — the expvar adapter publishes every go-fabric metric name under the prefix, the others stay `0` on the controller; the bridge nodes' under `fabricserver.bridge.`; the Go runtime's `memstats` |
 | `GET /schema` | the JSON Schema of the node data values; header `X-Go-Fabric-Version` |
 | `GET /schema/declaration` | the JSON Schema of the bridge half's declaration and patches |
 
@@ -333,12 +334,15 @@ logs the SRV targets it resolves a node's instance to:
 carry `targets`, the service's current SRV targets, and a change of them
 is `matter.discovery.srv_target_changed` with `service`, `from` and `to`
 — two responders answering one instance show as a target flipping
-between two hosts, without a packet capture.
+between two hosts, without a packet capture. The address monitor's probe,
+`matter.controller.peer.probe`, carries `target`, the address it probed,
+beside `address`, the session's current one: its walk of a node's
+alternates reads from the log (go-fabric 0.21.0, #488).
 
 ## The pages
 
 `--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
-0.7.1), both families and the Operation page in one handler:
+0.9.0), both families and the Operation page in one handler:
 
 - **The node pages** for every device node — the `--bridge-*` one and the
   registry's — under a node selector that lists the default node first
@@ -363,8 +367,14 @@ between two hosts, without a packet capture.
   address instead),
   commissioning by code
   or from a discovery, the fabric label, the Wi-Fi and Thread credentials
-  and software updates. With `--controller=false` the family is shown as
-  disabled. The source is go-fabric-ui's adapter
+  and software updates, and a Diagnostics tab (go-fabric-ui 0.9.0, from
+  go-fabric's controller diagnostics): the sessions per peer with each
+  peer's connection state, operational address and host, DNS-SD names and
+  ICD Check-Ins; the mDNS findings (among them `no_operational_names`, a
+  browse that finds no operational record); and the bounded trace of
+  pairing, session, discovery, reachability, ICD, OTA and camera events,
+  live on the stream (`--controller-diagnostics-capacity` sizes it). With
+  `--controller=false` the family is shown as disabled. The source is go-fabric-ui's adapter
   (`fabricui/gofabric.ControllerOf`) over the daemon's controller.
 
 Three admin modes, the same for both families — a controller route marked
