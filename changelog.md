@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- go-fabric `ble/bluez` `v0.12.1` → `v0.21.0` (brief S12, no report: a
+  bump): the BlueZ connection reports the ATT_MTU exchange from BlueZ's
+  `MTU` property (BlueZ 5.62 and later), so a BLE commissioning sizes its
+  BTP segments from the exchanged MTU instead of the pre-exchange 23 for
+  the whole session; an older BlueZ settles at the minimum (go-fabric
+  issue 426).
+- go-fabric `ble/esphome` `v0.13.10` → `v0.21.0`: the same tag line; the
+  ESPHome proxy needs no exchange report, and the module records why.
+
 ## [0.9.0] - 2026-11-10
 
 ### Added
