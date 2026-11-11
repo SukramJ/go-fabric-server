@@ -342,7 +342,8 @@ alternates reads from the log (go-fabric 0.21.0, #488).
 ## The pages
 
 `--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
-0.9.0), both families and the Operation page in one handler:
+0.9.0), both families and the Operation page in one handler. The terms
+the pages use are defined in go-fabric's [glossary](https://sukramj.github.io/go-fabric/reference/glossary/):
 
 - **The node pages** for every device node — the `--bridge-*` one and the
   registry's — under a node selector that lists the default node first
