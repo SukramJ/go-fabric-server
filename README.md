@@ -70,6 +70,7 @@ certified by the Alliance. See go-fabric's README, section "Not certified".
 - [`docs/addon.md`](docs/addon.md) — the Home Assistant add-on
 - [`docs/compat.md`](docs/compat.md) — the python-client compatibility job
 - [`docs/by_design.md`](docs/by_design.md) — the deliberate differences, each with its reason
+- go-fabric's [glossary](https://sukramj.github.io/go-fabric/reference/glossary/) — the Matter terms (fabric, commissioner, session, border router) and the family's own (the page families, Topology versus Network, peer, diagnostic trace)
 - [`docs/reports/S1.md`](docs/reports/S1.md), [`docs/reports/S2.md`](docs/reports/S2.md), [`docs/reports/S3.md`](docs/reports/S3.md) — what each bundle delivered and what it left to go-fabric
 
 ## Development
