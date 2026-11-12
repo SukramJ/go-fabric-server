@@ -166,7 +166,7 @@ func proxyCentral(t *testing.T, dev *fabrictest.Device) ble.Central {
 func TestCommissionThroughProxy(t *testing.T) {
 	drv := &wifiDriver{}
 	e := newPagesEnvWith(t, Config{WebAdmin: true}, func(cfg *node.Config) {
-		fabrictest.UseWiFiCommissioning(cfg, drv)
+		cfg.Network.WiFi = &node.WiFi{Driver: drv}
 	}, func(dev *fabrictest.Device) ble.Central { return proxyCentral(t, dev) })
 
 	var info struct {
@@ -209,9 +209,11 @@ func TestCommissionThroughProxy(t *testing.T) {
 	// The decision is in the log (brief S7 §3.2): the pairing above said
 	// BLE with the default Wi-Fi entry, by id only. Two more attempts on
 	// the commissioned device (its window is closed; a second's timeout
-	// ends each) say why BLE was left out: network_only, and the node's
-	// QR code, which names the IP network only (go-fabric
-	// node/credentials.go:102 at v0.18.0).
+	// ends each): network_only leaves BLE out, and the node's QR code
+	// names BLE beside the IP network for a node with a BLE radio
+	// (go-fabric node/credentials.go:88-106 at v0.22.0), so it says BLE
+	// again. A QR code without the BLE bit (code_without_ble) is held by
+	// controllerapi's TestBLEChoice table.
 	_ = e.ws.Call(e.ctx, "commission_with_code", map[string]any{"code": code, "network_only": true, "discovery_timeout_s": 1}, nil)
 	_ = e.ws.Call(e.ctx, "commission_with_code", map[string]any{"code": payload.QR, "discovery_timeout_s": 1}, nil)
 	var log struct {
@@ -236,10 +238,15 @@ func TestCommissionThroughProxy(t *testing.T) {
 			}
 		}
 	}
-	if len(used) != 1 || used[0]["network"] != "wifi" || used[0]["wifi_id"] != "default" || used[0]["thread_id"] != "" {
+	if len(used) != 2 {
 		t.Fatalf("fabricserver.commission.ble records: %v", used)
 	}
-	if strings.Join(skipped, ",") != "network_only,code_without_ble" {
+	for _, u := range used {
+		if u["network"] != "wifi" || u["wifi_id"] != "default" || u["thread_id"] != "" {
+			t.Fatalf("fabricserver.commission.ble records: %v", used)
+		}
+	}
+	if strings.Join(skipped, ",") != "network_only" {
 		t.Fatalf("fabricserver.commission.ble_skipped reasons: %v", skipped)
 	}
 }

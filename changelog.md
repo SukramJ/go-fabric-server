@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-12
+
+### Changed
+
+- Built with Go 1.27.4: `GO-2026-6859` (`net/http`, fixed in 1.27.4); `go.mod`, the workflows and the Dockerfiles move together.
+- go-fabric `v0.21.0` → `v0.22.0`, `ble/bluez` and `ble/esphome`
+  `v0.21.0` → `v0.22.0` (a bump, no brief): go-fabric's milestone 7
+  (BLE and Wi-Fi commissioning on the device side; not wired here). What
+  reaches the daemon: `Controller.Pair` without a context deadline bounds
+  only the device search by `DefaultPairTimeout`, the commissioner resets
+  the fail-safe after the caller's context ended, and the mDNS responder
+  joins interfaces that come up after start. `protocol/schema`'s
+  `x-go-fabric-version` moves to `v0.22.0` (`make generate`; nothing else
+  in the schema moved). The proxy commissioning test moves from the removed
+  `fabrictest.UseWiFiCommissioning` to `node.Network.WiFi.Driver` and gives
+  the site device its radio with `fabrictest.Topology.BLE`; with the radio
+  the node's QR code names BLE (go-fabric `node/credentials.go`), so the
+  test's QR attempt now chooses BLE instead of logging `code_without_ble`
+  (that reason stays covered by `controllerapi`'s `TestBLEChoice`).
+
 ## [0.9.1] - 2026-11-10
 
 ### Changed

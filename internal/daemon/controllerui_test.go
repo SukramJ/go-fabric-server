@@ -61,7 +61,9 @@ func newPagesEnv(t *testing.T, c Config) *pagesEnv {
 
 // newPagesEnvWith is newPagesEnv with the device's configuration widened
 // by configure and the half's BLE central made by central (nil: none), as
-// Run hands bleCentral's to controllerOptions.
+// Run hands bleCentral's to controllerOptions; a central gives the device
+// its BLE radio (fabrictest.Topology.BLE), which fabrictest.Device.BLE
+// requires.
 func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), central func(*fabrictest.Device) ble.Central) *pagesEnv {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -75,7 +77,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	if err != nil {
 		t.Fatal(err)
 	}
-	dev := site.AddDevice(fabrictest.Topology{Bridged: []node.Endpoint{plug}, Configure: configure})
+	dev := site.AddDevice(fabrictest.Topology{Bridged: []node.Endpoint{plug}, Configure: configure, BLE: central != nil})
 	var bleCentral ble.Central
 	if central != nil {
 		bleCentral = central(dev)
