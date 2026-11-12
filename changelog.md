@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-11-12
+
+### Changed
+
+- go-fabric-ui `v0.9.1` → `v0.9.2` (a bump, no brief): the dependency only
+  (go-fabric-ui `v0.9.2` carries go-fabric `v0.22.2` and Go 1.27.4; the UI
+  contract stays 0.9.0). No behaviour change; `protocol/schema` does not move
+  (its `x-go-fabric-version` stays `v0.22.2`).
+
 ## [0.9.3] - 2026-11-12
 
 ### Fixed

@@ -3,6 +3,11 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.9.4
+
+- Library update (go-fabric-ui 0.9.2): alignment with go-fabric 0.22.2;
+  no change in behaviour.
+
 ## 0.9.3
 
 - Library update (go-fabric 0.22.2): pairing a Thread device through an
