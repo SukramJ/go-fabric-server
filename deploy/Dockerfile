@@ -13,7 +13,7 @@
 # listener beyond loopback needs FABRIC_SERVER_TOKEN; see docs/operations.md.
 
 # ---------- build ----------
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
