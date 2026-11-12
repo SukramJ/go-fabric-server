@@ -6,7 +6,9 @@ the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/bl
 ## 0.9.2
 
 - Built with Go 1.27.4 (a security fix in its HTTP server).
-- Library update (go-fabric 0.22.0): a pairing without its own deadline is
+- Library update (go-fabric 0.22.1): a Thread device behind a border
+  router is no longer locked out of reconnecting when the border router
+  answers for it with its own host name; a pairing without its own deadline is
   no longer cut off after one minute once the device was found, a pairing
   that is cancelled resets the device's fail-safe instead of leaving it to
   expire, and the mDNS responder joins network interfaces that come up after

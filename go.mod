@@ -3,10 +3,10 @@ module github.com/SukramJ/go-fabric-server
 go 1.27.4
 
 require (
-	github.com/SukramJ/go-fabric v0.22.0
+	github.com/SukramJ/go-fabric v0.22.1
 	github.com/SukramJ/go-fabric-ui v0.9.0
-	github.com/SukramJ/go-fabric/ble/bluez v0.22.0
-	github.com/SukramJ/go-fabric/ble/esphome v0.22.0
+	github.com/SukramJ/go-fabric/ble/bluez v0.22.1
+	github.com/SukramJ/go-fabric/ble/esphome v0.22.1
 	github.com/coder/websocket v1.8.15
 )
 
