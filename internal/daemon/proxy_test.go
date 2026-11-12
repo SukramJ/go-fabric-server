@@ -166,7 +166,7 @@ func proxyCentral(t *testing.T, dev *fabrictest.Device) ble.Central {
 func TestCommissionThroughProxy(t *testing.T) {
 	drv := &wifiDriver{}
 	e := newPagesEnvWith(t, Config{WebAdmin: true}, func(cfg *node.Config) {
-		fabrictest.UseWiFiCommissioning(cfg, drv)
+		cfg.Network.WiFi = &node.WiFi{Driver: drv}
 	}, func(dev *fabrictest.Device) ble.Central { return proxyCentral(t, dev) })
 
 	var info struct {

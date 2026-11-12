@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-12
+
+### Changed
+
+- go-fabric `v0.21.0` → `v0.22.0`, `ble/bluez` and `ble/esphome`
+  `v0.21.0` → `v0.22.0` (a bump, no brief): go-fabric's milestone 7
+  (BLE and Wi-Fi commissioning on the device side; not wired here). What
+  reaches the daemon: `Controller.Pair` without a context deadline bounds
+  only the device search by `DefaultPairTimeout`, the commissioner resets
+  the fail-safe after the caller's context ended, and the mDNS responder
+  joins interfaces that come up after start. `protocol/schema`'s
+  `x-go-fabric-version` moves to `v0.22.0` (`make generate`; nothing else
+  in the schema moved). The proxy commissioning test moves from the removed
+  `fabrictest.UseWiFiCommissioning` to `node.Network.WiFi.Driver` and gives
+  the site device its radio with `fabrictest.Topology.BLE`.
+
 ## [0.9.1] - 2026-11-10
 
 ### Changed

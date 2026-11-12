@@ -3,6 +3,14 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.9.2
+
+- Library update (go-fabric 0.22.0): a pairing without its own deadline is
+  no longer cut off after one minute once the device was found, a pairing
+  that is cancelled resets the device's fail-safe instead of leaving it to
+  expire, and the mDNS responder joins network interfaces that come up after
+  the add-on started.
+
 ## 0.9.1
 
 - Library update (go-fabric BlueZ central 0.21.0): commissioning over a
