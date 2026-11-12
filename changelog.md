@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-11-12
+
+### Fixed
+
+- go-fabric `v0.22.1` → `v0.22.2`, `ble/esphome` `v0.22.1` → `v0.22.2`
+  (a bump, no brief; `ble/bluez` stays at `v0.22.1`, go-fabric tagged no
+  `v0.22.2` of it). What reaches the daemon: a device that leaves BLE the
+  moment it is told to join its network (`ConnectNetwork`) no longer fails
+  its commissioning through an ESPHome Bluetooth proxy — the proxy's GATT
+  error for the pending write (`GATT write on handle … failed (error 0x85)`
+  or `0x103`) is the peripheral's disconnect, and the commissioner goes on
+  to find the node on its operational network (go-fabric #512). go-fabric's
+  root module has no code change in `v0.22.2`. `protocol/schema`'s
+  `x-go-fabric-version` moves to `v0.22.2` (`make generate`; nothing else
+  in the schema moved).
+
 ## [0.9.2] - 2026-11-12
 
 ### Changed
