@@ -25,6 +25,7 @@ All notable changes to this project are documented here. The format follows
   the node's QR code names BLE (go-fabric `node/credentials.go`), so the
   test's QR attempt now chooses BLE instead of logging `code_without_ble`
   (that reason stays covered by `controllerapi`'s `TestBLEChoice`).
+- go-fabric-ui `v0.9.0` → `v0.9.1`: the dependency only (go-fabric `v0.22.1`, Go 1.27.4; contract stays 0.9.0).
 - go-fabric `v0.22.1` (patch, issue 507): the controller reconnects to a
   Thread node behind a border router whose SRV set flips to the border
   router's own host — the proven host's last addresses and their attempts
