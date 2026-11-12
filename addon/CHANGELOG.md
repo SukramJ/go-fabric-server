@@ -3,6 +3,12 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## 0.9.3
+
+- Library update (go-fabric 0.22.2): pairing a Thread device through an
+  ESPHome Bluetooth proxy no longer fails when the device drops its
+  Bluetooth connection the moment it joins the Thread network.
+
 ## 0.9.2
 
 - Built with Go 1.27.4 (a security fix in its HTTP server).
