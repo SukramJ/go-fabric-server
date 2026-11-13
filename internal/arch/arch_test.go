@@ -75,7 +75,12 @@ var facade = map[string]bool{
 	"ble/bluez":      true,
 	// The central over ESPHome Bluetooth proxies (brief S5): the second
 	// ble.Central platform, beside ble/bluez.
-	"ble/esphome":        true,
+	"ble/esphome": true,
+	// The first device node's Wi-Fi driver through wpa_supplicant (brief
+	// S12, go-fabric ADR 0031): node.Network.WiFi's Driver,
+	// --bridge-wifi-interface; ble/bluez above is also its BLE peripheral
+	// (node.Network.BLE, --bridge-bluetooth-adapter).
+	"wifi/wpasupplicant": true,
 	"thread":             true,
 	"client/discovery":   true,
 	"client/exchange":    true,

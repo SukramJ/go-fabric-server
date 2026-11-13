@@ -9,6 +9,8 @@ github.com/SukramJ/go-fabric/ble/bluez v0.22.1 h1:JU61BasHmNAW15oMuCugVOxZtBLqoo
 github.com/SukramJ/go-fabric/ble/bluez v0.22.1/go.mod h1:BQYrSJcxWZgjCHpfCp5C3YoQIAqD7J6x0TJyetmwylI=
 github.com/SukramJ/go-fabric/ble/esphome v0.22.2 h1:pRsTGzq3YWX75+3aj4lY04TMXL7PduzjvU2/zgvEnEo=
 github.com/SukramJ/go-fabric/ble/esphome v0.22.2/go.mod h1:OcG4WPPmHrt0cVNg6wr99rVrUVqGAiaZuX28u//cgeQ=
+github.com/SukramJ/go-fabric/wifi/wpasupplicant v0.22.1 h1:4Ex203dJjYQzn+fa5AzlJu3Z9AkMDEUP1xEafP/cBeA=
+github.com/SukramJ/go-fabric/wifi/wpasupplicant v0.22.1/go.mod h1:sfwdIt+kslrppRNXVzp3fjCr5aGwi5f347xGxbCQ9Ls=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP2+08jFMw88y4klk=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
