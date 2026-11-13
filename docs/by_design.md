@@ -166,3 +166,30 @@ node starts, the pages' routes (`/nodes/<key>`, go-fabric-ui
 it survives a factory reset of the store, and it names the store file
 (`bridge-<key>.db`), so a rename changes the label only — the one identity
 the registry can hold steady.
+
+**B24 — the radio and Wi-Fi are the first node's only.**
+`--bridge-bluetooth-adapter` and `--bridge-wifi-interface` give their
+ports to the `--bridge-*` node (`internal/daemon/noderadio.go`
+`nodeRadio.apply`, key `default`); the registry's nodes are built without
+them and the registry has no field for them (brief S12, decision 3): one
+adapter advertises one node at a time (go-fabric `ble/bluez`
+`ErrServing`, a second `Serve` while one runs), one Wi-Fi interface joins
+one network, and a node the pages create is a further bridge on the
+host's network, not a device that leaves the box. matterjs-server's server
+has no device-side BLE at all.
+
+**B25 — the node's radio is the standalone daemon's.** The Home Assistant
+add-on has no option for `--bridge-bluetooth-adapter` or
+`--bridge-wifi-interface`, no `host_dbus`, and `script/run.sh` passes
+neither (brief S12, decision 1): the add-on's host already has a network,
+so the node is reached over IP, and the add-on keeps no system-bus access
+(`addon/config.yaml`), which both ports would need (go-fabric
+`docs/guides/operations.md` §BLE commissioning, §Wi-Fi provisioning).
+
+**B26 — one adapter in both roles is refused.** `--bridge-bluetooth-adapter`
+and `--bluetooth-adapter` naming the same adapter after normalisation (`0`
+is `hci0`) stop the start, naming both flags (`checkNodeRadio`; brief S12,
+decision 4): the node's GATT peripheral and the controller's central on
+one BlueZ adapter at once are not proven by go-fabric's tests or the
+owner's hardware test, so the daemon refuses it until they are; there is
+no override.

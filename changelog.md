@@ -6,6 +6,30 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-13
+
+### Added
+
+- The first device node without a network at first boot (brief S12,
+  [`docs/reports/S12.md`](docs/reports/S12.md); go-fabric ADR 0031):
+  `--bridge-bluetooth-adapter <adapter>` gives the `--bridge-*` node a BLE
+  peripheral (go-fabric `ble/bluez`, `node.Network.BLE`; `0` is `hci0`), so
+  while it has no fabric it is commissioned over Bluetooth LE and its QR
+  code names BLE discovery; `--bridge-wifi-interface <ifname>` gives it a
+  Wi-Fi driver through wpa_supplicant (go-fabric `wifi/wpasupplicant`,
+  `node.Network.WiFi`), so it serves NetworkCommissioning's Wi-Fi feature
+  and joins the network a commissioner provisions. Each works alone; both
+  need `--bridge`, the node an erase brings back gets the same ones, and the
+  nodes the pages create never do. Either flag without `--bridge`, the
+  adapter of `--bluetooth-adapter` named again (`0` and `hci0` alike), or a
+  port that cannot be opened stops the start, naming the flag. One log line
+  per port (`fabricserver.node_ble`, `fabricserver.node_wifi`); the Wi-Fi
+  credential is never logged. Standalone daemon only: the add-on has no
+  option and no `host_dbus` ([docs/operations.md](docs/operations.md),
+  [docs/by_design.md](docs/by_design.md) B24–B26).
+- Dependency `github.com/SukramJ/go-fabric/wifi/wpasupplicant` `v0.22.1`
+  (Apache-2.0; its D-Bus library godbus is already in through `ble/bluez`).
+
 ## [0.9.4] - 2026-11-12
 
 ### Changed

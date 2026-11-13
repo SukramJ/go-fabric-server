@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 go-fabric-server is licensed under the Apache License 2.0 (see
-[`LICENSE`](LICENSE)). It depends on five Go modules directly (go-fabric, its BlueZ central github.com/SukramJ/go-fabric/ble/bluez, its ESPHome-proxy central github.com/SukramJ/go-fabric/ble/esphome, coder/websocket, go-fabric-ui); every
+[`LICENSE`](LICENSE)). It depends on six Go modules directly (go-fabric, its BlueZ central and peripheral github.com/SukramJ/go-fabric/ble/bluez, its ESPHome-proxy central github.com/SukramJ/go-fabric/ble/esphome, its wpa_supplicant Wi-Fi driver github.com/SukramJ/go-fabric/wifi/wpasupplicant, coder/websocket, go-fabric-ui); every
 further dependency is a decision recorded here (MIT, Apache-2.0, BSD and
 the equivalent ISC only). No third-party source is copied into this tree,
 except the documented JSON examples of matterjs-server that serve as test
@@ -22,7 +22,8 @@ matter.js model the protocol schema is generated from.
 
 ### github.com/SukramJ/go-fabric/ble/bluez — Apache-2.0
 
-go-fabric's BLE central on BlueZ over the system bus (`--bluetooth-adapter`),
+go-fabric's BLE central on BlueZ over the system bus (`--bluetooth-adapter`)
+and its BLE peripheral (`--bridge-bluetooth-adapter`, brief S12),
 a module of its own so the D-Bus dependency stays out of go-fabric.
 
 - Source: <https://github.com/SukramJ/go-fabric/tree/main/ble/bluez>
@@ -39,6 +40,16 @@ dependency stays out of go-fabric.
 - Copyright (C) 2026 SukramJ. Apache License 2.0; its notices travel in
   its `THIRD-PARTY-NOTICES.md`.
 - Decision: brief S5 (go-fabric brief BP1, v0.13.5).
+
+### github.com/SukramJ/go-fabric/wifi/wpasupplicant — Apache-2.0
+
+go-fabric's Wi-Fi driver through wpa_supplicant's D-Bus interface
+(`--bridge-wifi-interface`, the first device node's `node.Network.WiFi`), a
+module of its own so the D-Bus dependency stays out of go-fabric.
+
+- Source: <https://github.com/SukramJ/go-fabric/tree/main/wifi/wpasupplicant>
+- Copyright (C) 2026 SukramJ. Apache License 2.0.
+- Decision: brief S12 (go-fabric ADR 0031).
 
 ### github.com/coder/websocket — ISC
 
@@ -68,7 +79,7 @@ family and, from v0.2.0, the controller family through its adapter
 Through go-fabric-ui (from v0.2.0, its generated router): github.com/oapi-codegen/runtime
 (Apache-2.0) and github.com/apapsch/go-jsonmerge/v2 (MIT).
 
-Through go-fabric/ble/bluez: github.com/godbus/dbus/v5 (BSD-2-Clause, see
+Through go-fabric/ble/bluez and go-fabric/wifi/wpasupplicant: github.com/godbus/dbus/v5 (BSD-2-Clause, see
 [`licenses/LICENSE-godbus-dbus.txt`](licenses/LICENSE-godbus-dbus.txt)).
 
 Through go-fabric/ble/esphome: github.com/flynn/noise (BSD-3-Clause, see

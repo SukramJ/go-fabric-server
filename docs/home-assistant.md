@@ -60,6 +60,11 @@ joined, or a code shared from another ecosystem through
 Home Assistant's Bluetooth integration usually holds it, so dedicate a
 proxy to commissioning or accept that it flaps while a pairing runs.
 
+The daemon's own first device node can also be commissioned over Bluetooth
+and onto Wi-Fi (`--bridge-bluetooth-adapter`, `--bridge-wifi-interface`) —
+a standalone daemon's feature, not the add-on's
+([operations.md](operations.md#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)).
+
 ## The add-on's pages
 
 The add-on's web UI (Ingress) shows go-fabric-ui's two families: the
