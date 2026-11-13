@@ -145,7 +145,7 @@ node with its own store `bridge-<key>.db` and bridge half at
 `/bridge/<key>`, which appears at its creation and is gone at its deletion.
 One source for the node list: the 0.5.0 flag `--bridge-node` is removed.
 
-The first node's host ports (S12, go-fabric ADR 0031): with
+The first node's host ports (S13, go-fabric ADR 0031): with
 `--bridge-bluetooth-adapter` it has a BLE peripheral and with
 `--bridge-wifi-interface` a Wi-Fi driver through wpa_supplicant, so a
 daemon on a host without a network yet is commissioned over BLE onto the

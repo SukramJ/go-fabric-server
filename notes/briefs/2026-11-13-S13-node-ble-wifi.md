@@ -1,8 +1,8 @@
 <!-- Written 2026-11-13 by the owner's session. Model: Fable (brief), Opus (implementation). -->
-# Brief S12 — device-side BLE and Wi-Fi for the daemon's first node; proven-address retention
+# Brief S13 — device-side BLE and Wi-Fi for the daemon's first node; proven-address retention
 
 Repository go-fabric-server (a Go daemon running Matter device nodes and a
-controller on `github.com/SukramJ/go-fabric`, at v0.22.2). Wave **S12**:
+controller on `github.com/SukramJ/go-fabric`, at v0.22.2). Wave **S13** (first named S12; renamed, since S12 is the 2026-11-10 bump brief):
 device-side BLE commissioning for the daemon's first node, optional Wi-Fi
 provisioning, and the controller's proven-address retention as an option.
 Read the server's `CLAUDE.md` first, then only what this brief names. Work

@@ -23,7 +23,7 @@ matter.js model the protocol schema is generated from.
 ### github.com/SukramJ/go-fabric/ble/bluez — Apache-2.0
 
 go-fabric's BLE central on BlueZ over the system bus (`--bluetooth-adapter`)
-and its BLE peripheral (`--bridge-bluetooth-adapter`, brief S12),
+and its BLE peripheral (`--bridge-bluetooth-adapter`, brief S13),
 a module of its own so the D-Bus dependency stays out of go-fabric.
 
 - Source: <https://github.com/SukramJ/go-fabric/tree/main/ble/bluez>
@@ -49,7 +49,7 @@ module of its own so the D-Bus dependency stays out of go-fabric.
 
 - Source: <https://github.com/SukramJ/go-fabric/tree/main/wifi/wpasupplicant>
 - Copyright (C) 2026 SukramJ. Apache License 2.0.
-- Decision: brief S12 (go-fabric ADR 0031).
+- Decision: brief S13 (go-fabric ADR 0031).
 
 ### github.com/coder/websocket — ISC
 

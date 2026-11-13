@@ -10,8 +10,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- The first device node without a network at first boot (brief S12,
-  [`docs/reports/S12.md`](docs/reports/S12.md); go-fabric ADR 0031):
+- The first device node without a network at first boot (brief S13,
+  [`docs/reports/S13.md`](docs/reports/S13.md); go-fabric ADR 0031):
   `--bridge-bluetooth-adapter <adapter>` gives the `--bridge-*` node a BLE
   peripheral (go-fabric `ble/bluez`, `node.Network.BLE`; `0` is `hci0`), so
   while it has no fabric it is commissioned over Bluetooth LE and its QR
@@ -20,24 +20,32 @@ All notable changes to this project are documented here. The format follows
   `node.Network.WiFi`), so it serves NetworkCommissioning's Wi-Fi feature
   and joins the network a commissioner provisions. Each works alone; both
   need `--bridge`, the node an erase brings back gets the same ones, and the
-  nodes the pages create never do. Either flag without `--bridge`, the
-  adapter of `--bluetooth-adapter` named again (`0` and `hci0` alike), or a
-  port that cannot be opened stops the start, naming the flag. One log line
+  nodes the pages create never do. Either flag without `--bridge`,
+  `--bridge-bluetooth-adapter` with the public test passcode `20202021`
+  (`--bridge-passcode`'s default: anyone in Bluetooth range could
+  commission the node; no override), the adapter of `--bluetooth-adapter`
+  named again with `--controller` (`0` and `hci0` alike), or a port that
+  cannot be opened stops the start, naming the flags. One log line
   per port (`fabricserver.node_ble`, `fabricserver.node_wifi`); the Wi-Fi
   credential is never logged. Standalone daemon only: the add-on has no
   option and no `host_dbus` ([docs/operations.md](docs/operations.md),
-  [docs/by_design.md](docs/by_design.md) B24–B26).
+  [docs/by_design.md](docs/by_design.md) B24–B27).
 - Dependency `github.com/SukramJ/go-fabric/wifi/wpasupplicant` `v0.22.1`
   (Apache-2.0; its D-Bus library godbus is already in through `ble/bluez`).
 
-## [0.9.4] - 2026-11-12
-
 ### Changed
 
+- An erase of a device node whose stop does not end within the erase's
+  30 s budget now fails as an erase (`node_erase_failed`; erase again to
+  retry) instead of starting the replacement node, which could meet the old
+  node's Bluetooth service still registered.
+- `--bluetooth-adapter`'s help says it takes an adapter name as well as an
+  HCI id (it always did).
 - go-fabric-ui `v0.9.1` → `v0.9.2` (a bump, no brief): the dependency only
   (go-fabric-ui `v0.9.2` carries go-fabric `v0.22.2` and Go 1.27.4; the UI
   contract stays 0.9.0). No behaviour change; `protocol/schema` does not move
-  (its `x-go-fabric-version` stays `v0.22.2`).
+  (its `x-go-fabric-version` stays `v0.22.2`). Folded in from 0.9.4, which
+  was never tagged.
 
 ## [0.9.3] - 2026-11-12
 

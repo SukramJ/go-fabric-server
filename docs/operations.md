@@ -37,13 +37,13 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-extensions` | — | the features go-fabric implements ahead of matter.js that the bridge node serves, by register ID, `id[,id…]`: `BD-Thread-NetComm-ThreadVariant`, `BD-chip-Thermostat-Events`, `BD-chip-Thermostat-Schedules`, `BD-chip-TimeSynchronization-Features` at go-fabric v0.15.2 ([Surface policies](#surface-policies)); an unknown ID stops the start with the known ones |
 | `--bridge-spec-level` | the pin's (`1.6.1`) | the Matter specification level the bridge node composes at: `1.4`, `1.4.1`, `1.4.2`, `1.5.1`, `1.6.0`, `1.6.1` at go-fabric v0.15.2; another value stops the start with the list |
 | `--bridge-profile` | — | the controller profiles the bridge node composes for, `name[,name…]`: `alexa`, `apple-home`, `google-home`, `home-assistant`, `smartthings` at go-fabric v0.15.2; an unknown name, or two whose levels differ without `--bridge-spec-level`, stops the start |
-| `--bridge-bluetooth-adapter` | — | the BLE adapter of the first device node (the `--bridge-*` one): `0` is `hci0`, an adapter name is taken as it is. While that node has no fabric it is commissioned over Bluetooth LE — a node without a network at first boot. Needs `--bridge`, and an adapter other than `--bluetooth-adapter`'s; the host runs bluetoothd and lets the daemon use `org.bluez` on the system bus; the start fails when the adapter cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
+| `--bridge-bluetooth-adapter` | — | the BLE adapter of the first device node (the `--bridge-*` one): `0` is `hci0`, an adapter name is taken as it is. While that node has no fabric it is commissioned over Bluetooth LE — a node without a network at first boot. Needs `--bridge`, a `--bridge-passcode` other than the public test passcode `20202021` (refused: anyone in Bluetooth range could commission the node), and with `--controller` an adapter other than `--bluetooth-adapter`'s; the host runs bluetoothd and lets the daemon use `org.bluez` on the system bus; the start fails when the adapter cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--bridge-wifi-interface` | — | the Wi-Fi interface (`wlan0`) the first device node joins the network a commissioner provisions on, through wpa_supplicant; the node then serves NetworkCommissioning with the Wi-Fi feature. Needs `--bridge`; the host runs wpa_supplicant with its D-Bus interface (`fi.w1.wpa_supplicant1` on the system bus) and NetworkManager does not manage the interface; the start fails when the driver cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--node-limit` | `8` | the most device nodes the pages may create beside the `--bridge-*` one ([Several device nodes](#several-device-nodes)); `0` creates none |
 | `--controller-diagnostics-capacity` | `0` (go-fabric's `256`) | the events the controller's diagnostic trace keeps, the oldest dropped first (the controller pages' Diagnostics tab, [The pages](#the-pages)); `0` is go-fabric's `diag.DefaultDiagnosticsCapacity`; a negative value stops the start. No add-on option |
 | `--bridge-node`, `--node-default` | — | removed: further device nodes are created in the pages; either flag (or its environment variable) stops the start with that message |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
-| `--bluetooth-adapter` | — | the HCI id of the BLE adapter `commission_with_code` may commission over (matterjs-server's flag; `0` is `hci0`, an adapter name is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened; the BTP segment size follows the ATT_MTU BlueZ reports (BlueZ 5.62 and later; an older BlueZ settles at the minimum, 23) |
+| `--bluetooth-adapter` | — | the BLE adapter `commission_with_code` may commission over, an HCI id or an adapter name (matterjs-server's flag; `0` is `hci0`, `hci1` is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened; the BTP segment size follows the ATT_MTU BlueZ reports (BlueZ 5.62 and later; an older BlueZ settles at the minimum, 23) |
 | `--bluetooth-proxy` | — | an ESPHome Bluetooth proxy `commission_with_code` may commission through, `host[:port][,key]` (port 6053; `key` the base64 API encryption key, none for a plaintext API); repeatable, the environment variable gives one; not with `--bluetooth-adapter`. go-fabric's `ble/esphome` central, pure Go, no adapter or D-Bus; the start fails when a proxy refuses (wrong or missing key, no active connections) or none answers ([Bluetooth through ESPHome proxies](#bluetooth-through-esphome-proxies)) |
 | `--web` | — | serve go-fabric-ui's pages on this address: the device nodes' with `--bridge`, the controller's with `--controller`, the Operation page always; read-only unless `--web-admin` or `--web-admin-source` |
 | `--web-admin` | `false` | the pages may write, show the pairing code and use the controller's admin routes (the page's token mode) |
@@ -154,8 +154,9 @@ It returns the node to its factory state and brings it back in place:
 
 The log says `fabricserver.node.erased` with `node=<key>`. Either failure
 keeps the daemon up, and every status page carries a warning naming the
-key until an erase succeeds: when the erase itself fails
-(`fabricserver.node.erase_failed`, warning `node_erase_failed`) nothing is
+key until an erase succeeds: when the erase itself fails, or the old
+node's stop outlasts the erase's 30 s budget
+(`fabricserver.node.erase_failed`, warning `node_erase_failed`), nothing is
 restarted; when the new node does not start
 (`fabricserver.node.restart_failed`, warning `node_restart_failed`) the
 pages read the stopped node. **Erase** again retries both, and after a
@@ -487,7 +488,11 @@ Each works alone. BLE without Wi-Fi commissions the node over BLE onto the
 network the host already has (the node serves the Ethernet
 NetworkCommissioning). Wi-Fi without BLE serves NetworkCommissioning's
 Wi-Fi feature on a node reached over IP. Both together are the first boot
-without a network.
+without a network. Adding `--bridge-wifi-interface` to a node that is
+already commissioned changes its composition — NetworkCommissioning
+switches from the Ethernet to the Wi-Fi feature and the root endpoint
+gains Wi-Fi network diagnostics (go-fabric `node/config.go`
+`Network.WiFi`) — so its paired controllers see a changed root endpoint.
 
 ```sh
 fabric-server --bridge --bridge-bluetooth-adapter hci1 --bridge-wifi-interface wlan0
@@ -496,7 +501,12 @@ fabric-server --bridge --bridge-bluetooth-adapter hci1 --bridge-wifi-interface w
 - **When the node is on the radio.** Only while it has no fabric: at the
   first start, and again after its last fabric is removed or the pages
   erase it (the node an erase brings back gets the same adapter and
-  driver). With the adapter set, its QR code names BLE discovery; the
+  driver). An erase that does not stop the old node within its 30 s
+  budget fails as an erase (`node_erase_failed` on the status page; erase
+  again to retry) rather than putting a replacement on a radio the old
+  node may still hold. Should a replacement still find the service taken,
+  it stays off the radio and go-fabric reports it only as a warning in the
+  log (`matter.ble.serve`); restart the daemon. With the adapter set, its QR code names BLE discovery; the
   manual code names none, so commission with the QR code. Once commissioned,
   the node leaves the radio and the advertisement stops.
 - **The host.** bluetoothd runs and the adapter is powered on; the daemon
@@ -508,9 +518,9 @@ fabric-server --bridge --bridge-bluetooth-adapter hci1 --bridge-wifi-interface w
   the driver runs no DHCP client. The joined network lives in the node's
   store (`bridge.db`), not in wpa_supplicant's configuration, and the node
   rejoins it at every start.
-- **One adapter per role.** `--bridge-bluetooth-adapter` and
-  `--bluetooth-adapter` naming the same adapter (`0` and `hci0` alike) stop
-  the start: the node's peripheral and the controller's central on one
+- **One adapter per role.** With `--controller` (the default),
+  `--bridge-bluetooth-adapter` and `--bluetooth-adapter` naming the same
+  adapter (`0` and `hci0` alike) stop the start: the node's peripheral and the controller's central on one
   adapter are not proven, so the daemon refuses it until they are
   ([by_design.md](by_design.md) B26). Use two adapters, or commission
   through ESPHome proxies (`--bluetooth-proxy`).
@@ -518,8 +528,11 @@ fabric-server --bridge --bridge-bluetooth-adapter hci1 --bridge-wifi-interface w
   the radio and the driver ([by_design.md](by_design.md) B24).
 - **Security.** Anyone in radio range can attempt PASE on the node while
   it has no fabric: the BLE link is neither paired nor encrypted, and what
-  protects the node is the passcode under PASE's attempt limit — so change
-  `--bridge-passcode` from the public test value before the radio is on.
+  protects the node is the passcode under PASE's attempt limit. So the
+  daemon refuses to start with `--bridge-bluetooth-adapter` and the public
+  test passcode `20202021` (`--bridge-passcode`'s default), naming both
+  flags: anyone in Bluetooth range could commission the node. There is no
+  override; set a passcode of your own ([by_design.md](by_design.md) B27).
   One central at a time. The Wi-Fi credential arrives inside the PASE
   session, goes to wpa_supplicant and is never logged (go-fabric
   [`docs/security.md`](https://github.com/SukramJ/go-fabric/blob/main/docs/security.md),
