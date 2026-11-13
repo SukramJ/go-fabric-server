@@ -29,7 +29,7 @@ func TestSurfacePolicies(t *testing.T) {
 	if !slices.Equal(p.Extensions.IDs(), []string{"BD-chip-Thermostat-Events", "BD-chip-Thermostat-Schedules"}) || p.Level != "1.4.2" || !slices.Equal(p.Profiles, []string{"apple-home"}) {
 		t.Fatalf("%+v", p)
 	}
-	cfg, err := bridgeConfig(c, primaryNode(c), nil)
+	cfg, err := bridgeConfig(c, primaryNode(c), nil, nil)
 	if err != nil || cfg.Surface.Digest() != p.Digest() || cfg.Network.MDNS.Interfaces != nil {
 		t.Fatalf("bridgeConfig: %v %+v", err, cfg.Network)
 	}
@@ -62,7 +62,7 @@ func TestBridgeMDNSInterfaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, s := range []nodeSpec{primaryNode(c), {Listen: ":5541", Passcode: 20202022, Discriminator: 3841, VendorID: 0xFFF1, ProductID: 0x8001, Store: "nodes/n1"}} {
-		cfg, err := bridgeConfig(c, s, nil)
+		cfg, err := bridgeConfig(c, s, nil, nil)
 		if err != nil || !slices.Equal(cfg.Network.MDNS.Interfaces, []string{"enp1s0", "wlan0"}) || cfg.Network.Listen != s.Listen {
 			t.Fatalf("%+v: %+v %v", s, cfg.Network, err)
 		}

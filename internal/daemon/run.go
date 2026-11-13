@@ -75,6 +75,15 @@ type Config struct {
 	BridgeExtensions string
 	BridgeSpecLevel  string
 	BridgeProfile    string
+	// BridgeBluetoothAdapter is the BLE adapter of the first device node's
+	// peripheral (--bridge-bluetooth-adapter: an HCI id, 0 for hci0, or an
+	// adapter name; go-fabric node.Network.BLE through ble/bluez); empty is
+	// no radio. BridgeWiFiInterface is the interface of its Wi-Fi driver
+	// (--bridge-wifi-interface; node.Network.WiFi through
+	// wifi/wpasupplicant); empty is no Wi-Fi driver. The first node only,
+	// with --bridge (noderadio.go).
+	BridgeBluetoothAdapter string
+	BridgeWiFiInterface    string
 	// NodeLimit is the most device nodes the pages may create beside the
 	// --bridge-* one (--node-limit): the node registry's (nodes.json)
 	// cap.
@@ -151,6 +160,8 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
 	fs.StringVar(&c.BridgeSpecLevel, "bridge-spec-level", "", "the specification level the bridge node composes at (default the pin's): "+levelList())
 	fs.StringVar(&c.BridgeProfile, "bridge-profile", "", "the controller profiles the bridge node composes for, name[,name...]: "+profileList())
+	fs.StringVar(&c.BridgeBluetoothAdapter, "bridge-bluetooth-adapter", "", "the BLE adapter (0 for hci0, or an adapter name) the first device node is commissioned over while it has no fabric — a node without a network at first boot; needs --bridge and a --bridge-passcode other than the public test passcode 20202021 (anyone in Bluetooth range could commission the node), and not the --bluetooth-adapter one; the host runs bluetoothd and lets the daemon use org.bluez on the system bus (Linux, BlueZ); empty is no radio")
+	fs.StringVar(&c.BridgeWiFiInterface, "bridge-wifi-interface", "", "the Wi-Fi interface (wlan0) the first device node joins the network a commissioner provisions on, through wpa_supplicant; needs --bridge; the host runs wpa_supplicant with its D-Bus interface (fi.w1.wpa_supplicant1 on the system bus) and NetworkManager does not manage the interface; empty is no Wi-Fi driver")
 	fs.IntVar(&c.NodeLimit, "node-limit", defaultNodeLimit, "the most device nodes the pages may create beside the --bridge-* one (the node registry, nodes.json)")
 	fs.IntVar(&c.ControllerDiagnosticsCapacity, "controller-diagnostics-capacity", 0, "the events the controller's diagnostic trace keeps (the pages' Diagnostics tab), the oldest dropped first; 0 is go-fabric's default ("+strconv.Itoa(diag.DefaultDiagnosticsCapacity)+")")
 	fs.Var(removedFlag(removedBridgeNode), "bridge-node", "removed: "+removedBridgeNode)
@@ -158,7 +169,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
-	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the HCI id of the BLE adapter (0 for hci0) commission_with_code may commission over; empty is no BLE (Linux, BlueZ)")
+	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the BLE adapter commission_with_code may commission over: an HCI id (0 for hci0) or an adapter name (hci1); empty is no BLE (Linux, BlueZ)")
 	fs.Var((*proxyList)(&c.BluetoothProxies), "bluetooth-proxy", "an ESPHome Bluetooth proxy commission_with_code may commission through: host[:port][,key] (port 6053, key the base64 API encryption key); repeatable; not with --bluetooth-adapter")
 	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; read-only unless --web-admin or --web-admin-source")
 	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the pages write, show the pairing code and use the controller's admin routes (the page's token mode)")
@@ -230,6 +241,9 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	}
 	if c.VendorID > 0xFFFF {
 		return fmt.Errorf("--vendor-id %d is above 0xFFFF", c.VendorID)
+	}
+	if err := checkNodeRadio(c); err != nil {
+		return err
 	}
 	log.Info("fabricserver.start", slog.String("version", version.Version), slog.String("go_fabric", version.GoFabric()), slog.String("listen", listen.String()))
 
@@ -354,13 +368,15 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			return fmt.Errorf("--node-limit %d is negative", c.NodeLimit)
 		}
 		spec := primaryNode(c)
-		life = newNodeLifecycle(ctx, func(ctx context.Context, s nodeSpec) (liveNode, error) {
-			br, n, err := startBridge(ctx, c, s, log)
-			if err != nil {
-				return liveNode{}, err
-			}
-			return liveNode{node: n, srv: br}, nil
-		}, routes, log)
+		// The first node's radio and Wi-Fi, opened before it is built and
+		// closed after its last run stopped (deferred before def.stop, so
+		// it runs after it).
+		radio, err := openNodeRadio(ctx, c, log)
+		if err != nil {
+			return err
+		}
+		defer radio.close()
+		life = newNodeLifecycle(ctx, nodeStarter(c, radio, log), routes, log)
 		def, err = life.startHalf(spec)
 		if err != nil {
 			return err
@@ -424,12 +440,25 @@ const (
 	bridgeProductName = "fabric-server bridge"
 )
 
+// nodeStarter is the lifecycle's startFunc: each device node built and
+// started by startBridge, the first one on radio.
+func nodeStarter(c Config, radio *nodeRadio, log *slog.Logger) startFunc {
+	return func(ctx context.Context, s nodeSpec) (liveNode, error) {
+		br, n, err := startBridge(ctx, c, s, radio, log)
+		if err != nil {
+			return liveNode{}, err
+		}
+		return liveNode{node: n, srv: br}, nil
+	}
+}
+
 // bridgeConfig is a device node's configuration: its commissioning
 // identity from its spec (the --bridge-* flags or its registry entry),
 // its store under --storage-path, the daemon's logger, the
 // surface policies and the mDNS interfaces every node shares
-// (surfacePolicies, mdnsInterfaces).
-func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
+// (surfacePolicies, mdnsInterfaces), and — the first node only — the
+// radio's BLE peripheral and Wi-Fi driver (nodeRadio.apply).
+func bridgeConfig(c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (node.Config, error) {
 	// Widths only: node.New validates the values (Config.Validate).
 	if s.Passcode > math.MaxUint32 || s.Discriminator > math.MaxUint16 || s.VendorID > math.MaxUint16 || s.ProductID > math.MaxUint16 {
 		return node.Config{}, errors.New("--bridge-passcode, --bridge-discriminator, --bridge-vendor-id or --bridge-product-id is wider than its field")
@@ -438,8 +467,10 @@ func bridgeConfig(c Config, s nodeSpec, log *slog.Logger) (node.Config, error) {
 	if err != nil {
 		return node.Config{}, err
 	}
+	network := node.Network{Listen: s.Listen, MDNS: node.MDNS{Interfaces: mdnsInterfaces(c.BridgeMDNSInterfaces)}}
+	radio.apply(s, &network)
 	return node.Config{
-		Network: node.Network{Listen: s.Listen, MDNS: node.MDNS{Interfaces: mdnsInterfaces(c.BridgeMDNSInterfaces)}},
+		Network: network,
 		Commissioning: node.Commissioning{
 			Passcode: uint32(s.Passcode), Discriminator: uint16(s.Discriminator), //nolint:gosec // checked above
 			PBKDFIterations: 1000, Salt: bridgeSalt,
@@ -471,11 +502,11 @@ func mdnsInterfaces(value string) []string {
 
 // startBridge builds one device node with its bridge half's observers,
 // starts it and binds the half to it.
-func startBridge(ctx context.Context, c Config, s nodeSpec, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
+func startBridge(ctx context.Context, c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
 	if s.Key != fabricui.DefaultNodeKey {
 		log = log.With(slog.String("node", s.Key))
 	}
-	cfg, err := bridgeConfig(c, s, log)
+	cfg, err := bridgeConfig(c, s, radio, log)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -658,11 +689,7 @@ func adapterCentral(adapter string) (ble.Central, error) {
 	if adapter == "" {
 		return nil, nil //nolint:nilnil // no adapter is no central and no error
 	}
-	name := adapter
-	if _, err := strconv.ParseUint(adapter, 10, 8); err == nil {
-		name = "hci" + adapter
-	}
-	central, err := newCentral(name)
+	central, err := newCentral(adapterName(adapter))
 	if err != nil {
 		return nil, fmt.Errorf("--bluetooth-adapter %s: %w", adapter, err)
 	}

@@ -3,10 +3,13 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
-## 0.9.4
+## 0.10.0
 
+- No change for the add-on: the release adds Bluetooth and Wi-Fi for the
+  daemon's own first node, a standalone daemon's feature (the add-on gets
+  no option and no system-bus access).
 - Library update (go-fabric-ui 0.9.2): alignment with go-fabric 0.22.2;
-  no change in behaviour.
+  no change in behaviour (from 0.9.4, never released).
 
 ## 0.9.3
 

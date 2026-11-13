@@ -267,7 +267,18 @@ func (l *nodeLifecycle) erase(ctx context.Context, h *bridgeHalf) error {
 	log := l.log.With(slog.String("node", key))
 	old := h.live()
 	old.srv.Shutdown(ctx)
-	if err := old.node.FactoryReset(ctx); err != nil {
+	err := old.node.FactoryReset(ctx)
+	if err == nil {
+		// A stop that outlived the erase's budget may still hold the
+		// node's host ports: go-fabric's StopBLE waits only until ctx ends
+		// and Stop then returns nil (bridge/ble.go stopBLEForShutdown), so
+		// a replacement built now could meet the old Serve on the same
+		// peripheral and stay off the radio. The budget's end is the
+		// erase's failure, as a FactoryReset that returns it; an erase
+		// again retries both.
+		err = ctx.Err()
+	}
+	if err != nil {
 		h.fail(eraseFailedCode, err, time.Now())
 		log.Error("fabricserver.node.erase_failed", slog.Any("error", err))
 		return fmt.Errorf("%s: erase: %w", nodeName(key), err)

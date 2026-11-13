@@ -31,6 +31,11 @@ HA base image + bashio + the static binary).
 | `surface_level` | — | the specification level of the bridge node, `--bridge-spec-level`; unset is the pin's |
 | `surface_profiles` | `[]` | the controller profiles of the bridge node, joined into `--bridge-profile` |
 
+The add-on has no option for the first node's own radio and Wi-Fi
+(`--bridge-bluetooth-adapter`, `--bridge-wifi-interface`): its host already
+has a network and it keeps no system-bus access; they are the standalone
+daemon's ([operations.md](operations.md#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)).
+
 The controller's database and the server's settings live under `/data`
 (`fabric-server.db`, `server.json`, `bridge.db`); a cold backup stops the
 add-on first.

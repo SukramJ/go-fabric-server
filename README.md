@@ -11,7 +11,7 @@ wire-compatible with the API Home Assistant's Matter integration speaks (the
 python-matter-server / matterjs-server contract, schema 14), and a
 **bridge door** (`/bridge`) for hosts that are not written in Go.
 
-> **Status: v0.9.4 (go-fabric v0.22.2).** The controller half (`/ws`) answers every
+> **Status: v0.10.0 (go-fabric v0.22.2).** The controller half (`/ws`) answers every
 > command of matterjs-server's dispatch Home Assistant's Matter integration
 > uses, the ICD commands, the network topology (with Thread border routers),
 > test nodes and the camera
@@ -22,7 +22,10 @@ python-matter-server / matterjs-server contract, schema 14), and a
 > `--bridge`) lets a host declare devices by name;
 > [`examples/bridge-python/`](examples/bridge-python/) is a host in 71 lines
 > of Python, and `--web` serves the controller's and the bridge nodes' pages, where
-> an admin creates further device nodes beside the `--bridge-*` one. A Home Assistant
+> an admin creates further device nodes beside the `--bridge-*` one; that
+> first node can be commissioned over Bluetooth and onto Wi-Fi
+> (`--bridge-bluetooth-adapter`, `--bridge-wifi-interface`, a standalone
+> daemon's feature). A Home Assistant
 > add-on is in [`addon/`](addon/). See [`docs/protocol.md`](docs/protocol.md).
 
 ## Commands of `/ws`
