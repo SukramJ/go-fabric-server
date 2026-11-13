@@ -47,7 +47,9 @@ type testWiFi struct {
 func (w *testWiFi) Close() error { w.closed.Add(1); return nil }
 
 // stubNodeRadio replaces newPeripheral and newWiFiDriver for one test and
-// records the adapter and interface names they were asked for.
+// records the adapter and interface names they were asked for. The seams
+// are package variables: a test that swaps them must not run in parallel
+// (no t.Parallel here or in any test that calls Run with a radio flag).
 func stubNodeRadio(t *testing.T, p contract.BLEPeripheral, perr error, w wifiPort, werr error) (adapters, ifaces *[]string) {
 	t.Helper()
 	var a, i []string
@@ -144,13 +146,36 @@ func TestRunRefusesNodeRadio(t *testing.T) {
 	if len(*central) != 0 || len(*adapters) != 0 || len(*ifaces) != 0 {
 		t.Fatalf("a refused start opened central %v, peripheral %v, wifi %v", *central, *adapters, *ifaces)
 	}
-	if err := checkNodeRadio(Config{Bridge: true, BridgeBluetoothAdapter: "hci1", BluetoothAdapter: "0"}); err != nil {
+	if err := checkNodeRadio(Config{Bridge: true, Controller: true, BridgeBluetoothAdapter: "hci1", BluetoothAdapter: "0"}); err != nil {
 		t.Fatalf("two adapters: %v", err)
+	}
+	// Without --controller the central is never opened: one adapter named
+	// twice is not refused.
+	if err := checkNodeRadio(Config{Bridge: true, BridgeBluetoothAdapter: "hci0", BluetoothAdapter: "0"}); err != nil {
+		t.Fatalf("same adapter without the controller: %v", err)
+	}
+	// The public test passcode with the radio is refused, naming both
+	// flags; with the Wi-Fi flag alone it is not; another passcode passes.
+	c := base()
+	c.Bridge, c.BridgePasscode, c.BridgeBluetoothAdapter = true, publicTestPasscode, "hci0"
+	if err := Run(ctx, c, io.Discard); err == nil ||
+		!strings.Contains(err.Error(), "--bridge-bluetooth-adapter with --bridge-passcode 20202021") ||
+		!strings.Contains(err.Error(), "anyone in Bluetooth range could commission the node") {
+		t.Fatalf("public test passcode: %v", err)
+	}
+	if len(*adapters) != 0 || len(*ifaces) != 0 {
+		t.Fatalf("the refused passcode opened %v %v", *adapters, *ifaces)
+	}
+	if err := checkNodeRadio(Config{Bridge: true, BridgePasscode: publicTestPasscode, BridgeWiFiInterface: "wlan0"}); err != nil {
+		t.Fatalf("Wi-Fi alone with the test passcode: %v", err)
+	}
+	if err := checkNodeRadio(Config{Bridge: true, BridgePasscode: 20202022, BridgeBluetoothAdapter: "hci0"}); err != nil {
+		t.Fatalf("own passcode: %v", err)
 	}
 
 	// The peripheral does not open: its flag, nothing else opened.
 	adapters, ifaces = stubNodeRadio(t, nil, errors.New("bluez: no such adapter"), nil, nil)
-	c := base()
+	c = base()
 	c.Bridge, c.BridgeBluetoothAdapter, c.BridgeWiFiInterface = true, "1", "wlan0"
 	if err := Run(ctx, c, io.Discard); err == nil || err.Error() != "--bridge-bluetooth-adapter 1: bluez: no such adapter" {
 		t.Fatalf("peripheral: %v", err)
@@ -265,6 +290,7 @@ func TestEraseKeepsRadio(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.StoragePath, c.BridgeListen, c.BridgeResultTimeout = t.TempDir(), "[::1]:0", time.Second
+	c.BridgePasscode = 20202022 // not the public test passcode, as Run requires with the radio
 	log := slog.New(slog.DiscardHandler)
 	r, w := newTestRadio(), &testWiFi{wifiDriver: &wifiDriver{}}
 	radio := &nodeRadio{ble: r, wifi: w}
@@ -343,6 +369,7 @@ func TestRunNodeRadio(t *testing.T) {
 	c.Listen, c.StoragePath, c.Controller, c.Bridge = "127.0.0.1:0", t.TempDir(), false, true
 	c.BridgeListen, c.BridgeResultTimeout = "[::1]:0", time.Second
 	c.BridgeBluetoothAdapter, c.BridgeWiFiInterface = "0", "wlan0"
+	c.BridgePasscode = 20202022 // the public test passcode is refused with the radio
 	var out lockedBuffer
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)

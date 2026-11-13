@@ -19,7 +19,7 @@ import (
 	"github.com/SukramJ/go-fabric/wifi/wpasupplicant"
 )
 
-// The first node's host ports (brief S12, go-fabric ADR 0031 and its
+// The first node's host ports (brief S13, go-fabric ADR 0031 and its
 // docs/guides/first-boot-without-network.md): the BLE peripheral of
 // --bridge-bluetooth-adapter (node.Network.BLE) and the Wi-Fi driver of
 // --bridge-wifi-interface (node.Network.WiFi.Driver). Both belong to the
@@ -57,11 +57,18 @@ func adapterName(adapter string) string {
 	return adapter
 }
 
+// publicTestPasscode is the setup passcode every Matter test device uses
+// (connectedhomeip's and matter.js's examples), --bridge-passcode's
+// default.
+const publicTestPasscode = 20202021
+
 // checkNodeRadio refuses the first node's radio flags before anything
-// opens: either without --bridge (there is no first node to give them),
-// and --bridge-bluetooth-adapter on the adapter --bluetooth-adapter gives
-// the controller's central (one adapter in both roles is not proven:
-// docs/by_design.md B26).
+// opens: either without --bridge (there is no first node to give them);
+// --bridge-bluetooth-adapter with the public test passcode (anyone in
+// Bluetooth range could commission the node: docs/by_design.md B27); and
+// --bridge-bluetooth-adapter on the adapter --bluetooth-adapter gives the
+// controller's central, which is opened only with --controller (one
+// adapter in both roles is not proven: docs/by_design.md B26).
 func checkNodeRadio(c Config) error {
 	if !c.Bridge {
 		var errs []error
@@ -73,7 +80,10 @@ func checkNodeRadio(c Config) error {
 		}
 		return errors.Join(errs...)
 	}
-	if c.BridgeBluetoothAdapter != "" && c.BluetoothAdapter != "" &&
+	if c.BridgeBluetoothAdapter != "" && c.BridgePasscode == publicTestPasscode {
+		return fmt.Errorf("--bridge-bluetooth-adapter with --bridge-passcode %d, the public test passcode: anyone in Bluetooth range could commission the node while it has no fabric; set --bridge-passcode to a passcode of your own", publicTestPasscode)
+	}
+	if c.Controller && c.BridgeBluetoothAdapter != "" && c.BluetoothAdapter != "" &&
 		adapterName(c.BridgeBluetoothAdapter) == adapterName(c.BluetoothAdapter) {
 		return fmt.Errorf("--bridge-bluetooth-adapter %s and --bluetooth-adapter %s name the same adapter (%s): the device node's peripheral and the controller's central need one adapter each",
 			c.BridgeBluetoothAdapter, c.BluetoothAdapter, adapterName(c.BluetoothAdapter))
@@ -85,10 +95,15 @@ func checkNodeRadio(c Config) error {
 // Wi-Fi driver, either nil when its flag is not given. One value for the
 // daemon's life: every run of the first node — the first, and each an
 // erase brings back — is built on it. Both are reusable across node runs:
-// a node's Stop ends its Serve and its advertisement and waits for both
-// (go-fabric bridge/ble.go StopBLE), and the peripheral serves again on a
-// later Serve (ble/bluez peripheral_linux.go Serve: ErrServing only while
-// one runs); the driver holds no per-node state.
+// the peripheral serves again on a later Serve (ble/bluez
+// peripheral_linux.go Serve: ErrServing only while one runs), and the
+// driver holds no per-node state. A node's Stop ends its Serve and its
+// advertisement and waits for both — but only until the stop's context
+// ends (go-fabric bridge/ble.go StopBLE; a timeout is only logged,
+// matter.ble.stop, and Stop still returns nil). So an erase whose budget
+// ran out does not build the replacement on the radio
+// (nodeLifecycle.erase); a replacement whose Serve still meets the old one
+// is off the radio with go-fabric's Warn matter.ble.serve only.
 type nodeRadio struct {
 	ble  contract.BLEPeripheral
 	wifi wifiPort
