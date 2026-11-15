@@ -94,25 +94,32 @@ host*). This server is a host of go-fabric.
 
 ## Which model does which work
 
-Set on 2026-10-31, adopted from go-fabric's `CLAUDE.md`. The rule follows
-from the wire-contract discipline above: a statement about matterjs-server
-or go-fabric behaviour that lands in the repo (`docs/protocol.md`,
-`docs/by_design.md`, a report's decisions) is cited later as fact, so the
-work that produces such statements gets the strongest model, and the work a
-guard checks may use a cheaper one. Every brief in `notes/briefs/` names its
-model in the header (`**Model:** …`); an agent runs on the model the brief
-names.
+Set on 2026-10-31, adopted from go-fabric's `CLAUDE.md`; re-cut by the owner
+on 2026-11-15, mirrored from go-fabric #529 and openccu-loom #1108 (in the
+owner's words: "Wichtig ist, dass die Qualität hoch ist, aber Fable gezielt
+für die Dinge eingesetzt wird, die es wirklich besser kann"). The rule
+follows from the wire-contract discipline above, and the bar is unchanged: a
+statement about matterjs-server or go-fabric behaviour that lands in the repo
+(`docs/protocol.md`, `docs/by_design.md`, a report's decisions) is cited
+later as fact, so it comes from the strongest model. But the strongest model
+does only the part that needs it: reading the reference and judging. The
+writing, the mechanics and the code review are Opus. Every brief in
+`notes/briefs/` names its model in the header (`**Model:** …`); an agent
+runs on the model the brief names.
 
 | Work | Model |
 | --- | --- |
-| Analysis, planning, briefs; anything written into `docs/protocol.md`, `docs/by_design.md`, `CONCEPT.md`, a report's *Decisions* or *Questions*, or a comment citing a matterjs-server or go-fabric line; a facade-gap report to go-fabric; rebases and family bumps where go-fabric or go-fabric-ui may have moved under the change; the commissioning and ACL commands (`controllerapi/cmd_commission.go`, `cmd_acl.go`) and the daemon's HTTP surface (`internal/daemon/http.go`, `web.go`) | **Fable** (the default for this repo) |
-| Implementation of a finished brief with guards behind it: a command whose wire shape the read map already fixes, the add-on and its docs, a `changelog.md` entry for a finished diff, the bundle report in the fixed shape | **Opus** (also what fast mode runs on) |
-| **Review of a wave's pull request, split (owner decision 2026-11-08, go-fabric #456).** The code review — correctness, concurrency, error paths, tests, the fixed report shape — is **Opus**. On top of it **Fable** reads, bounded: every new citation line against the pinned source (matterjs-server at its pin, go-fabric at its tag), every line that enters `docs/protocol.md`, `docs/by_design.md` or `CONCEPT.md`, the commissioning, ACL and HTTP paths of the first row, and the brief's decisions against matterjs-server — the behavioural gaps a code review does not see. The load-bearing claims of the Opus review are verified before they reach the implementer. | **Opus**, then **Fable** |
+| **Coordination** of a bundle: starting agents, integrating, guards, pull requests, status | **Opus**, in a fresh session per bundle (the state is in the notes and the memory, never in a long context) |
+| **Planning and decisions:** the bundle plan and its brief in `notes/briefs/`; the decisions put to the owner, with the architecture reasoning ([The architecture standard](#the-architecture-standard)); *which* guard gets built and its bite line; a facade-gap report to go-fabric; the verdict where matterjs-server, go-fabric and matter.js contradict each other | **Fable**, as a targeted agent |
+| **Reading the reference and judging:** what matterjs-server (at its pin) or go-fabric (at its tag) do, and whether a difference is a deliberate divergence or a gap — for `docs/protocol.md`, `docs/by_design.md`, `CONCEPT.md`, a report's *Decisions* or *Questions*, and every comment citing a matterjs-server or go-fabric line | **Fable** gives the verdict with the lines as a short fact note; **Opus** writes the entry or the comment in the file's form; **Fable** reads the finished text once against its note. Every reference statement comes from Fable |
+| **Implementation**, also on the commissioning and ACL commands (`controllerapi/cmd_commission.go`, `cmd_acl.go`) and the daemon's HTTP surface (`internal/daemon/http.go`, `web.go`); the add-on and its docs; test ports; a `changelog.md` entry and the bundle report in the fixed shape; rebases and family bumps where go-fabric or go-fabric-ui may have moved under the change | **Opus** (also what fast mode runs on) — with the Fable read of the next row before it merges where it touches the commissioning, ACL or HTTP paths or mirrors matterjs-server or go-fabric |
+| **Review** of a bundle's pull request | **Opus** does the code review — correctness, concurrency, error paths, tests, the fixed report shape. **Fable** reads on top, bounded: behaviour against matterjs-server at its pin and go-fabric at its tag, the commissioning, ACL and HTTP paths of the row above, and every finding of high or medium severity for confirmation before it reaches an implementer |
+| **Citations** | **Opus** checks every range (the file, the lines, the construct the sentence names). **Fable** reads every citation that is the reason for behaviour ("as matterjs-server does", "go-fabric's facade"), every doubtful one and a sample of the rest |
 | Work a test or generator checks immediately: `make generate`, `gofumpt`, regenerating a ratchet, adding a test to an existing pattern, running `make compat-python`; search and first reading of matterjs-server, go-fabric or this tree whose result a stronger model or the owner reads again | **Sonnet**, including as the model of a delegated search subagent |
 
-Sonnet never writes a fact about matterjs-server or go-fabric into the repo,
-and never touches the commissioning, ACL or HTTP paths named in the first
-row. When in doubt about which row a task is in, it is in the first.
+Sonnet never writes a fact about matterjs-server or go-fabric into the repo.
+Opus does not either: it writes what Fable's fact note states. When in doubt
+whether a statement is a reference fact, it is one.
 
 ## Token use
 
@@ -153,6 +160,32 @@ below are what keeps that from doubling.
   scripted call with asserted anchors, not a chain of interactive edits; a
   generated file (`tables_gen.go`, `schema.json`, `clusters_gen.go`) is
   regenerated, never patched.
+- **The strongest model for the part that needs it.** Set by the owner on
+  2026-11-15. Fable reads references, judges and plans (the table above);
+  it does not coordinate, format, write prose or run mechanics. A Fable
+  agent's brief is bounded: the lines to read, the question to answer, a
+  fact note back.
+- **Few turns in a long session.** A coordinator waits for several agents
+  at once and integrates them together; a status message carries new
+  information or is not sent; a bundle starts in a fresh session.
+- **The assistant says when to clear the context.** Set by the owner on
+  2026-11-15. It does not wait to be asked: it proposes a fresh session
+  when a bundle or a pull request is merged; when the context has been
+  summarised once and the work that remains is of another kind; or when
+  what it still needs fits in a short hand-over and the turns are mostly
+  waiting for agents or pipelines. It does NOT propose one while agents of
+  the session are running or a decision of the owner is open. The proposal
+  comes with the hand-over already written — the state, the open points
+  with where each goes, the next step, the lessons — into the memory file
+  and the notes (never only into the chat), and with the exact way to go
+  on: `/clear`, the model to switch to (`/model`), and the first message
+  to send, which names the files to read.
+- **The pipeline's guards before the pull request, not after.** The local
+  guard set is what the jobs of `.github/workflows/ci.yml` run: `make ci`,
+  `make race`, `make cover-check`, `make fuzz-smoke`,
+  `make vuln licenses secrets`, `make release` (with `make version-check`),
+  `make docker` and `make addon-image`, and `make compat-python` when `/ws`
+  moved. A red pipeline costs a round of coordinator turns.
 - **Agents read what the brief names.** An implementing agent gets the
   file list and the pinned sources in the brief, reads those, and reports
   in the fixed shape; it does not survey the tree. The brief is copied to
