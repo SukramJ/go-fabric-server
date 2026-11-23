@@ -8,9 +8,11 @@
 package daemon
 
 import (
+	"bytes"
 	"encoding/json"
 	"expvar"
 	"net/http"
+	"strings"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 
@@ -45,7 +47,8 @@ func MuxNodes(api *controllerapi.Server, bridges []BridgeHalf, token, version st
 // /bridge (the default node's bridge half, the first of bridges) and
 // /bridge/<key> (each node's, the default's too, looked up per request:
 // a registry node's appears when it is created and is gone, 404, once it
-// is deleted), GET /health, GET /metrics (expvar), GET /schema (the
+// is deleted), GET /health, GET /metrics (the daemon's expvar variables,
+// metricsHandler), GET /schema (the
 // generated JSON Schema of the values), GET /schema/declaration (the
 // bridge half's declaration); every route behind the token when one is
 // set. A nil api is not served, nor /bridge without a default half; /health
@@ -100,7 +103,7 @@ func muxRoutes(api *controllerapi.Server, bridges *bridgeRoutes, token, version 
 		}
 		_ = json.NewEncoder(w).Encode(body)
 	})
-	mux.Handle("GET /metrics", expvar.Handler())
+	mux.HandleFunc("GET /metrics", metricsHandler)
 	mux.HandleFunc("GET /schema", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/schema+json")
 		w.Header().Set("X-Go-Fabric-Version", schema.GoFabricVersion)
@@ -112,4 +115,37 @@ func muxRoutes(api *controllerapi.Server, bridges *bridgeRoutes, token, version 
 		_, _ = w.Write(schema.DeclarationSchema())
 	})
 	return protocol.RequireToken(token, mux)
+}
+
+// metricsPrefix is the prefix of the daemon's own expvar variables (the
+// controller's, each bridge half's, /ws's).
+const metricsPrefix = "fabricserver."
+
+// metricsHandler is GET /metrics: one JSON object in expvar's shape with
+// the variables under metricsPrefix and memstats, nothing else.
+// expvar.Handler would also publish cmdline — the daemon's arguments, so
+// --bridge-passcode and --token when they are given as flags.
+func metricsHandler(w http.ResponseWriter, _ *http.Request) {
+	var b bytes.Buffer
+	b.WriteString("{\n")
+	first := true
+	expvar.Do(func(kv expvar.KeyValue) {
+		if kv.Key != "memstats" && !strings.HasPrefix(kv.Key, metricsPrefix) {
+			return
+		}
+		key, err := json.Marshal(kv.Key)
+		if err != nil {
+			return
+		}
+		if !first {
+			b.WriteString(",\n")
+		}
+		first = false
+		b.Write(key)
+		b.WriteString(": ")
+		b.WriteString(kv.Value.String())
+	})
+	b.WriteString("\n}\n")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_, _ = w.Write(b.Bytes())
 }
