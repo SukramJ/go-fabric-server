@@ -154,6 +154,12 @@ func TestWireSignals(t *testing.T) {
 	if ended != `{"node_id":1,"endpoint_id":1,"webrtc_session_id":3,"cause":"peer","reason":2,"client_session_key":"k"}` {
 		t.Errorf("ended %s", ended)
 	}
+	// go-fabric's own end cause, which matterjs-server does not spell,
+	// passes through as its wire text (docs/protocol.md).
+	overflow := string(protocol.MustEncode(wireSessionEnded(camera.SessionEnd{NodeID: 1, Endpoint: 1, SessionID: 4, Cause: camera.EndSignalOverflow})))
+	if overflow != `{"node_id":1,"endpoint_id":1,"webrtc_session_id":4,"cause":"signal_overflow"}` {
+		t.Errorf("signal overflow %s", overflow)
+	}
 	evicted := string(protocol.MustEncode(wireStreamEvicted(camera.StreamEvicted{NodeID: 1, Endpoint: 1, Kind: camera.StreamVideo, StreamID: 7})))
 	if evicted != `{"node_id":1,"endpoint_id":1,"kind":"video","stream_id":7}` {
 		t.Errorf("evicted %s", evicted)

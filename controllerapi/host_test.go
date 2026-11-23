@@ -7,7 +7,10 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"testing"
+
+	"thingfabric.dev/go-fabric/controller"
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )
@@ -118,6 +121,17 @@ func TestHostFabricLabel(t *testing.T) {
 	if err := p.SetFabricLabel(context.Background(), "Pages"); !errors.Is(err, controllerapi.ErrLabelPinned) || p.FabricLabel() != "Pinned" {
 		t.Fatalf("pinned: %q, %v", p.FabricLabel(), err)
 	}
+	for _, c := range []struct{ in, want string }{
+		{strings.Repeat("a", 40), strings.Repeat("a", 32)},
+		// 32 runes of two bytes: 16 of them fill the 32 bytes.
+		{strings.Repeat("ä", 32), strings.Repeat("ä", 16)},
+		// A three-byte rune across the bound is dropped whole.
+		{strings.Repeat("a", 31) + "€", strings.Repeat("a", 31)},
+	} {
+		if err := s.SetFabricLabel(context.Background(), c.in); err != nil || s.FabricLabel() != c.want {
+			t.Errorf("label %q: %q, %v; want %q", c.in, s.FabricLabel(), err, c.want)
+		}
+	}
 	q, err := controllerapi.New(controllerapi.Options{DisableAutoSubscription: true})
 	if err != nil {
 		t.Fatal(err)
@@ -125,4 +139,34 @@ func TestHostFabricLabel(t *testing.T) {
 	if po := q.PairOptions(); po.AutoSubscribe == nil || *po.AutoSubscribe || po.BLE != nil {
 		t.Fatalf("pair options %+v", po)
 	}
+}
+
+// TestFabricLabelMultibyte: a label of 32 two-byte runes is stored cut
+// to 32 bytes, and the controller starts with the stored label (go-fabric
+// refuses a fabric label beyond 32 bytes at the fabric's creation).
+func TestFabricLabelMultibyte(t *testing.T) {
+	dir := t.TempDir()
+	s, err := controllerapi.New(controllerapi.Options{StoragePath: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetFabricLabel(context.Background(), strings.Repeat("ö", 32)); err != nil {
+		t.Fatal(err)
+	}
+	cut := s.FabricLabel()
+	if cut != strings.Repeat("ö", 16) {
+		t.Fatalf("label %q", cut)
+	}
+	e := newEnv(t, envOptions{
+		server:    controllerapi.Options{StoragePath: dir},
+		configure: func(c *controller.Config) { c.Label = cut },
+	})
+	if got := e.api.FabricLabel(); got != cut {
+		t.Fatalf("the stored label at the next start %q", got)
+	}
+	n := e.commission()
+	waitFor(t, func() bool {
+		f, err := e.client.GetMatterFabrics(e.ctx, n.NodeID)
+		return err == nil && len(f) == 1 && f[0]["fabric_label"] == cut
+	})
 }

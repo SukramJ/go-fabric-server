@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"thingfabric.dev/go-fabric/controller/commissioner"
 	"thingfabric.dev/go-fabric/thread"
@@ -99,15 +100,24 @@ func (s *settingsStore) label() string {
 }
 
 // normalizeLabel is matterjs-server's label rule (WebSocketControllerHandler.ts:201,
-// :1227-1262): trimmed, empty is "HomeAssistant", at most 32 characters
-// (commissioner.MaxLabelLength).
+// :1227-1262): trimmed, empty is "HomeAssistant", cut to the maximum —
+// which matterjs-server counts in characters and go-fabric in bytes
+// (commissioner.MaxLabelLength, 32 bytes since v0.25.0: a longer label
+// fails the fabric's creation, its load and SetLabel). So the label is cut
+// to commissioner.MaxLabelLength bytes on a rune boundary; an ASCII label
+// is cut as matterjs-server cuts it (docs/protocol.md, Deliberate
+// differences).
 func normalizeLabel(label string) string {
 	label = strings.TrimSpace(label)
 	if label == "" {
 		return defaultFabricLabel
 	}
-	if r := []rune(label); len(r) > commissioner.MaxLabelLength {
-		label = string(r[:commissioner.MaxLabelLength])
+	if len(label) > commissioner.MaxLabelLength {
+		cut := commissioner.MaxLabelLength
+		for cut > 0 && !utf8.RuneStart(label[cut]) {
+			cut--
+		}
+		label = label[:cut]
 	}
 	return label
 }
