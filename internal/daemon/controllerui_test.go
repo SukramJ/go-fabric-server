@@ -96,6 +96,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	}
 	hooks := gofabric.NewHooks()
 	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: log})
+	cfg.Label = api.FabricLabel()        // as Run opens the fabric: no label push races the first status read
 	cfg.HooksFor = hooks.Wrap(api.Hooks) // as Run wires them
 	controllerTelemetry(&cfg, c)         // as Run sets them
 	cfg.KeepOnboardingCodes = c.ControllerKeepOnboardingCodes
