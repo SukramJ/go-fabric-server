@@ -301,6 +301,11 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		defer closeCentral()
 		// The controller's database through go-fabric's opener (Q11
 		// closed in v0.12.1): no SQLite driver of our own.
+		if c.ControllerKeepOnboardingCodes && c.Web == "" {
+			// The codes are kept, and without --web nothing shows them
+			// (no /ws command, #74).
+			log.Warn("fabricserver.onboarding_codes.unserved", slog.String("reason", "--controller-keep-onboarding-codes without --web: the database keeps the codes and no page shows them"))
+		}
 		db, err := controller.OpenDB(filepath.Join(c.StoragePath, "fabric-server.db"))
 		if err != nil {
 			return err
