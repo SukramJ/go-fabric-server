@@ -57,6 +57,13 @@ func logger() *slog.Logger {
 
 func newEnv(t *testing.T, opts bridgeapi.Options) *env {
 	t.Helper()
+	return newEnvWith(t, opts, nil)
+}
+
+// newEnvWith is newEnv with configure editing the node's configuration
+// after the half's wiring (nil is none).
+func newEnvWith(t *testing.T, opts bridgeapi.Options, configure func(*node.Config)) *env {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
 	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: logger()})
@@ -69,6 +76,9 @@ func newEnv(t *testing.T, opts bridgeapi.Options) *env {
 	// wiring (internal/daemon startBridge).
 	dev := site.AddDevice(fabrictest.Topology{Configure: func(cfg *node.Config) {
 		cfg.Observers, cfg.Surface = br.Observers(), opts.Surface
+		if configure != nil {
+			configure(cfg)
+		}
 	}})
 	if err := br.Start(ctx, dev.Node()); err != nil {
 		t.Fatal(err)

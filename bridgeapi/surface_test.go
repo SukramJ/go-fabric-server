@@ -21,11 +21,13 @@ import (
 const schedulesRow = "BD-chip-Thermostat-Schedules"
 
 // schedulesDecl selects the feature with the attributes it mandates
-// (ScheduleTypes: 1 to 3 entries, systemMode 4 is Heat;
+// (ScheduleTypes: 1 to 3 entries, systemMode 4 is Heat, its
+// scheduleTypeFeatures 2 is SupportsSetpoints — a type that supports
+// neither presets nor setpoints is refused since go-fabric v0.25.0;
 // NumberOfScheduleTransitions: min 1).
 const schedulesDecl = `{"devices":[{"key":"t","type":"Thermostat","clusters":{"Thermostat":{
  "features":["Heating","MatterScheduleConfiguration"],
- "initial":{"scheduleTypes":[{"systemMode":4,"numberOfSchedules":1,"scheduleTypeFeatures":0}],"numberOfSchedules":1,"numberOfScheduleTransitions":4,"numberOfScheduleTransitionPerDay":2}}}}]}`
+ "initial":{"scheduleTypes":[{"systemMode":4,"numberOfSchedules":1,"scheduleTypeFeatures":2}],"numberOfSchedules":1,"numberOfScheduleTransitions":4,"numberOfScheduleTransitionPerDay":2}}}}]}`
 
 // surfaceReport is the surface command's answer, decoded by
 // surface.Report's own UnmarshalJSON.
@@ -175,8 +177,9 @@ func TestSurfaceWithheldRemoved(t *testing.T) {
 
 // TestSurfaceWithheldReplaced: a key moves between a withheld and a
 // served device by re-declaration: served, it gets an endpoint; withheld
-// again, it leaves the node and the withheld list names it; remove and
-// forget of the withheld key answer as for any key.
+// again, it leaves the node and the withheld list names it; served once
+// more, it gets the endpoint number it had (the removal reserved it);
+// remove and forget of the withheld key answer as for any key.
 func TestSurfaceWithheldReplaced(t *testing.T) {
 	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
 	steps := []struct {
@@ -187,7 +190,9 @@ func TestSurfaceWithheldReplaced(t *testing.T) {
 		{`{"devices":[{"key":"c","type":"Closure"}]}`, false, nil},
 		{`{"devices":[{"key":"c","type":"OnOffLight"}]}`, true, []string{"c"}},
 		{`{"devices":[{"key":"c","type":"Closure"}]}`, false, nil},
+		{`{"devices":[{"key":"c","type":"OnOffLight"}]}`, true, []string{"c"}},
 	}
+	var endpoints []uint16
 	for i, st := range steps {
 		res, err := e.host.Declare(e.ctx, doc(st.decl))
 		if err != nil || len(res.Devices) != 1 || res.Devices[0].Error != "" {
@@ -195,6 +200,8 @@ func TestSurfaceWithheldReplaced(t *testing.T) {
 		}
 		if got := res.Devices[0].Endpoint != nil; got != st.endpoint {
 			t.Errorf("step %d: endpoint %v, want %v", i, got, st.endpoint)
+		} else if got {
+			endpoints = append(endpoints, *res.Devices[0].Endpoint)
 		}
 		if got := len(res.Withheld) == 1; got == st.endpoint {
 			t.Errorf("step %d: withheld %+v", i, res.Withheld)
@@ -202,6 +209,9 @@ func TestSurfaceWithheldReplaced(t *testing.T) {
 		if keys := nodeKeys(t, e); !slices.Equal(keys, st.keys) {
 			t.Errorf("step %d: node_info keys %v, want %v", i, keys, st.keys)
 		}
+	}
+	if len(endpoints) != 2 || endpoints[0] != endpoints[1] {
+		t.Errorf("endpoints served, withheld, served: %v, want one number", endpoints)
 	}
 	if err := e.host.Remove(e.ctx, "c"); err != nil {
 		t.Fatalf("remove: %v", err)

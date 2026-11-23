@@ -29,6 +29,7 @@ import (
 	"thingfabric.dev/go-fabric/controller/camera"
 	"thingfabric.dev/go-fabric/controller/dcl/snapshot"
 	"thingfabric.dev/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/device"
 	"thingfabric.dev/go-fabric/diag"
 	"thingfabric.dev/go-fabric/node"
 	expvarmetrics "thingfabric.dev/go-fabric/node/metrics/expvar"
@@ -154,7 +155,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.UintVar(&c.BridgeDiscriminator, "bridge-discriminator", 3840, "the bridge node's discriminator")
 	fs.UintVar(&c.BridgeVendorID, "bridge-vendor-id", 0xFFF1, "the bridge node's vendor id (the CSA test vendor by default)")
 	fs.UintVar(&c.BridgeProductID, "bridge-product-id", 0x8001, "the bridge node's product id")
-	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel")
+	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel, at most 32 bytes")
 	fs.StringVar(&c.BridgeMDNSInterfaces, "bridge-mdns-interfaces", "", "the host interfaces the device nodes announce and answer mDNS on, name[,name...] (a dual-homed host behind an mDNS reflector names its LAN interface); empty is every multicast-capable interface")
 	fs.DurationVar(&c.BridgeResultTimeout, "bridge-result-timeout", 5*time.Second, "how long a write or command event waits for the bridge client's result")
 	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
@@ -243,6 +244,9 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		return fmt.Errorf("--vendor-id %d is above 0xFFFF", c.VendorID)
 	}
 	if err := checkNodeRadio(c); err != nil {
+		return err
+	}
+	if err := checkBridgeLabel(c); err != nil {
 		return err
 	}
 	log.Info("fabricserver.start", slog.String("version", version.Version), slog.String("go_fabric", version.GoFabric()), slog.String("listen", listen.String()))
@@ -431,8 +435,24 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 
 // bridgeSalt is the PBKDF salt of the bridge node's passcode verifier, a
 // constant of the daemon as of any host (go-fabric's
-// docs/guides/embed-in-a-daemon.md §2).
+// docs/guides/embed-in-a-daemon.md §2). Since go-fabric v0.25.0 it answers
+// no commissioning window any more, but node.Config.Validate still checks
+// it — an empty salt fails (node/config.go:481-488, :956-966) — so it
+// stays.
 var bridgeSalt = []byte("go-fabric-server bridge node")
+
+// checkBridgeLabel refuses a --bridge-label beyond the NodeLabel's 32
+// bytes (go-fabric v0.25.0 node/config.go:1066-1068: the advertised name
+// the label stands in for), naming the flag and its byte count, before
+// anything opens — only with --bridge, as the label is the first node's
+// and an unused flag blocks no start. A registry node's label is the
+// pages' (64 characters) and is cut instead (bridgeConfig).
+func checkBridgeLabel(c Config) error {
+	if !c.Bridge || device.ComposeNodeLabel(c.BridgeLabel, "") == c.BridgeLabel {
+		return nil
+	}
+	return fmt.Errorf("--bridge-label (%s) is %d bytes: the node's NodeLabel holds at most 32 bytes", env("bridge-label"), len(c.BridgeLabel))
+}
 
 // The BasicInformation names of every device node.
 const (
@@ -475,9 +495,18 @@ func bridgeConfig(c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (nod
 			Passcode: uint32(s.Passcode), Discriminator: uint16(s.Discriminator), //nolint:gosec // checked above
 			PBKDFIterations: 1000, Salt: bridgeSalt,
 		},
-		ProductDescription: node.ProductDescription{VendorID: uint16(s.VendorID), ProductID: uint16(s.ProductID)}, //nolint:gosec // checked above
+		// DeviceType: the Aggregator's, stated, so the commissionable
+		// record names it before any device is declared — zero would infer
+		// it from the first bridged endpoint, RootNode until then (go-fabric
+		// v0.25.0 node/config.go:671-680).
+		ProductDescription: node.ProductDescription{
+			VendorID: uint16(s.VendorID), ProductID: uint16(s.ProductID), //nolint:gosec // checked above
+			DeviceType: uint16(device.AggregatorType().ID),
+		},
 		BasicInformation: node.BasicInformation{
-			VendorName: bridgeVendorName, ProductName: bridgeProductName, NodeLabel: s.Label,
+			// A registry label holds 64 characters; the node serves it cut
+			// to the NodeLabel's 32 bytes on a rune boundary.
+			VendorName: bridgeVendorName, ProductName: bridgeProductName, NodeLabel: device.ComposeNodeLabel(s.Label, ""),
 			SerialNumber: s.Serial, SoftwareVersionString: version.Version,
 		},
 		Store:   node.Store{Path: filepath.Join(c.StoragePath, s.Store)},

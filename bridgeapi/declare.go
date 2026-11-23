@@ -175,7 +175,9 @@ func (s *Server) buildDevice(ctx context.Context, raw json.RawMessage, path stri
 		return nil, fmt.Errorf("%s (%s): %w%s", path, d.Key, err, s.surfaceHint(err))
 	}
 	if d.Reachable != nil {
-		dev.SetReachable(ctx, *d.Reachable)
+		if err := dev.SetReachable(ctx, *d.Reachable); err != nil {
+			return nil, fmt.Errorf("%s (%s).reachable: %w", path, d.Key, err)
+		}
 	}
 	b.dev = dev
 	canon, err := json.Marshal(d)
