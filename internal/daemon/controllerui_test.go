@@ -113,7 +113,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	}
 	ws := httptest.NewServer(Mux(api, "", "test"))
 	src := controllerSource(ctrl, topo, api, hooks, log)
-	h, err := webHandler(c, nil, nil, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log)
+	h, err := webHandler(c, nil, nil, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +159,7 @@ func (e *pagesEnv) call(method, path, body string) (status int, out []byte) {
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	req.Header.Set(fabricui.RequestHeader, "1")
 	if e.token != "" {
 		req.Header.Set(fabricui.TokenHeader, e.token)
 	}

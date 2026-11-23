@@ -357,27 +357,27 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatalf("source check: %v", err)
 	}
 	// The pages answer without a node: the family disabled.
-	h, err := webHandler(Config{}, nil, nil, nil, nil, nil, nil, nil)
+	h, err := webHandler(Config{}, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/node/status", http.NoBody))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://127.0.0.1/api/v1/node/status", http.NoBody))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":false`) {
 		t.Fatalf("status %d %s", rec.Code, rec.Body)
 	}
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://127.0.0.1/", http.NoBody))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<") {
 		t.Fatalf("shell %d", rec.Code)
 	}
 	// Behind the Ingress only the proxy is answered.
-	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil, nil, nil)
+	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for addr, want := range map[string]int{"172.30.32.2:1234": http.StatusOK, "192.168.1.9:1234": http.StatusForbidden} {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/node/status", http.NoBody)
+		req := httptest.NewRequest(http.MethodGet, "http://127.0.0.1/api/v1/node/status", http.NoBody)
 		req.RemoteAddr = addr
 		rec = httptest.NewRecorder()
 		ing.ServeHTTP(rec, req)

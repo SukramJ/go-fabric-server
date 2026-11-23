@@ -114,10 +114,14 @@ type Config struct {
 	// the bridge node, the controller family over the controller); empty
 	// serves none. WebAdmin lets the pages write (token mode), WebAdminSource
 	// admits only requests from that address as an admin (an Ingress
-	// proxy); without either the pages are read-only.
-	Web            string
-	WebAdmin       bool
-	WebAdminSource string
+	// proxy); without either the pages show the status only.
+	// WebAllowedHosts are the DNS names the pages answer under besides
+	// loopback names and IP addresses (--web-allowed-hosts, name[,name...];
+	// go-fabric-ui Options.AllowedHosts).
+	Web             string
+	WebAdmin        bool
+	WebAdminSource  string
+	WebAllowedHosts string
 }
 
 // The migrations of the flags the node registry replaced (go-fabric-ui
@@ -172,8 +176,9 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
 	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the BLE adapter commission_with_code may commission over: an HCI id (0 for hci0) or an adapter name (hci1); empty is no BLE (Linux, BlueZ)")
 	fs.Var((*proxyList)(&c.BluetoothProxies), "bluetooth-proxy", "an ESPHome Bluetooth proxy commission_with_code may commission through: host[:port][,key] (port 6053, key the base64 API encryption key); repeatable; not with --bluetooth-adapter")
-	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; read-only unless --web-admin or --web-admin-source")
+	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; the status only unless --web-admin or --web-admin-source; a DNS name in the Host only with --web-allowed-hosts")
 	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the pages write, show the pairing code and use the controller's admin routes (the page's token mode)")
+	fs.StringVar(&c.WebAllowedHosts, "web-allowed-hosts", "", "the DNS names the pages answer under, name[,name...] (host names only, no port); loopback names and IP addresses always pass")
 	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit page requests from this IP address only, as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
 	set := map[string]bool{}
 	if err := fs.Parse(args); err != nil {

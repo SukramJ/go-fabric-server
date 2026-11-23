@@ -11,12 +11,14 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 )
 
-// webHandler is the pages of go-fabric-ui (0.7.1, docs/embedding.md):
+// webHandler is the pages of go-fabric-ui (0.13.0, docs/embedding.md):
 // the node family over the device nodes — the default node of the
 // --bridge-* flags (Options.Node, its configuration block
 // Options.NodeConfig) and the node registry beside it (Options.Registry:
@@ -32,10 +34,19 @@ import (
 // a nil ctrl serves that family as disabled, a nil ops no Operation page.
 // The controller node's ping is go-fabric-ui's own (its gofabric
 // adapter's ControllerNode.Ping); the daemon passes nothing for it.
-func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (http.Handler, error) {
+//
+// go-fabric-ui checks every request's Host: loopback names and IP
+// addresses pass, a DNS name only when --web-allowed-hosts lists it
+// (Options.AllowedHosts) — or, with --web-admin-source, when the request
+// comes from that address (Options.AllowHost: behind the Ingress the proxy
+// forwards the browser's Host unchanged, and only the proxy has that
+// source address; go-ha2fabric's shape). done ends the event streams
+// (Options.Done); nil never does.
+func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger, done <-chan struct{}) (http.Handler, error) {
 	o := fabricui.Options{
 		Events: ev, Logger: log, Controller: ctrl, Operations: ops,
-		ExposureReason: exposureReason,
+		ExposureReason: exposureReason, Done: done,
+		AllowedHosts: hostList(c.WebAllowedHosts),
 	}
 	if def != nil {
 		// The pages read the half's switch, never a bare *node.Node, so
@@ -55,7 +66,16 @@ func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistr
 		return nil, err
 	}
 	o.Admin = admin
-	h := fabricui.Handler(o)
+	if c.WebAdminSource != "" {
+		o.AllowHost = admin
+	}
+	h, err := fabricui.NewHandler(o)
+	if err != nil {
+		if c.WebAllowedHosts != "" {
+			return nil, fmt.Errorf("--web-allowed-hosts: %w", err)
+		}
+		return nil, err
+	}
 	if c.WebAdminSource == "" {
 		return h, nil
 	}
@@ -70,6 +90,19 @@ func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistr
 		}
 		h.ServeHTTP(w, r)
 	}), nil
+}
+
+// hostList is --web-allowed-hosts as a list, each entry trimmed; nil for
+// none. The entries are go-fabric-ui's to validate (NewHandler).
+func hostList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	var out []string
+	for name := range strings.SplitSeq(value, ",") {
+		out = append(out, strings.TrimSpace(name))
+	}
+	return out
 }
 
 // defaultNodeConfig is the default node's configuration block on its
@@ -115,9 +148,14 @@ func fromAddr(r *http.Request, src netip.Addr) bool {
 	return ap.Addr().Unmap() == src.Unmap()
 }
 
-// serveWeb serves the pages on --web until the returned stop.
+// serveWeb serves the pages on --web until the returned stop, which ends
+// the event streams first (Options.Done), so the server's shutdown does
+// not wait for them.
 func serveWeb(ctx context.Context, c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger) (func(), error) {
-	h, err := webHandler(c, life, def, reg, ctrl, ev, ops, log)
+	done := make(chan struct{})
+	var once sync.Once
+	end := func() { once.Do(func() { close(done) }) }
+	h, err := webHandler(c, life, def, reg, ctrl, ev, ops, log, done)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +171,7 @@ func serveWeb(ctx context.Context, c Config, life *nodeLifecycle, def *bridgeHal
 	}()
 	log.Info("fabricserver.web.listening", slog.String("listen", ln.Addr().String()), slog.Bool("admin", c.WebAdmin || c.WebAdminSource != ""), slog.Bool("node", def != nil), slog.Bool("registry", reg != nil), slog.Bool("controller", ctrl != nil))
 	return func() {
+		end()
 		sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(sctx)

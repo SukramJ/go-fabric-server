@@ -117,7 +117,7 @@ func TestTwoNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(muxRoutes(api, routes, "", "test"))
-	pagesH, err := webHandler(Config{WebAdmin: true}, life, def, reg, nil, fabricui.NewEvents(), nil, log)
+	pagesH, err := webHandler(Config{WebAdmin: true}, life, def, reg, nil, fabricui.NewEvents(), nil, log, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,12 +254,13 @@ func TestTwoNodes(t *testing.T) {
 			Store         string `json:"store"`
 		} `json:"config"`
 	}
-	getJSON(t, pages.URL+fabricui.DefaultPrefix+"/nodes/second/status", &st)
+	// config.store is an admin's (go-fabric-ui 0.13.0).
+	getJSONWith(t, pages.URL+fabricui.DefaultPrefix+"/nodes/second/status", token, &st)
 	if !st.Enabled || st.ExposureReason != exposureReason || st.Config.Source != "registry" || st.Config.Label != "Kitchen" || st.Config.Store != "bridge-second.db" ||
 		uint(st.Config.Discriminator) != started()[1].spec.Discriminator {
 		t.Fatalf("GET /nodes/second/status %+v", st)
 	}
-	getJSON(t, pages.URL+fabricui.DefaultPrefix+"/node/status", &st)
+	getJSONWith(t, pages.URL+fabricui.DefaultPrefix+"/node/status", token, &st)
 	if !st.NodeRegistry || st.Config.Source != "configuration" || st.Config.Store != "bridge.db" || st.Config.Discriminator != 3840 {
 		t.Fatalf("GET /node/status %+v", st)
 	}
@@ -428,6 +429,7 @@ func pageWrite(t *testing.T, method, url, token, body string, v any) int {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(fabricui.RequestHeader, "1")
 	if token != "" {
 		req.Header.Set(fabricui.TokenHeader, token)
 	}
@@ -457,7 +459,22 @@ func httpStatus(t *testing.T, url string) int {
 
 func getJSON(t *testing.T, url string, v any) {
 	t.Helper()
-	resp, err := http.Get(url) //nolint:noctx // a test against httptest
+	getJSONWith(t, url, "", v)
+}
+
+// getJSONWith is getJSON as the shipped client asks — X-Fabric-UI: 1 —
+// with the page's token when one is given (an admin in token mode).
+func getJSONWith(t *testing.T, url, token string, v any) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, http.NoBody) //nolint:noctx // a test against httptest
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set(fabricui.RequestHeader, "1")
+	if token != "" {
+		req.Header.Set(fabricui.TokenHeader, token)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
