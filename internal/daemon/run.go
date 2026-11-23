@@ -27,6 +27,7 @@ import (
 	"thingfabric.dev/go-fabric/controller/attestation"
 	"thingfabric.dev/go-fabric/controller/ble"
 	"thingfabric.dev/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/commissioner"
 	"thingfabric.dev/go-fabric/controller/dcl/snapshot"
 	"thingfabric.dev/go-fabric/controller/topology"
 	"thingfabric.dev/go-fabric/device"
@@ -157,7 +158,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.UintVar(&c.VendorID, "vendor-id", 0, "our fabric's vendor id on the first run (default 0xFFF1)")
 	fs.StringVar(&c.Trust, "trust", "production", "the attestation roots: production (the DCL snapshot) or development (plus the CSA test roots)")
 	fs.StringVar(&c.LogLevel, "log-level", "info", "the log level: critical, error, warning, notice, info or debug")
-	fs.StringVar(&c.DefaultFabricLabel, "default-fabric-label", "", "pin the fabric label; set_default_fabric_label then has no effect")
+	fs.StringVar(&c.DefaultFabricLabel, "default-fabric-label", "", "pin the fabric label, at most 32 bytes (trimmed; blank is no pin); set_default_fabric_label then has no effect")
 	fs.BoolVar(&c.DisableAutoSubscription, "disable-auto-subscription", false, "pair new nodes without the server's own subscription; enables subscribe and unsubscribe")
 	fs.BoolVar(&c.Controller, "controller", true, "run the controller half (/ws)")
 	fs.BoolVar(&c.Bridge, "bridge", false, "run the bridge half (/bridge): a bridge node whose devices a client declares")
@@ -260,6 +261,10 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		return err
 	}
 	if err := checkBridgeLabel(c); err != nil {
+		return err
+	}
+	c.DefaultFabricLabel = strings.TrimSpace(c.DefaultFabricLabel)
+	if err := checkFabricLabel(c); err != nil {
 		return err
 	}
 	log.Info("fabricserver.start", slog.String("version", version.Version), slog.String("go_fabric", version.GoFabric()), slog.String("listen", listen.String()))
@@ -466,6 +471,20 @@ func checkBridgeLabel(c Config) error {
 		return nil
 	}
 	return fmt.Errorf("--bridge-label (%s) is %d bytes: the node's NodeLabel holds at most 32 bytes", env("bridge-label"), len(c.BridgeLabel))
+}
+
+// checkFabricLabel refuses a --default-fabric-label (trimmed by Run;
+// blank is no pin) beyond the fabric label's 32 bytes
+// (commissioner.MaxLabelLength: go-fabric refuses a longer one at the
+// controller's start), naming the flag, its variable and the byte count —
+// only with --controller, as the label is the controller's. A pin is the
+// operator's statement, refused rather than cut (as --bridge-label);
+// matterjs-server cuts it (docs/protocol.md, Deliberate differences).
+func checkFabricLabel(c Config) error {
+	if !c.Controller || len(c.DefaultFabricLabel) <= commissioner.MaxLabelLength {
+		return nil
+	}
+	return fmt.Errorf("--default-fabric-label (%s) is %d bytes: the fabric label holds at most %d bytes", env("default-fabric-label"), len(c.DefaultFabricLabel), commissioner.MaxLabelLength)
 }
 
 // The BasicInformation names of every device node.

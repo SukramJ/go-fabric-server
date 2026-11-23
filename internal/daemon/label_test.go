@@ -51,6 +51,35 @@ func TestBridgeLabelBound(t *testing.T) {
 	}
 }
 
+// TestDefaultFabricLabelBound: a --default-fabric-label beyond 32 bytes
+// stops the start with --controller, naming the flag, its variable and
+// the byte count; without the controller it blocks nothing; 32 bytes of
+// multibyte runes pass.
+func TestDefaultFabricLabelBound(t *testing.T) {
+	long := strings.Repeat("ö", 17) // 34 bytes, 17 runes
+	err := checkFabricLabel(Config{Controller: true, DefaultFabricLabel: long})
+	if err == nil {
+		t.Fatal("a 34-byte --default-fabric-label passed")
+	}
+	for _, want := range []string{"--default-fabric-label", "FABRIC_SERVER_DEFAULT_FABRIC_LABEL", "34 bytes"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("%v lacks %q", err, want)
+		}
+	}
+	if err := Run(context.Background(), Config{Listen: "127.0.0.1:0", LogLevel: "info", StoragePath: t.TempDir(), Controller: true, DefaultFabricLabel: "  " + long + "  "}, io.Discard); err == nil || !strings.Contains(err.Error(), "--default-fabric-label") {
+		t.Fatalf("Run with a 34-byte --default-fabric-label: %v", err)
+	}
+	for _, c := range []Config{
+		{Controller: false, DefaultFabricLabel: long},
+		{Controller: true, DefaultFabricLabel: strings.Repeat("ö", 16)},
+		{Controller: true},
+	} {
+		if err := checkFabricLabel(c); err != nil {
+			t.Errorf("%q (controller %v): %v", c.DefaultFabricLabel, c.Controller, err)
+		}
+	}
+}
+
 // TestRegistryLabelCut: a registry node with a 64-rune multibyte label
 // (go-fabric-ui's bound, 128 bytes) starts, serving the label cut to 32
 // bytes on a rune boundary as its NodeLabel; a rename keeps the full
