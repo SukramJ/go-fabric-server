@@ -56,14 +56,14 @@ exactly; send ids as integer literals, never in exponent form.
 
 | Code | Name | Raised by this server for |
 | --- | --- | --- |
-| 0 | UnknownError | a device's status answer (with `status`, `cluster_status`), any unclassified failure |
+| 0 | UnknownError | a device's status answer (with `status`, `cluster_status`), any unclassified failure; on `/bridge`, a `host` statement go-fabric refuses for another reason than `ErrNotBridged` (the node's store refusing a label), `host: <go-fabric's text>` |
 | 1 | NodeCommissionFailed | a failed commissioning, with `reason` |
 | 2 | NodeInterviewFailed | `interview_node` failing |
-| 3 | NodeNotReady | a node not commissioned, disabled or closed; `/bridge` `surface` without a bound node |
+| 3 | NodeNotReady | a node not commissioned, disabled or closed; a camera command after the server's camera service closed (`<command>: the camera service is closed`, go-fabric `camera.ErrClosed`); `/bridge` `surface` without a bound node |
 | 4 | NodeNotResolving | a node not reached (timeout, network failure) |
 | 5 | NodeNotExists | a `node_id` the controller does not hold |
 | 7 | SDKStackError | `read_attribute` without any value |
-| 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form; on `/bridge`, a declaration the kit or the node's surface policies refuse (an ahead-of-matter.js feature not enabled, naming the register IDs and `--bridge-extensions`) — a device type the specification level withholds is no refusal, `declare` names it in `withheld` |
+| 8 | InvalidArguments | malformed or missing arguments; `reason: "invalid-payload"` for a pairing code of the wrong form; on `/bridge`, a `host` statement go-fabric refuses with `device.ErrNotBridged` (`host: <go-fabric's text>`), a declaration the kit or the node's surface policies refuse (an ahead-of-matter.js feature not enabled, naming the register IDs and `--bridge-extensions`) — a device type the specification level withholds is no refusal, `declare` names it in `withheld` |
 | 9 | InvalidCommand | an unknown or not yet implemented command |
 | 100 | IcdMultiAdmin | `register_icd` refused for a node with administrators of other vendors, with matterjs-server's JSON details |
 | 102 | CameraStreamIncompatible | the camera, the offer or the request rules the stream out; `details` the JSON `{message, reason, track?, feature?, device, requested, bound?, device_status?}` in matterjs-server's key order (types.ts:274-301) |
@@ -113,7 +113,7 @@ The camera citations on this page are matterjs-server at `0bd06f2`:
 | `open_commissioning_window` | implemented | an enhanced window (`client.Node.OpenCommissioningWindow`), `timeout` in seconds; `iteration`, `option`, `discriminator` accepted and not used, as matterjs-server |
 | `set_/remove_wifi_credentials`, `get_all_credentials` | implemented | secrets are write-only |
 | `set_/remove_thread_dataset` | implemented | the dataset must be hex and MeshCoP TLVs; `get_all_credentials` names its `networkName` and `extPanId` |
-| `set_default_fabric_label`, `get_fabric_label` | implemented | trimmed, empty is `HomeAssistant`, at most 32 characters; stored and pushed to every connected node in the background |
+| `set_default_fabric_label`, `get_fabric_label` | implemented | trimmed, empty is `HomeAssistant`, at most 32 bytes, cut on a rune boundary; stored and pushed to every connected node in the background |
 | `get_matter_fabrics`, `remove_matter_fabric` | implemented | |
 | `diagnostics` | implemented | `{info, nodes, events}`, the last 25 node events |
 | `get_loglevel`, `set_loglevel` | implemented | console level — the daemon's one level source, shared with the pages' Operation page (`PUT /api/v1/operation/log/level`); `file_loglevel` stays `null`: no log file, the pages' log ring is in memory |
@@ -282,7 +282,9 @@ Ignorable by a client that does not know them:
 - `ip_addresses` on a commissioned `matter` node of
   `get_network_topology`: the node's known addresses (a test node has
   none);
-- `GET /schema`: the JSON Schema of the values;
+- `GET /schema`: the JSON Schema of the values; a property whose value
+  the snapshot marks secret (matter.js's `isSecret`: a credential, a PIN,
+  a key) carries `"x-secret": true`, also in `GET /schema/declaration`;
 - `GET /health`: `{version, node_count, healthy}`;
 - the bearer token (see operations).
 
@@ -349,6 +351,55 @@ Ignorable by a client that does not know them:
 - A float value of the TLV's 4-byte form is the shortest decimal that reads
   back as that float (`0.1`), not the double expansion matter.js's
   JavaScript number prints (`0.10000000149011612`).
+- The fabric label (`set_default_fabric_label`, the pages' label) is cut
+  to 32 **bytes** on a rune boundary: go-fabric counts the label in bytes
+  and refuses a longer one (`commissioner.MaxLabelLength`, go-fabric
+  `CHANGELOG.md:759` at v0.25.0). matterjs-server cuts at 32 UTF-16 code
+  units (`normalizeFabricLabel`, WebSocketControllerHandler.ts:201-204,
+  called at :1236); an ASCII label is cut the same.
+- `--default-fabric-label` is trimmed (blank is no pin) and refused at
+  start beyond 32 bytes, naming the flag; matterjs-server trims the pin and
+  cuts it to 32 (`packages/matter-server/src/MatterServer.ts:178-182`). A
+  pin is the operator's statement: a silently different label on every
+  device's fabric list is what a pin exists to prevent.
+- `camera_session_ended` may carry `cause: "signal_overflow"`: go-fabric's
+  own end cause (`camera.EndSignalOverflow`, the session ended because its
+  signals were not read while the camera kept signalling,
+  `controller/camera/service.go:117-122`, `types.go:233-236` at v0.25.0),
+  which matterjs-server does not spell. A camera command after the
+  server's camera service closed answers `NodeNotReady`; matterjs-server
+  has no command error for a stopping server, it closes the socket 1001
+  "server shutting down" (WebSocketControllerHandler.ts:424-426).
+- The argument log: matterjs-server logs every request at debug with its
+  `args` masked by a list of field names (`"[redacted]"`,
+  `packages/ws-client/src/logging-redaction.ts:25-48`, `:120-123`,
+  `:198-204`; called at WebSocketControllerHandler.ts:934-937), plus the
+  WebRTC secrets: an ICE server's `username` and `credential` (`:56`) and
+  the SDP's `a=ice-ufrag`/`a=ice-pwd` lines (`:72-76`, `:143-148`). This server
+  logs `args` at debug for `device_command` and `write_attribute` only,
+  judged by the model: a payload member or attribute the snapshot marks
+  `isSecret` is `"[redacted]"` (null stays null), structs and lists are
+  walked, a member is matched by every spelling the encoder accepts, and
+  what the model cannot judge (an unknown cluster, command or attribute, a
+  value of another shape, a struct the tables do not resolve, a member the
+  model does not define, a top-level member no handler reads) is
+  `"[unjudged]"`; the `ice-ufrag`/`ice-pwd` lines of an SDP string are
+  masked as matterjs-server masks them. The ICE server's `Credential`
+  carries the snapshot's mark and is `"[redacted]"`; its `Username` has no
+  mark and is logged. Every other command logs no argument; the raw frame
+  is never logged. `fabricserver.ws.error` logs the details of these two
+  commands `"[redacted]"` when their target holds a secret (the encoder's
+  text quotes the refused value); the answer on the wire is unchanged.
+- A controller's image of a node is bounded: go-fabric's
+  `client.DefaultMaxImageBytesPerNode`, 32 MiB (`controller.Config.MaxImageBytesPerNode`
+  0, `controller/controller.go:292-305`, `controller/client/image_bounds.go:28`
+  at v0.25.0). A report above it is not applied and is logged once per
+  node at Warn,
+  `matter.controller.client.image_quota_reached`; the server sets no
+  other bound and has no flag for it.
+- A controller's write that leaves its cluster as it was advances no
+  DataVersion and is reported to no subscriber (go-fabric
+  `CHANGELOG.md:620-621` at v0.25.0), so it raises no `attribute_updated`.
 
 `docs/by_design.md` keeps each deliberate difference with its reason.
 
@@ -458,6 +509,17 @@ Names, not ids; every name is matched without regard to case:
   `<value>` is the enabled IDs and the refused ones. The policies are the
   operator's (operations, §Surface policies); a declaration cannot change
   them.
+- go-fabric v0.25.0 refuses declarations 0.10.0 accepted (go-fabric
+  `CHANGELOG.md` at v0.25.0): a device whose kit server lists an attribute
+  matter.js requires a value of at initialisation, built bare or with the
+  named feature selections (`:665`); an optional command selected for a
+  cluster served by the generated default server without a handler
+  (`:487`); a BridgedDeviceBasicInformation value beyond the generated
+  definition's constraint, `Options.Vendor` included, a string counted in
+  UTF-16 code units (`:787`); an `initial` struct value whose fields break
+  their conformance (`:731`); and Thermostat's MatterScheduleConfiguration
+  schedules held to the content rules a controller's write is held to
+  (`:148`). Each is the kit's refusal above, `InvalidArguments`.
 - A device whose type or mandated cluster the node's specification level
   (`--bridge-spec-level`) does not know is **withheld**, not refused: a
   node never dies of an operator choice (go-fabric ADR 0030 decision 3,
@@ -501,7 +563,7 @@ are stored or none; the controllers' subscriptions report the change.
 
 No arguments. The answer is the bridge node's surface report,
 `node.Node.Surface()`, encoded by go-fabric's own
-[`surface.Report`](https://pkg.go.dev/github.com/SukramJ/go-fabric@v0.15.2/surface#Report) JSON (`MarshalJSON`) and passed
+[`surface.Report`](https://pkg.go.dev/thingfabric.dev/go-fabric@v0.25.0/surface#Report) JSON (`MarshalJSON`) and passed
 through unchanged: `policies`, `level`, `level_origin`, `profiles`,
 `extensions`, `effective`, `decisions`, `withheld`, `assembled`,
 `changed`. The shape and its meaning are go-fabric's; this document does
@@ -516,6 +578,18 @@ answer is `NodeNotReady`.
 is not persisted. `label` renames the device persistently
 (`Device.Rename`), as a controller's write of NodeLabel does. `reachable`
 is `Device.SetReachable`.
+
+The statements apply in this order — `label`, then the host statements,
+then `reachable` — and the command stops at the first refusal, answering
+it as a command error: `device.ErrNotBridged` (a part,
+`device/lifecycle.go:34-40` at go-fabric v0.25.0) is `InvalidArguments`,
+any other refusal `UnknownError`, with `details` `host: <go-fabric's
+text>`. go-fabric stores a label before it serves it; when the node's
+store refuses, `Rename` returns the refusal, the label is not served and
+the device keeps its name (`:289-309`) — so a refused label changes
+nothing of the statement. A label is served as the NodeLabel, cut by
+go-fabric to 32 UTF-8 bytes on a rune boundary
+(`device.ComposeNodeLabel`, `:388-394`).
 
 ## Events (node → host)
 

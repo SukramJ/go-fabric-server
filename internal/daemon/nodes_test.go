@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric/clock"
-	"github.com/SukramJ/go-fabric/fabrictest"
-	"github.com/SukramJ/go-fabric/node"
+	"thingfabric.dev/go-fabric/clock"
+	"thingfabric.dev/go-fabric/fabrictest"
+	"thingfabric.dev/go-fabric/node"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
 )

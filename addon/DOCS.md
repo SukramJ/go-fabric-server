@@ -20,6 +20,13 @@ acts on the official add-on only — so this add-on sends no discovery:
 - **log_level** (info): critical, error, warning, notice, info or debug.
 - **enable_test_net_dcl** (false): also trust the CSA test roots, for
   devices with test certificates.
+- **keep_onboarding_codes** (false): keep the pairing code of each
+  device the add-on pairs in its own commissioning mode (not one shared
+  from another controller) and show it in the web UI's onboarding inventory
+  (`--controller-keep-onboarding-codes`). The database then holds one
+  setup code per device — with it and a factory reset anyone can pair the
+  device — stored unsealed until the database is sealed (a follow-up), so
+  its backups are secrets like a key.
 - **bridge** (false): also run the bridge half for hosts that declare
   devices over `/bridge`, with its own Matter node.
 - **bridge_port** (5540): that node's Matter port.
@@ -43,7 +50,17 @@ The database and settings are under `/data`; a backup stops the add-on
 first. The add-on's web UI (Ingress) shows the controller's pages — the
 commissioned nodes, commissioning, the Wi-Fi and Thread credentials, the
 fabric label — and the bridge node's pages when **bridge** is on; it
-answers the Ingress proxy only.
+answers the Ingress proxy only: the proxy's address is the admission, so
+the pages answer under the name your browser uses. A reverse proxy in
+front of Home Assistant must forward the `Host` header unchanged, or the
+web UI refuses changes (`origin_not_allowed`).
+
+Back up the add-on before updating from 0.10.0: the first start upgrades
+the database one way, with no way back to 0.10.0. **Known issue:** a
+fabric label of more than 32 bytes set under 0.10.0 (32 characters admitted
+then; umlauts and CJK characters take more than one byte each) stops the add-on
+from starting until go-fabric #587 is fixed; the default label
+`HomeAssistant` is not affected.
 
 ## Bluetooth through ESPHome proxies
 

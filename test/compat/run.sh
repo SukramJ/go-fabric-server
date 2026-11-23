@@ -34,8 +34,8 @@ cd "$root"
 CGO_ENABLED=0 go build -o "$work/fabric-server" ./cmd/fabric-server
 
 if [[ "${COMPAT_BRIDGE:-0}" == 1 ]]; then
-	gofabric=$(go list -m -f '{{.Version}}' github.com/SukramJ/go-fabric)
-	GOBIN="$work" CGO_ENABLED=0 go install "github.com/SukramJ/go-fabric/examples/reference-bridge@$gofabric"
+	gofabric=$(go list -m -f '{{.Version}}' thingfabric.dev/go-fabric)
+	GOBIN="$work" CGO_ENABLED=0 go install "thingfabric.dev/go-fabric/examples/reference-bridge@$gofabric"
 	export FABRIC_SERVER_BRIDGE_PASSCODE=20202024 FABRIC_SERVER_BRIDGE_DISCRIMINATOR=3333
 	"$work/reference-bridge" --db "$work/bridge.db" --listen ":$(free_port)" --tcp true \
 		--camera-sim --camera-test-videosrc \

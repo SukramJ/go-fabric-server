@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/controller/ble"
+	"thingfabric.dev/go-fabric/controller/ble"
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )

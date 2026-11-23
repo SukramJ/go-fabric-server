@@ -19,7 +19,10 @@ import (
 	"testing"
 	"time"
 
+	expvarmetrics "thingfabric.dev/go-fabric/node/metrics/expvar"
+
 	fsclient "github.com/SukramJ/go-fabric-server/client"
+	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
@@ -125,8 +128,24 @@ func TestMuxRoutes(t *testing.T) {
 	if err := json.Unmarshal(body, &doc); err != nil || doc["title"] != "go-fabric-server bridge declaration" {
 		t.Fatalf("declaration schema: %v %v", doc["title"], err)
 	}
-	if code, _, _ = get("/metrics"); code != http.StatusOK {
-		t.Fatalf("metrics %d", code)
+	// GET /metrics: the daemon's variables and memstats only — never
+	// cmdline, which holds the flags (--token, --bridge-passcode).
+	expvarmetrics.New(metricsPrefix).Gauge(protocol.MetricConnections, 0)
+	code, header, body = get("/metrics")
+	var metrics map[string]json.RawMessage
+	if code != http.StatusOK || header.Get("Content-Type") != "application/json; charset=utf-8" || json.Unmarshal(body, &metrics) != nil {
+		t.Fatalf("metrics %d %v %s", code, header, body)
+	}
+	if metrics["memstats"] == nil || metrics["fabricserver.ws.connections"] == nil {
+		t.Fatalf("metrics lack memstats or fabricserver.ws.connections: %s", body)
+	}
+	for key := range metrics {
+		if key != "memstats" && !strings.HasPrefix(key, "fabricserver.") {
+			t.Errorf("metrics publish %q", key)
+		}
+	}
+	if metrics["cmdline"] != nil {
+		t.Error("metrics publish cmdline")
 	}
 	if err := Run(context.Background(), Config{HealthCheck: srv.URL + "/health"}, io.Discard); err == nil {
 		t.Fatal("an unhealthy server fails the probe")
@@ -338,27 +357,27 @@ func TestWebAdmin(t *testing.T) {
 		t.Fatalf("source check: %v", err)
 	}
 	// The pages answer without a node: the family disabled.
-	h, err := webHandler(Config{}, nil, nil, nil, nil, nil, nil, nil)
+	h, err := webHandler(Config{}, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/node/status", http.NoBody))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://127.0.0.1/api/v1/node/status", http.NoBody))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":false`) {
 		t.Fatalf("status %d %s", rec.Code, rec.Body)
 	}
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://127.0.0.1/", http.NoBody))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<") {
 		t.Fatalf("shell %d", rec.Code)
 	}
 	// Behind the Ingress only the proxy is answered.
-	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil, nil, nil)
+	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for addr, want := range map[string]int{"172.30.32.2:1234": http.StatusOK, "192.168.1.9:1234": http.StatusForbidden} {
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/node/status", http.NoBody)
+		req := httptest.NewRequest(http.MethodGet, "http://127.0.0.1/api/v1/node/status", http.NoBody)
 		req.RemoteAddr = addr
 		rec = httptest.NewRecorder()
 		ing.ServeHTTP(rec, req)

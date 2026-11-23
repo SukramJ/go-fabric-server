@@ -159,7 +159,13 @@ func (s *Server) handle(ctx context.Context, conn *wsConn, frame []byte, ready c
 		conn.reply(perr)
 		return
 	}
-	s.log.Debug("fabricserver.ws.request", slog.String("conn", conn.id), slog.String("command", req.Command), slog.String("message_id", req.MessageID))
+	if s.log.Enabled(ctx, slog.LevelDebug) {
+		attrs := []slog.Attr{slog.String("conn", conn.id), slog.String("command", req.Command), slog.String("message_id", req.MessageID)}
+		if args, ok := loggedArgs(req.Command, req.Args); ok {
+			attrs = append(attrs, slog.Any("args", args))
+		}
+		s.log.LogAttrs(ctx, slog.LevelDebug, "fabricserver.ws.request", attrs...)
+	}
 	if req.Command == "start_listening" {
 		s.startListening(conn, req)
 		return
@@ -174,7 +180,7 @@ func (s *Server) handle(ctx context.Context, conn *wsConn, frame []byte, ready c
 	result, err := s.dispatch(ctx, c)
 	if err != nil {
 		err.MessageID = req.MessageID
-		s.log.Info("fabricserver.ws.error", slog.String("conn", conn.id), slog.String("command", req.Command), slog.Int("code", int(err.ErrorCode)), slog.String("details", err.Details))
+		s.log.Info("fabricserver.ws.error", slog.String("conn", conn.id), slog.String("command", req.Command), slog.Int("code", int(err.ErrorCode)), slog.String("details", loggedDetails(req.Command, req.Args, err.Details)))
 		conn.reply(err)
 	} else {
 		conn.reply(protocol.Result{MessageID: req.MessageID, Result: result})

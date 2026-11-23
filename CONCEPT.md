@@ -1,7 +1,7 @@
 # go-fabric-server — concept
 
 The English form of go-fabric's concept v8
-([`docs/concept-v8-fabric-server.md`](https://github.com/SukramJ/go-fabric/blob/main/docs/concept-v8-fabric-server.md),
+([`docs/concept-v8-fabric-server.md`](https://github.com/thingfabric/go-fabric/blob/main/docs/concept-v8-fabric-server.md),
 accepted by the owner on 2026-10-24), parts B to E, as far as they concern
 this repository. Where this file and the German concept differ, the concept
 decides and this file is corrected.

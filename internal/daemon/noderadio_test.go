@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/ble/bletest"
-	"github.com/SukramJ/go-fabric/node"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/ble/bletest"
+	"thingfabric.dev/go-fabric/node"
 )
 
 // testRadio is the first node's peripheral in go-fabric's in-memory model
@@ -50,11 +50,11 @@ func (w *testWiFi) Close() error { w.closed.Add(1); return nil }
 // records the adapter and interface names they were asked for. The seams
 // are package variables: a test that swaps them must not run in parallel
 // (no t.Parallel here or in any test that calls Run with a radio flag).
-func stubNodeRadio(t *testing.T, p contract.BLEPeripheral, perr error, w wifiPort, werr error) (adapters, ifaces *[]string) {
+func stubNodeRadio(t *testing.T, p contract.GATTPeripheral, perr error, w wifiPort, werr error) (adapters, ifaces *[]string) {
 	t.Helper()
 	var a, i []string
 	prevP, prevW := newPeripheral, newWiFiDriver
-	newPeripheral = func(name string) (contract.BLEPeripheral, error) {
+	newPeripheral = func(name string) (contract.GATTPeripheral, error) {
 		a = append(a, name)
 		if perr != nil {
 			return nil, perr
@@ -219,19 +219,19 @@ func TestBridgeConfigRadio(t *testing.T) {
 	}
 
 	both := &nodeRadio{ble: r, wifi: w}
-	if n := network(primary, both); n.BLE != r || n.WiFi == nil || n.WiFi.Driver != w {
+	if n := network(primary, both); n.GATT != r || n.WiFi == nil || n.WiFi.Driver != w {
 		t.Fatalf("first node: %+v", n)
 	}
-	if n := network(second, both); n.BLE != nil || n.WiFi != nil {
+	if n := network(second, both); n.GATT != nil || n.WiFi != nil {
 		t.Fatalf("registry node got the radio: %+v", n)
 	}
-	if n := network(primary, &nodeRadio{ble: r}); n.BLE != r || n.WiFi != nil {
+	if n := network(primary, &nodeRadio{ble: r}); n.GATT != r || n.WiFi != nil {
 		t.Fatalf("BLE alone: %+v", n)
 	}
-	if n := network(primary, &nodeRadio{wifi: w}); n.BLE != nil || n.WiFi == nil || n.WiFi.Driver != w {
+	if n := network(primary, &nodeRadio{wifi: w}); n.GATT != nil || n.WiFi == nil || n.WiFi.Driver != w {
 		t.Fatalf("Wi-Fi alone: %+v", n)
 	}
-	if n := network(primary, nil); n.BLE != nil || n.WiFi != nil {
+	if n := network(primary, nil); n.GATT != nil || n.WiFi != nil {
 		t.Fatalf("no radio: %+v", n)
 	}
 }

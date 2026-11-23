@@ -16,8 +16,8 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/SukramJ/go-fabric/node"
-	"github.com/SukramJ/go-fabric/surface"
+	"thingfabric.dev/go-fabric/node"
+	"thingfabric.dev/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

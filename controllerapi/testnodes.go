@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SukramJ/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/controller/topology"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
-	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
-	"github.com/SukramJ/go-fabric/controller/camera"
+	csdef "thingfabric.dev/go-fabric/cluster/spec/cameraavstreammanagement"
+	wpdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportprovider"
+	"thingfabric.dev/go-fabric/controller/camera"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -99,6 +99,10 @@ func TestCameraErrors(t *testing.T) {
 	}
 	if got := cameraError("cmd", fmt.Errorf("x: %w", camera.ErrInvalidArgument)); got.ErrorCode != protocol.InvalidArguments {
 		t.Errorf("argument: %v", got)
+	}
+	if got := cameraError("camera_start_stream", fmt.Errorf("start: %w", camera.ErrClosed)); got.ErrorCode != protocol.NodeNotReady ||
+		got.Details != "camera_start_stream: the camera service is closed" {
+		t.Errorf("closed: %v", got)
 	}
 	if got := cameraError("cmd", errors.New("other")); got.ErrorCode != protocol.UnknownError {
 		t.Errorf("other: %v", got)

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/SukramJ/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/camera"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -17,8 +17,11 @@ import (
 // codes (brief S8 §4): the typed errors 102 to 106 with their details a
 // JSON string in matterjs-server's key order (types.ts:266-341;
 // packages/ws-controller/test/CameraErrorsTest.ts:156), a StackError 7, an invalid argument 8 with
-// go-fabric's message, and anything else as an interaction with the node
-// fails (nodeError).
+// go-fabric's message, a service closed by the server's stop
+// (camera.ErrClosed, go-fabric v0.25.0 controller/camera/service.go:35-36)
+// NodeNotReady — matterjs-server has no command error for a stopping
+// server, it closes the socket (docs/protocol.md) — and anything else as
+// an interaction with the node fails (nodeError).
 func cameraError(command string, err error) *protocol.Error {
 	var (
 		inc *camera.IncompatibleError
@@ -45,6 +48,8 @@ func cameraError(command string, err error) *protocol.Error {
 		return protocol.Errorf(protocol.SDKStackError, "%s: %v", command, se)
 	case errors.Is(err, camera.ErrInvalidArgument):
 		return protocol.Errorf(protocol.InvalidArguments, "%s", err.Error())
+	case errors.Is(err, camera.ErrClosed):
+		return protocol.Errorf(protocol.NodeNotReady, "%s: the camera service is closed", command)
 	}
 	return nodeError(command, err)
 }

@@ -17,6 +17,7 @@ export FABRIC_SERVER_LISTEN="127.0.0.1:$(bashio::config 'port')"
 export FABRIC_SERVER_STORAGE_PATH="/data"
 export FABRIC_SERVER_LOG_LEVEL="$(bashio::config 'log_level')"
 export FABRIC_SERVER_ENABLE_TEST_NET_DCL="$(bashio::config 'enable_test_net_dcl')"
+export FABRIC_SERVER_CONTROLLER_KEEP_ONBOARDING_CODES="$(bashio::config 'keep_onboarding_codes')"
 
 # --- The bridge half (/bridge) and its node ---
 export FABRIC_SERVER_BRIDGE="$(bashio::config 'bridge')"
@@ -52,9 +53,12 @@ fi
 
 # --- The node pages through Ingress ---
 # On the host's network: listen on ingress_port and answer only the Ingress
-# proxy, which is also the pages' administrator.
+# proxy, which is also the pages' administrator. It forwards the browser's
+# Host unchanged and authenticates the user, so its requests pass the
+# pages' host check under any name (--web-proxy-source).
 export FABRIC_SERVER_WEB="0.0.0.0:8099"
 export FABRIC_SERVER_WEB_ADMIN_SOURCE="172.30.32.2"
+export FABRIC_SERVER_WEB_PROXY_SOURCE="172.30.32.2"
 
 # --- BLE commissioning through ESPHome Bluetooth proxies ---
 # One --bluetooth-proxy per entry (host[:port][,key]); the keys stay out of

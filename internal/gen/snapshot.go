@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/SukramJ/go-fabric/parity"
+	"thingfabric.dev/go-fabric/parity"
 )
 
 // The parts of parity/schema.json the generator reads.
@@ -21,6 +21,15 @@ type snapshot struct {
 	Clusters        []sCluster    `json:"clusters"`
 	DeviceTypes     []sDeviceType `json:"deviceTypes"`
 	GlobalDatatypes []sDatatype   `json:"globalDatatypes"`
+	// Definitions are the snapshot's shared definition sets
+	// (WebRtcTransportDefinitions), whose datatypes a cluster names as
+	// "<set>.<datatype>".
+	Definitions []sDefinitions `json:"definitions"`
+}
+
+type sDefinitions struct {
+	Name      string      `json:"name"`
+	Datatypes []sDatatype `json:"datatypes"`
 }
 
 type sCluster struct {
@@ -49,7 +58,9 @@ type sConformance struct {
 }
 
 // sValue is a typed element: an attribute's or a field's effective type, a
-// list entry.
+// list entry. Secret is matter.js's isSecret mark: on a field object
+// beside its id and name (read through sField's embedded sValue), and on
+// an attribute inside its effective (DoorLock AliroGroupResolvingKey).
 type sValue struct {
 	Type        string       `json:"type"`
 	Metatype    string       `json:"metatype"`
@@ -59,6 +70,7 @@ type sValue struct {
 	Quality     sQuality     `json:"quality"`
 	Conformance sConformance `json:"conformance"`
 	Access      sAccess      `json:"access"`
+	Secret      bool         `json:"isSecret"`
 }
 
 type sAttribute struct {
@@ -136,7 +148,7 @@ func goFabricVersion() string {
 		return "unknown"
 	}
 	for _, d := range info.Deps {
-		if d.Path == "github.com/SukramJ/go-fabric" {
+		if d.Path == "thingfabric.dev/go-fabric" {
 			if d.Replace != nil {
 				return d.Replace.Version
 			}

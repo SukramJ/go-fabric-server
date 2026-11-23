@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SukramJ/go-fabric/controller/client"
+	"thingfabric.dev/go-fabric/controller/client"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"

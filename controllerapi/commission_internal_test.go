@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/commissioner"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/commissioner"
 )
 
 // TestBLEChoice: commission_with_code's BLE decision over its four inputs

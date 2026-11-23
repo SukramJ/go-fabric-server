@@ -13,20 +13,21 @@ import (
 	"net/http/httptest"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
-	"github.com/SukramJ/go-fabric/clock"
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/ble"
-	"github.com/SukramJ/go-fabric/controller/topology"
-	"github.com/SukramJ/go-fabric/device"
-	"github.com/SukramJ/go-fabric/fabrictest"
-	"github.com/SukramJ/go-fabric/node"
+	"thingfabric.dev/go-fabric/clock"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/ble"
+	"thingfabric.dev/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/device"
+	"thingfabric.dev/go-fabric/fabrictest"
+	"thingfabric.dev/go-fabric/node"
 
 	fsclient "github.com/SukramJ/go-fabric-server/client"
 	"github.com/SukramJ/go-fabric-server/controllerapi"
@@ -48,10 +49,12 @@ type pagesEnv struct {
 	pages   *httptest.Server
 	token   string
 	events  chan fabricui.ControllerEvent
-	// log is the daemon's logger (newLogger over io.Discard), lvl its one
-	// level source: the half's LogLevel and the pages' Operations.
+	// log is the daemon's logger (newLogger over out), lvl its one level
+	// source: the half's LogLevel and the pages' Operations. The
+	// controller logs to it too, as in Run.
 	log *slog.Logger
 	lvl *slog.LevelVar
+	out *lockedBuffer
 }
 
 func newPagesEnv(t *testing.T, c Config) *pagesEnv {
@@ -71,7 +74,8 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 	// The daemon's logger and level source, as Run builds them; the
 	// site keeps a silent one, so the ring holds the daemon's records.
 	lvl := new(slog.LevelVar)
-	log, ring := newLogger(io.Discard, lvl)
+	out := &lockedBuffer{}
+	log, ring := newLogger(out, lvl)
 	site := fabrictest.NewSite(t, fabrictest.Options{Clock: clock.System{}, Logger: slog.New(slog.DiscardHandler)})
 	plug, err := device.NewOnOffPlugInUnit(device.Options{StableKey: device.StringKey("plug:1"), Name: "Plug"})
 	if err != nil {
@@ -91,9 +95,11 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		t.Fatal(err)
 	}
 	hooks := gofabric.NewHooks()
-	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: slog.New(slog.DiscardHandler)})
+	cfg := site.ControllerConfig(fabrictest.ControllerOptions{Logger: log})
+	cfg.Label = api.FabricLabel()        // as Run opens the fabric: no label push races the first status read
 	cfg.HooksFor = hooks.Wrap(api.Hooks) // as Run wires them
 	controllerTelemetry(&cfg, c)         // as Run sets them
+	cfg.KeepOnboardingCodes = c.ControllerKeepOnboardingCodes
 	var changes topology.Changes
 	changes.Install(&cfg)
 	ctrl, err := controller.New(ctx, cfg)
@@ -112,8 +118,8 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		t.Fatal(err)
 	}
 	ws := httptest.NewServer(Mux(api, "", "test"))
-	src := controllerSource(ctrl, topo, api, hooks, log)
-	h, err := webHandler(c, nil, nil, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log)
+	src := controllerSource(ctrl, topo, api, hooks, c.ControllerKeepOnboardingCodes, log)
+	h, err := webHandler(c, nil, nil, nil, src, fabricui.NewEvents(), operations{ring: ring, started: time.Now()}, log, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +131,7 @@ func newPagesEnvWith(t *testing.T, c Config, configure func(*node.Config), centr
 		ws.Close()
 		pages.Close()
 	})
-	e := &pagesEnv{t: t, ctx: ctx, dev: dev, api: api, httpURL: ws.URL, pages: pages, events: make(chan fabricui.ControllerEvent, 256), log: log, lvl: lvl}
+	e := &pagesEnv{t: t, ctx: ctx, dev: dev, api: api, httpURL: ws.URL, pages: pages, events: make(chan fabricui.ControllerEvent, 256), log: log, lvl: lvl, out: out}
 	e.ws, err = fsclient.Dial(ctx, "ws"+strings.TrimPrefix(ws.URL, "http")+"/ws", fsclient.Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -159,6 +165,7 @@ func (e *pagesEnv) call(method, path, body string) (status int, out []byte) {
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	req.Header.Set(fabricui.RequestHeader, "1")
 	if e.token != "" {
 		req.Header.Set(fabricui.TokenHeader, e.token)
 	}
@@ -462,4 +469,53 @@ func TestControllerTelemetry(t *testing.T) {
 	}
 	sort.Strings(keys)
 	t.Logf("GET /metrics: %s", strings.Join(keys, " "))
+}
+
+// TestControllerOnboardingInventory: with --controller-keep-onboarding-codes
+// and an admin by source address, a device paired by its code is in GET
+// /controller/inventory with that code, and the code is in no log line at
+// debug; in token mode (--web-admin) the route answers 501; without the
+// flag capabilities.onboarding_codes is false.
+func TestControllerOnboardingInventory(t *testing.T) {
+	e := newPagesEnv(t, Config{ControllerKeepOnboardingCodes: true, WebAdminSource: "127.0.0.1"})
+	e.lvl.Set(slog.LevelDebug)
+	var st struct {
+		Capabilities struct {
+			OnboardingCodes bool `json:"onboarding_codes"`
+		} `json:"capabilities"`
+	}
+	e.json(http.MethodGet, "/controller/status", "", http.StatusOK, &st)
+	if !st.Capabilities.OnboardingCodes {
+		t.Fatal("capabilities.onboarding_codes is false with the flag")
+	}
+	payload, err := e.dev.Node().SetupPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := e.ws.CommissionWithCode(e.ctx, payload.QR, true)
+	if err != nil {
+		t.Fatalf("commission_with_code: %v", err)
+	}
+	_, out := e.call(http.MethodGet, "/controller/inventory", "")
+	if !strings.Contains(string(out), payload.QR) || !strings.Contains(string(out), fmt.Sprintf(`"node_id_hex":"%016X"`, n.NodeID)) {
+		t.Fatalf("inventory %s", out)
+	}
+	logs := e.out.String()
+	if !strings.Contains(logs, "level=DEBUG") {
+		t.Fatal("nothing was logged at debug: the check saw nothing")
+	}
+	for _, code := range []string{payload.QR, payload.Manual, strconv.FormatUint(uint64(payload.Passcode), 10)} {
+		if strings.Contains(logs, code) {
+			t.Errorf("the log holds the code %q", code)
+		}
+	}
+
+	tok := newPagesEnv(t, Config{ControllerKeepOnboardingCodes: true, WebAdmin: true})
+	tok.json(http.MethodGet, "/controller/inventory", "", http.StatusNotImplemented, nil)
+
+	off := newPagesEnv(t, Config{WebAdminSource: "127.0.0.1"})
+	off.json(http.MethodGet, "/controller/status", "", http.StatusOK, &st)
+	if st.Capabilities.OnboardingCodes {
+		t.Fatal("capabilities.onboarding_codes without the flag")
+	}
 }

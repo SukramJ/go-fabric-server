@@ -65,8 +65,23 @@ type gen struct {
 }
 
 // datatype finds the datatype a value names: in the cluster, then in its
-// base cluster, then among the global datatypes (scope "global" first).
+// base cluster, then among the global datatypes (scope "global" first);
+// a name "<set>.<datatype>" in the definition set of that name.
 func (g *gen) datatype(v sValue, cl *sCluster) (dt *sDatatype, varName string) {
+	if set, name, ok := strings.Cut(v.Type, "."); ok {
+		for i := range g.s.Definitions {
+			d := &g.s.Definitions[i]
+			if d.Name != set {
+				continue
+			}
+			for j := range d.Datatypes {
+				if d.Datatypes[j].Name == name {
+					return &d.Datatypes[j], "dt" + ident(set) + "_" + ident(name)
+				}
+			}
+		}
+		return nil, ""
+	}
 	if v.Scope != "global" && cl != nil {
 		for c := cl; c != nil; c = g.byName[c.Base] {
 			for i := range c.Datatypes {
@@ -208,6 +223,9 @@ func (g *gen) fieldsExpr(fs []sField, cl *sCluster) string {
 		if f.Conformance.Text == "M" {
 			b.WriteString(", Mandatory: true")
 		}
+		if f.Secret {
+			b.WriteString(", Secret: true")
+		}
 		b.WriteString("},\n")
 	}
 	b.WriteString("}")
@@ -283,6 +301,9 @@ func (g *gen) goSource() ([]byte, error) {
 			if a.Effective.Access.Timed {
 				cl.WriteString(", Timed: true")
 			}
+			if a.Effective.Secret {
+				cl.WriteString(", Secret: true")
+			}
 			cl.WriteString("},\n")
 		}
 		cl.WriteString("},\n")
@@ -357,6 +378,7 @@ func (g *gen) jsonSchema() ([]byte, error) {
 			if a.Effective.Quality.Nullable {
 				s = nullable(s)
 			}
+			secret(s, a.Effective.Secret)
 			props[strconv.FormatUint(uint64(a.ID), 10)] = s
 		}
 		defs[fmt.Sprintf("cluster.%d", c.ID)] = map[string]any{
@@ -399,6 +421,14 @@ func nullable(s map[string]any) map[string]any {
 		out["title"] = title
 	}
 	return out
+}
+
+// secret marks a property's outermost schema "x-secret" when the snapshot
+// marks the value isSecret.
+func secret(s map[string]any, mark bool) {
+	if mark {
+		s["x-secret"] = true
+	}
 }
 
 func (g *gen) valueSchema(v sValue, cl *sCluster, defs map[string]any) map[string]any {
@@ -482,6 +512,7 @@ func (g *gen) datatypeSchema(dt *sDatatype, cl *sCluster, defs map[string]any) m
 		if f.Quality.Nullable {
 			s = nullable(s)
 		}
+		secret(s, f.Secret)
 		id := strconv.FormatUint(uint64(f.ID), 10)
 		if g.named {
 			id = camelize(f.Name)

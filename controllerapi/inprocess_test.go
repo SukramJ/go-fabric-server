@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	onoffdef "github.com/SukramJ/go-fabric/cluster/spec/onoff"
-	"github.com/SukramJ/go-fabric/node"
+	onoffdef "thingfabric.dev/go-fabric/cluster/spec/onoff"
+	"thingfabric.dev/go-fabric/node"
 
 	fsclient "github.com/SukramJ/go-fabric-server/client"
 	"github.com/SukramJ/go-fabric-server/protocol"

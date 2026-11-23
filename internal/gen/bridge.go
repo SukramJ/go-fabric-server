@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-const goFabricModule = "github.com/SukramJ/go-fabric"
+const goFabricModule = "thingfabric.dev/go-fabric"
 
 // defPackage is one typed cluster package of go-fabric
 // (cluster/spec/<dir>, imported as <dir>def): its directory and the

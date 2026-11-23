@@ -27,7 +27,7 @@ func GoFabric() string {
 		return "unknown"
 	}
 	for _, d := range info.Deps {
-		if d.Path == "github.com/SukramJ/go-fabric" {
+		if d.Path == "thingfabric.dev/go-fabric" {
 			if d.Replace != nil {
 				return d.Replace.Version
 			}

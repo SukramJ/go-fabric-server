@@ -14,10 +14,10 @@ import (
 
 	"github.com/coder/websocket"
 
-	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/controller/camera"
-	"github.com/SukramJ/go-fabric/controller/camera/cameratest"
+	wpdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportprovider"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/camera/cameratest"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

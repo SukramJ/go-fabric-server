@@ -11,13 +11,13 @@ import (
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/topology"
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )
 
-// controllerSource is the controller pages' source (go-fabric-ui 0.5.0,
+// controllerSource is the controller pages' source (go-fabric-ui 0.13.0,
 // docs/embedding.md "The controller family"): go-fabric-ui's adapter over
 // the daemon's controller, with the controller half's credential store,
 // pairing template and fabric label, so the pages and /ws see one list,
@@ -25,19 +25,23 @@ import (
 // controller.Config.HooksFor before controller.New; topo is the graph
 // /ws's get_network_topology answers from too, so GET
 // /controller/topology and the pages' topology_changed show the same one
-// (hooks.Close releases the adapter's subscription to it).
-func controllerSource(ctrl *controller.Controller, topo *topology.Service, api *controllerapi.Server, hooks *gofabric.Hooks, log *slog.Logger) fabricui.ControllerSource {
+// (hooks.Close releases the adapter's subscription to it). codes serves
+// the onboarding inventory (--controller-keep-onboarding-codes): the
+// codes controller.Config.KeepOnboardingCodes keeps, to an admin only.
+func controllerSource(ctrl *controller.Controller, topo *topology.Service, api *controllerapi.Server, hooks *gofabric.Hooks, codes bool, log *slog.Logger) fabricui.ControllerSource {
 	src := gofabric.ControllerOf(ctrl, gofabric.ControllerOptions{
-		Hooks:       hooks,
-		Credentials: credentialStore{api},
-		Pair:        api.PairOptions(),
-		Logger:      log,
-		Topology:    topo,
+		Hooks:           hooks,
+		Credentials:     credentialStore{api},
+		Pair:            api.PairOptions(),
+		Logger:          log,
+		Topology:        topo,
+		OnboardingCodes: codes,
 	})
 	return labelled{ControllerSource: src, api: api}
 }
 
-// labelled is the adapter with the controller half's fabric label: a
+// labelled is the adapter with the controller half's fabric label (every
+// other method, the onboarding inventory's included, is the adapter's): a
 // label set on the pages is stored in server.json as set_default_fabric_label
 // stores it, so the next start does not push the old one back, and a
 // pinned --default-fabric-label refuses it (409).

@@ -21,17 +21,19 @@ import (
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
-	"github.com/SukramJ/go-fabric/ble/bluez"
-	"github.com/SukramJ/go-fabric/ble/esphome"
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/attestation"
-	"github.com/SukramJ/go-fabric/controller/ble"
-	"github.com/SukramJ/go-fabric/controller/camera"
-	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
-	"github.com/SukramJ/go-fabric/controller/topology"
-	"github.com/SukramJ/go-fabric/diag"
-	"github.com/SukramJ/go-fabric/node"
-	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
+	"thingfabric.dev/go-fabric/ble/bluez"
+	"thingfabric.dev/go-fabric/ble/esphome"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/attestation"
+	"thingfabric.dev/go-fabric/controller/ble"
+	"thingfabric.dev/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/commissioner"
+	"thingfabric.dev/go-fabric/controller/dcl/snapshot"
+	"thingfabric.dev/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/device"
+	"thingfabric.dev/go-fabric/diag"
+	"thingfabric.dev/go-fabric/node"
+	expvarmetrics "thingfabric.dev/go-fabric/node/metrics/expvar"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
 	"github.com/SukramJ/go-fabric-server/controllerapi"
@@ -77,7 +79,7 @@ type Config struct {
 	BridgeProfile    string
 	// BridgeBluetoothAdapter is the BLE adapter of the first device node's
 	// peripheral (--bridge-bluetooth-adapter: an HCI id, 0 for hci0, or an
-	// adapter name; go-fabric node.Network.BLE through ble/bluez); empty is
+	// adapter name; go-fabric node.Network.GATT through ble/bluez); empty is
 	// no radio. BridgeWiFiInterface is the interface of its Wi-Fi driver
 	// (--bridge-wifi-interface; node.Network.WiFi through
 	// wifi/wpasupplicant); empty is no Wi-Fi driver. The first node only,
@@ -92,6 +94,13 @@ type Config struct {
 	// size in events (--controller-diagnostics-capacity): 0 keeps
 	// go-fabric's diag.DefaultDiagnosticsCapacity; negative is refused.
 	ControllerDiagnosticsCapacity int
+	// ControllerKeepOnboardingCodes keeps the pairing code of a device
+	// the controller pairs in its own (Basic) commissioning mode (--controller-keep-onboarding-codes; go-fabric
+	// controller.Config.KeepOnboardingCodes) and serves the pages'
+	// onboarding inventory (go-fabric-ui gofabric.ControllerOptions
+	// .OnboardingCodes, served to an admin only). Off by default: the
+	// database then holds one setup code per paired device.
+	ControllerKeepOnboardingCodes bool
 	ShowVersion                   bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
@@ -106,17 +115,26 @@ type Config struct {
 	BluetoothAdapter string
 	// BluetoothProxies are the ESPHome Bluetooth proxies commission_with_code
 	// may commission through (--bluetooth-proxy, repeatable;
-	// github.com/SukramJ/go-fabric/ble/esphome); one BLE backend, so not
+	// thingfabric.dev/go-fabric/ble/esphome); one BLE backend, so not
 	// with BluetoothAdapter.
 	BluetoothProxies []esphome.Proxy
 	// Web is the address of the pages (go-fabric-ui: the node family over
 	// the bridge node, the controller family over the controller); empty
 	// serves none. WebAdmin lets the pages write (token mode), WebAdminSource
 	// admits only requests from that address as an admin (an Ingress
-	// proxy); without either the pages are read-only.
-	Web            string
-	WebAdmin       bool
-	WebAdminSource string
+	// proxy); without either the pages show the status only.
+	// WebAllowedHosts are the DNS names the pages answer under besides
+	// loopback names and IP addresses (--web-allowed-hosts, name[,name...];
+	// go-fabric-ui Options.AllowedHosts).
+	// WebProxySource is the address of a proxy that forwards the
+	// browser's Host unchanged and authenticates the user
+	// (--web-proxy-source; go-fabric-ui Options.AllowHost): its requests
+	// pass the host check under any name.
+	Web             string
+	WebAdmin        bool
+	WebAdminSource  string
+	WebAllowedHosts string
+	WebProxySource  string
 }
 
 // The migrations of the flags the node registry replaced (go-fabric-ui
@@ -145,7 +163,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.UintVar(&c.VendorID, "vendor-id", 0, "our fabric's vendor id on the first run (default 0xFFF1)")
 	fs.StringVar(&c.Trust, "trust", "production", "the attestation roots: production (the DCL snapshot) or development (plus the CSA test roots)")
 	fs.StringVar(&c.LogLevel, "log-level", "info", "the log level: critical, error, warning, notice, info or debug")
-	fs.StringVar(&c.DefaultFabricLabel, "default-fabric-label", "", "pin the fabric label; set_default_fabric_label then has no effect")
+	fs.StringVar(&c.DefaultFabricLabel, "default-fabric-label", "", "pin the fabric label, at most 32 bytes (trimmed; blank is no pin); set_default_fabric_label then has no effect")
 	fs.BoolVar(&c.DisableAutoSubscription, "disable-auto-subscription", false, "pair new nodes without the server's own subscription; enables subscribe and unsubscribe")
 	fs.BoolVar(&c.Controller, "controller", true, "run the controller half (/ws)")
 	fs.BoolVar(&c.Bridge, "bridge", false, "run the bridge half (/bridge): a bridge node whose devices a client declares")
@@ -154,7 +172,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.UintVar(&c.BridgeDiscriminator, "bridge-discriminator", 3840, "the bridge node's discriminator")
 	fs.UintVar(&c.BridgeVendorID, "bridge-vendor-id", 0xFFF1, "the bridge node's vendor id (the CSA test vendor by default)")
 	fs.UintVar(&c.BridgeProductID, "bridge-product-id", 0x8001, "the bridge node's product id")
-	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel")
+	fs.StringVar(&c.BridgeLabel, "bridge-label", "fabric-server bridge", "the bridge node's NodeLabel, at most 32 bytes")
 	fs.StringVar(&c.BridgeMDNSInterfaces, "bridge-mdns-interfaces", "", "the host interfaces the device nodes announce and answer mDNS on, name[,name...] (a dual-homed host behind an mDNS reflector names its LAN interface); empty is every multicast-capable interface")
 	fs.DurationVar(&c.BridgeResultTimeout, "bridge-result-timeout", 5*time.Second, "how long a write or command event waits for the bridge client's result")
 	fs.StringVar(&c.BridgeExtensions, "bridge-extensions", "", "the ahead-of-matter.js register IDs the bridge node enables, id[,id...] (go-fabric notes/parity/by_design.md); a declaration selecting a feature of one not enabled is refused; known: "+strings.Join(extensionList(), ", "))
@@ -163,6 +181,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.BridgeBluetoothAdapter, "bridge-bluetooth-adapter", "", "the BLE adapter (0 for hci0, or an adapter name) the first device node is commissioned over while it has no fabric — a node without a network at first boot; needs --bridge and a --bridge-passcode other than the public test passcode 20202021 (anyone in Bluetooth range could commission the node), and not the --bluetooth-adapter one; the host runs bluetoothd and lets the daemon use org.bluez on the system bus (Linux, BlueZ); empty is no radio")
 	fs.StringVar(&c.BridgeWiFiInterface, "bridge-wifi-interface", "", "the Wi-Fi interface (wlan0) the first device node joins the network a commissioner provisions on, through wpa_supplicant; needs --bridge; the host runs wpa_supplicant with its D-Bus interface (fi.w1.wpa_supplicant1 on the system bus) and NetworkManager does not manage the interface; empty is no Wi-Fi driver")
 	fs.IntVar(&c.NodeLimit, "node-limit", defaultNodeLimit, "the most device nodes the pages may create beside the --bridge-* one (the node registry, nodes.json)")
+	fs.BoolVar(&c.ControllerKeepOnboardingCodes, "controller-keep-onboarding-codes", false, "keep the pairing code of a device the controller pairs in its own (Basic) commissioning mode and show it in the pages' onboarding inventory (admins only); the database then holds one setup code per paired device")
 	fs.IntVar(&c.ControllerDiagnosticsCapacity, "controller-diagnostics-capacity", 0, "the events the controller's diagnostic trace keeps (the pages' Diagnostics tab), the oldest dropped first; 0 is go-fabric's default ("+strconv.Itoa(diag.DefaultDiagnosticsCapacity)+")")
 	fs.Var(removedFlag(removedBridgeNode), "bridge-node", "removed: "+removedBridgeNode)
 	fs.Var(removedFlag(removedNodeDefault), "node-default", "removed: "+removedNodeDefault)
@@ -171,8 +190,10 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
 	fs.StringVar(&c.BluetoothAdapter, "bluetooth-adapter", "", "the BLE adapter commission_with_code may commission over: an HCI id (0 for hci0) or an adapter name (hci1); empty is no BLE (Linux, BlueZ)")
 	fs.Var((*proxyList)(&c.BluetoothProxies), "bluetooth-proxy", "an ESPHome Bluetooth proxy commission_with_code may commission through: host[:port][,key] (port 6053, key the base64 API encryption key); repeatable; not with --bluetooth-adapter")
-	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; read-only unless --web-admin or --web-admin-source")
+	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; the status only unless --web-admin or --web-admin-source; a DNS name in the Host only with --web-allowed-hosts")
 	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the pages write, show the pairing code and use the controller's admin routes (the page's token mode)")
+	fs.StringVar(&c.WebAllowedHosts, "web-allowed-hosts", "", "the DNS names the pages answer under, name[,name...] (host names only, no port); loopback names and IP addresses always pass")
+	fs.StringVar(&c.WebProxySource, "web-proxy-source", "", "the IP address of a proxy that forwards the browser's Host unchanged and authenticates the user (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on): its requests pass the pages' host check under any name; never an address a browser connects from")
 	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit page requests from this IP address only, as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
 	set := map[string]bool{}
 	if err := fs.Parse(args); err != nil {
@@ -245,6 +266,13 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 	if err := checkNodeRadio(c); err != nil {
 		return err
 	}
+	if err := checkBridgeLabel(c); err != nil {
+		return err
+	}
+	c.DefaultFabricLabel = strings.TrimSpace(c.DefaultFabricLabel)
+	if err := checkFabricLabel(c); err != nil {
+		return err
+	}
 	log.Info("fabricserver.start", slog.String("version", version.Version), slog.String("go_fabric", version.GoFabric()), slog.String("listen", listen.String()))
 
 	var api *controllerapi.Server
@@ -273,6 +301,11 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		defer closeCentral()
 		// The controller's database through go-fabric's opener (Q11
 		// closed in v0.12.1): no SQLite driver of our own.
+		if c.ControllerKeepOnboardingCodes && c.Web == "" {
+			// The codes are kept, and without --web nothing shows them
+			// (no /ws command, #74).
+			log.Warn("fabricserver.onboarding_codes.unserved", slog.String("reason", "--controller-keep-onboarding-codes without --web: the database keeps the codes and no page shows them"))
+		}
 		db, err := controller.OpenDB(filepath.Join(c.StoragePath, "fabric-server.db"))
 		if err != nil {
 			return err
@@ -287,7 +320,8 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			VendorID: uint16(c.VendorID), Label: api.FabricLabel(), Logger: log, //nolint:gosec // checked above
 			// One hook set per node (controller.Config.HooksFor, Q2
 			// closed in v0.12.1): node_event names its node.
-			HooksFor: api.Hooks,
+			HooksFor:            api.Hooks,
+			KeepOnboardingCodes: c.ControllerKeepOnboardingCodes,
 		}
 		controllerTelemetry(&cfg, c)
 		// The controller pages' stream: go-fabric-ui's hooks chained
@@ -349,7 +383,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			return err
 		}
 		if pageHooks != nil {
-			ctrlPages = controllerSource(ctrl, topo, api, pageHooks, log)
+			ctrlPages = controllerSource(ctrl, topo, api, pageHooks, c.ControllerKeepOnboardingCodes, log)
 		}
 	}
 
@@ -431,8 +465,38 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 
 // bridgeSalt is the PBKDF salt of the bridge node's passcode verifier, a
 // constant of the daemon as of any host (go-fabric's
-// docs/guides/embed-in-a-daemon.md §2).
+// docs/guides/embed-in-a-daemon.md §2). Since go-fabric v0.25.0 it answers
+// no commissioning window any more, but node.Config.Validate still checks
+// it — an empty salt fails (node/config.go:481-488, :956-966) — so it
+// stays.
 var bridgeSalt = []byte("go-fabric-server bridge node")
+
+// checkBridgeLabel refuses a --bridge-label beyond the NodeLabel's 32
+// bytes (go-fabric v0.25.0 node/config.go:1066-1068: the advertised name
+// the label stands in for), naming the flag and its byte count, before
+// anything opens — only with --bridge, as the label is the first node's
+// and an unused flag blocks no start. A registry node's label is the
+// pages' (64 characters) and is cut instead (bridgeConfig).
+func checkBridgeLabel(c Config) error {
+	if !c.Bridge || device.ComposeNodeLabel(c.BridgeLabel, "") == c.BridgeLabel {
+		return nil
+	}
+	return fmt.Errorf("--bridge-label (%s) is %d bytes: the node's NodeLabel holds at most 32 bytes", env("bridge-label"), len(c.BridgeLabel))
+}
+
+// checkFabricLabel refuses a --default-fabric-label (trimmed by Run;
+// blank is no pin) beyond the fabric label's 32 bytes
+// (commissioner.MaxLabelLength: go-fabric refuses a longer one at the
+// controller's start), naming the flag, its variable and the byte count —
+// only with --controller, as the label is the controller's. A pin is the
+// operator's statement, refused rather than cut (as --bridge-label);
+// matterjs-server cuts it (docs/protocol.md, Deliberate differences).
+func checkFabricLabel(c Config) error {
+	if !c.Controller || len(c.DefaultFabricLabel) <= commissioner.MaxLabelLength {
+		return nil
+	}
+	return fmt.Errorf("--default-fabric-label (%s) is %d bytes: the fabric label holds at most %d bytes", env("default-fabric-label"), len(c.DefaultFabricLabel), commissioner.MaxLabelLength)
+}
 
 // The BasicInformation names of every device node.
 const (
@@ -475,9 +539,18 @@ func bridgeConfig(c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (nod
 			Passcode: uint32(s.Passcode), Discriminator: uint16(s.Discriminator), //nolint:gosec // checked above
 			PBKDFIterations: 1000, Salt: bridgeSalt,
 		},
-		ProductDescription: node.ProductDescription{VendorID: uint16(s.VendorID), ProductID: uint16(s.ProductID)}, //nolint:gosec // checked above
+		// DeviceType: the Aggregator's, stated, so the commissionable
+		// record names it before any device is declared — zero would infer
+		// it from the first bridged endpoint, RootNode until then (go-fabric
+		// v0.25.0 node/config.go:671-680).
+		ProductDescription: node.ProductDescription{
+			VendorID: uint16(s.VendorID), ProductID: uint16(s.ProductID), //nolint:gosec // checked above
+			DeviceType: uint16(device.AggregatorType().ID),
+		},
 		BasicInformation: node.BasicInformation{
-			VendorName: bridgeVendorName, ProductName: bridgeProductName, NodeLabel: s.Label,
+			// A registry label holds 64 characters; the node serves it cut
+			// to the NodeLabel's 32 bytes on a rune boundary.
+			VendorName: bridgeVendorName, ProductName: bridgeProductName, NodeLabel: device.ComposeNodeLabel(s.Label, ""),
 			SerialNumber: s.Serial, SoftwareVersionString: version.Version,
 		},
 		Store:   node.Store{Path: filepath.Join(c.StoragePath, s.Store)},
@@ -681,7 +754,7 @@ func bleCentral(c Config, log *slog.Logger) (ble.Central, error) {
 }
 
 // adapterCentral is the BlueZ central of --bluetooth-adapter
-// (github.com/SukramJ/go-fabric/ble/bluez); nil without the flag. The flag
+// (thingfabric.dev/go-fabric/ble/bluez); nil without the flag. The flag
 // takes matterjs-server's HCI id ("0" is hci0); an adapter name (hci1) is
 // passed as it is. Opening fails without system-bus rights to org.bluez or
 // on a platform without BlueZ.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/surface"
+	"thingfabric.dev/go-fabric/surface"
 )
 
 // TestSurfacePolicies: the three flags become the bridge node's

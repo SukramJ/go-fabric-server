@@ -61,6 +61,9 @@ type Field struct {
 	Nullable       bool
 	// Mandatory is conformance "M".
 	Mandatory bool
+	// Secret is matter.js's isSecret mark of the field (a credential, a
+	// passcode, a key): a value a log must not show.
+	Secret bool
 }
 
 // Struct is a struct datatype.
@@ -103,6 +106,9 @@ type Attribute struct {
 	Writable       bool
 	// Timed is a write that must be timed.
 	Timed bool
+	// Secret is matter.js's isSecret mark of the attribute: a value a log
+	// must not show.
+	Secret bool
 }
 
 // Command is a cluster command: a request (client to server) or a

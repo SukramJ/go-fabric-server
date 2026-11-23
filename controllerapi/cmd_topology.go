@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"strings"
 
-	generaldiagdef "github.com/SukramJ/go-fabric/cluster/spec/generaldiagnostics"
-	netcommdef "github.com/SukramJ/go-fabric/cluster/spec/networkcommissioning"
-	threaddiagdef "github.com/SukramJ/go-fabric/cluster/spec/threadnetworkdiagnostics"
-	"github.com/SukramJ/go-fabric/controller/topology"
+	generaldiagdef "thingfabric.dev/go-fabric/cluster/spec/generaldiagnostics"
+	netcommdef "thingfabric.dev/go-fabric/cluster/spec/networkcommissioning"
+	threaddiagdef "thingfabric.dev/go-fabric/cluster/spec/threadnetworkdiagnostics"
+	"thingfabric.dev/go-fabric/controller/topology"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"

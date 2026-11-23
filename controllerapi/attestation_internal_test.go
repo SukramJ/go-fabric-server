@@ -6,7 +6,7 @@ package controllerapi
 import (
 	"testing"
 
-	"github.com/SukramJ/go-fabric/controller/attestation"
+	"thingfabric.dev/go-fabric/controller/attestation"
 )
 
 // attestationRefusalOf is matterjs-server's (ControllerCommandHandler.ts:305-314).

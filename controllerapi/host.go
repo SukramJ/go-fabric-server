@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/thread"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/thread"
 )
 
 // The host side of the server: what a second surface over the same
@@ -151,7 +151,7 @@ func (s *Server) ThreadDataset(id string) (dataset []byte, ok bool) {
 
 // SetFabricLabel is set_default_fabric_label for a host surface: the label
 // is normalized as the command's (trimmed, empty is "HomeAssistant", at
-// most 32 characters), stored for the next start, set on the fabric at
+// most 32 bytes, cut on a rune boundary), stored for the next start, set on the fabric at
 // once and pushed to the nodes in the background. It does not claim the
 // label for a connection; a pinned --default-fabric-label refuses it with
 // [ErrLabelPinned].

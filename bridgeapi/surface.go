@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/SukramJ/go-fabric/surface"
+	"thingfabric.dev/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

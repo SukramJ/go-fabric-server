@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
-	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
-	"github.com/SukramJ/go-fabric/controller/camera"
-	"github.com/SukramJ/go-fabric/controller/client"
+	csdef "thingfabric.dev/go-fabric/cluster/spec/cameraavstreammanagement"
+	wpdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportprovider"
+	"thingfabric.dev/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/client"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

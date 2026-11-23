@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SukramJ/go-fabric/controller/client"
-	"github.com/SukramJ/go-fabric/controller/dcl"
-	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
+	"thingfabric.dev/go-fabric/controller/client"
+	"thingfabric.dev/go-fabric/controller/dcl"
+	"thingfabric.dev/go-fabric/controller/dcl/snapshot"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"

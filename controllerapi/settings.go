@@ -8,14 +8,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
-	"github.com/SukramJ/go-fabric/controller/commissioner"
-	"github.com/SukramJ/go-fabric/thread"
+	"thingfabric.dev/go-fabric/controller/commissioner"
+	"thingfabric.dev/go-fabric/thread"
 )
 
 // defaultCredentialID is the reserved entry pre-schema-12 callers use
@@ -53,7 +55,13 @@ type settingsStore struct {
 	data settingsData
 }
 
-func openSettings(dir string) (*settingsStore, error) {
+// openSettings loads server.json under dir. A stored fabric label beyond
+// commissioner.MaxLabelLength bytes — 0.10.0 cut labels to 32 characters,
+// go-fabric v0.25.0 refuses more than 32 bytes at the controller's start —
+// is cut to the bound on a rune boundary, logged at Warn and saved back,
+// as go-fabric cuts a stored NodeLabel (CHANGELOG.md, 0.25.0,
+// RestoreNodeLabel).
+func openSettings(dir string, log *slog.Logger) (*settingsStore, error) {
 	s := &settingsStore{data: settingsData{FabricLabel: defaultFabricLabel}}
 	if dir == "" {
 		return s, nil
@@ -71,6 +79,13 @@ func openSettings(dir string) (*settingsStore, error) {
 	}
 	if s.data.FabricLabel == "" {
 		s.data.FabricLabel = defaultFabricLabel
+	}
+	if cut := cutLabel(s.data.FabricLabel); cut != s.data.FabricLabel {
+		log.Warn("fabricserver.label.cut", slog.Int("bytes", len(s.data.FabricLabel)), slog.String("label", cut))
+		s.data.FabricLabel = cut
+		if err := s.saveLocked(); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
@@ -99,17 +114,32 @@ func (s *settingsStore) label() string {
 }
 
 // normalizeLabel is matterjs-server's label rule (WebSocketControllerHandler.ts:201,
-// :1227-1262): trimmed, empty is "HomeAssistant", at most 32 characters
-// (commissioner.MaxLabelLength).
+// :1227-1262): trimmed, empty is "HomeAssistant", cut to the maximum —
+// which matterjs-server counts in characters and go-fabric in bytes
+// (commissioner.MaxLabelLength, 32 bytes since v0.25.0: a longer label
+// fails the fabric's creation, its load and SetLabel). So the label is cut
+// to commissioner.MaxLabelLength bytes on a rune boundary; an ASCII label
+// is cut as matterjs-server cuts it (docs/protocol.md, Deliberate
+// differences).
 func normalizeLabel(label string) string {
 	label = strings.TrimSpace(label)
 	if label == "" {
 		return defaultFabricLabel
 	}
-	if r := []rune(label); len(r) > commissioner.MaxLabelLength {
-		label = string(r[:commissioner.MaxLabelLength])
+	return cutLabel(label)
+}
+
+// cutLabel is label cut to commissioner.MaxLabelLength bytes on a rune
+// boundary.
+func cutLabel(label string) string {
+	if len(label) <= commissioner.MaxLabelLength {
+		return label
 	}
-	return label
+	cut := commissioner.MaxLabelLength
+	for cut > 0 && !utf8.RuneStart(label[cut]) {
+		cut--
+	}
+	return label[:cut]
 }
 
 func (s *settingsStore) setLabel(label string) error {

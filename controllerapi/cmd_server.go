@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SukramJ/go-fabric/thread"
+	"thingfabric.dev/go-fabric/thread"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

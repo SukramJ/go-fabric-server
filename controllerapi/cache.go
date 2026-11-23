@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SukramJ/go-fabric/controller/client"
+	"thingfabric.dev/go-fabric/controller/client"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
@@ -62,8 +62,13 @@ var (
 
 // snapshot renders a node's image; prev, when not nil, lends the rendered
 // values of the clusters whose data version did not change. nil for a node
-// that is not commissioned.
+// that is not commissioned — Node.IsCommissioned, not PeerAddress, which
+// since go-fabric v0.25.0 also answers for a node that failed to load
+// (controller/client/record.go:714-754); such a node stays off /ws.
 func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
+	if !n.IsCommissioned() {
+		return nil
+	}
 	addr, ok := n.PeerAddress()
 	if !ok {
 		return nil

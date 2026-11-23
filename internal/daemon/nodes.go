@@ -16,7 +16,8 @@ import (
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric/node"
+	"thingfabric.dev/go-fabric/device"
+	"thingfabric.dev/go-fabric/node"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
 )
@@ -134,15 +135,16 @@ type eraseFailure struct {
 	since time.Time
 }
 
-// rename sets the half's label: the spec an erase restarts the node with,
-// and the running node's NodeLabel (Node.SetNodeLabel). An ended half
-// changes its spec only.
+// rename sets the half's label: the spec an erase restarts the node with
+// (the full label), and the running node's NodeLabel (Node.SetNodeLabel),
+// the label cut to 32 bytes on a rune boundary (device.ComposeNodeLabel,
+// as bridgeConfig cuts it). An ended half changes its spec only.
 func (h *bridgeHalf) rename(ctx context.Context, label string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.spec.Label = label
 	if run := h.live(); run != nil && !h.ended {
-		return run.node.SetNodeLabel(ctx, label)
+		return run.node.SetNodeLabel(ctx, device.ComposeNodeLabel(label, ""))
 	}
 	return nil
 }

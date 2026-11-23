@@ -14,10 +14,10 @@ import (
 	"maps"
 	"sort"
 
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/device"
-	"github.com/SukramJ/go-fabric/node"
-	"github.com/SukramJ/go-fabric/surface"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/device"
+	"thingfabric.dev/go-fabric/node"
+	"thingfabric.dev/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )
@@ -95,6 +95,9 @@ type declared struct {
 	Action   string  `json:"action"`
 	Endpoint *uint16 `json:"endpoint,omitempty"`
 	Error    string  `json:"error,omitempty"`
+	// gone: a replace removed the served device and its successor failed
+	// (Server.replace).
+	gone bool
 }
 
 // withheldDevice is one entry of declare's withheld list: a declared
@@ -105,12 +108,16 @@ type withheldDevice struct {
 	SpecLevel  string `json:"spec_level"`
 }
 
+// batchAdd is node.Batch.Add; a variable so a test can make an add fail
+// (the replace that removed the served device first).
+var batchAdd = func(bt *node.Batch, ep node.Endpoint) error { return bt.Add(ep) }
+
 // add adds b's device in bt. A device the specification level withheld
 // is recorded by the node (node.Aggregator.Add), serves nothing and is no
 // error: it is logged once as a warning, as go-fabric's reference daemon
 // does (examples/reference-bridge/surface.go addAll).
 func (s *Server) add(bt *node.Batch, b *bridged) error {
-	err := bt.Add(b.dev)
+	err := batchAdd(bt, b.dev)
 	var w *surface.WithheldError
 	if !errors.As(err, &w) {
 		return err
@@ -122,21 +129,40 @@ func (s *Server) add(bt *node.Batch, b *bridged) error {
 }
 
 // replace puts b's device in the place of prev's. A withheld device holds
-// no place in the Aggregator (node Batch.Add records it without adding
-// it), so when either is withheld the new device is added (recorded, if
-// withheld) and a served prev removed after it — Remove, not Forget: the
-// key keeps its endpoint number, as Replace keeps it.
-func (s *Server) replace(bt *node.Batch, prev, b *bridged) error {
+// no place in the Aggregator (Batch.Add records it without adding it), so
+// when either is withheld Batch.Replace is not the route: it answers a
+// withheld device on a served key with the WithheldError and replaces
+// nothing (go-fabric v0.25.0 node/aggregator.go:499-501,
+// node/surface.go:345-357).
+// For a withheld prev, b is added. For a served prev, prev is removed
+// first and b added after it: Batch.Add refuses a key the set still
+// serves (ErrDuplicateKey) before it records a withheld device, and
+// Batch.Remove — not Forget — reserves the key's endpoint number, which a
+// withheld Add leaves reserved, so the key keeps its number for the
+// device served after (node/aggregator.go:446-453, :521-541).
+// go-fabric #585 asks for a Replace that does this in one step.
+//
+// gone reports that prev left the node and b did not take its place (b's
+// Add failed after prev's Remove): the key is then no longer declared, and
+// its endpoint number, which the Remove reserved, is freed (Batch.Forget),
+// as for any key the document no longer names.
+func (s *Server) replace(bt *node.Batch, prev, b *bridged) (gone bool, err error) {
 	if prev.withheld == nil && b.withheld == nil {
-		return bt.Replace(device.StringKey(b.key), b.dev)
+		return false, bt.Replace(device.StringKey(b.key), b.dev)
 	}
 	if prev.withheld != nil {
-		return s.add(bt, b)
+		return false, s.add(bt, b)
+	}
+	if err := bt.Remove(device.StringKey(b.key)); err != nil {
+		return false, err
 	}
 	if err := s.add(bt, b); err != nil {
-		return err
+		if ferr := bt.Forget(device.StringKey(b.key)); ferr != nil {
+			err = errors.Join(err, ferr)
+		}
+		return true, err
 	}
-	return bt.Remove(device.StringKey(b.key))
+	return false, nil
 }
 
 // cmdDeclare applies the declaration document as one Aggregator.Batch: a
@@ -168,8 +194,10 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 				results[i].Action = "unchanged"
 			case ok:
 				results[i].Action = "replaced"
-				if err := s.replace(bt, prev, b); err != nil {
+				gone, err := s.replace(bt, prev, b)
+				if err != nil {
 					results[i].Error = err.Error()
+					results[i].gone = gone
 				}
 			default:
 				results[i].Action = "added"
@@ -195,9 +223,19 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 	})
 	s.mu.Lock()
 	order := make([]string, 0, len(devs))
+	var removedGone []string
 	for i, b := range devs {
 		r := &results[i]
 		switch {
+		case r.gone:
+			// The served prev was removed and b did not take its place:
+			// the key is no longer on the node, nor declared here, and the
+			// answer lists it in removed.
+			b.release()
+			old[b.key].release()
+			delete(s.devices, b.key)
+			removedGone = append(removedGone, b.key)
+			continue
 		case r.Error != "":
 			b.release()
 			if prev, ok := old[b.key]; ok && r.Action == "replaced" {
@@ -220,6 +258,7 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 		old[key].release()
 		delete(s.devices, key)
 	}
+	removed = append(removed, removedGone...)
 	s.order = order
 	var withheld []withheldDevice
 	for _, key := range order {
@@ -292,9 +331,15 @@ func cmdSet(_ context.Context, s *Server, c *call) (any, *protocol.Error) {
 	return struct{}{}, nil
 }
 
-// cmdHost changes the host's statements about a device: its name and
-// addresses (device.Device.Update), its reachability (SetReachable) and a
-// persisted label (Rename).
+// cmdHost changes the host's statements about a device: a persisted label
+// (Rename), its name and addresses (device.Device.Update) and its
+// reachability (SetReachable), in this order, stopping at the first
+// refusal. The label goes first because it is the one go-fabric may
+// refuse for a reason of the node's: Rename returns the node's refusal to
+// store it, and the label is then not served and the device keeps its name
+// (go-fabric v0.25.0 device/lifecycle.go:289-309) — so a refused label
+// changes nothing. ErrNotBridged (a part, :34-40) is the host's mistake,
+// InvalidArguments; any other refusal is UnknownError.
 func cmdHost(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	var a struct {
 		Device         string  `json:"device"`
@@ -311,8 +356,13 @@ func cmdHost(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	if perr != nil {
 		return nil, perr
 	}
+	if a.Label != nil {
+		if err := b.dev.Rename(ctx, *a.Label); err != nil {
+			return nil, refusedStatement(c.req.Command, err)
+		}
+	}
 	if a.Name != nil || a.DeviceAddress != nil || a.ChannelAddress != nil {
-		b.dev.Update(ctx, func(st *device.HostStatement) {
+		err := b.dev.Update(ctx, func(st *device.HostStatement) {
 			if a.Name != nil {
 				st.Name = *a.Name
 			}
@@ -323,14 +373,24 @@ func cmdHost(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 				st.ChannelAddress = *a.ChannelAddress
 			}
 		})
+		if err != nil {
+			return nil, refusedStatement(c.req.Command, err)
+		}
 	}
 	if a.Reachable != nil {
-		b.dev.SetReachable(ctx, *a.Reachable)
-	}
-	if a.Label != nil {
-		b.dev.Rename(ctx, *a.Label)
+		if err := b.dev.SetReachable(ctx, *a.Reachable); err != nil {
+			return nil, refusedStatement(c.req.Command, err)
+		}
 	}
 	return struct{}{}, nil
+}
+
+// refusedStatement is the command error of a host statement go-fabric refused.
+func refusedStatement(command string, err error) *protocol.Error {
+	if errors.Is(err, device.ErrNotBridged) {
+		return invalidArgs(command, "%v", err)
+	}
+	return protocol.Errorf(protocol.UnknownError, "%s: %v", command, err)
 }
 
 // cmdRemove removes one device (Aggregator.Remove); its endpoint number

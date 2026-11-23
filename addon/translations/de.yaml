@@ -18,6 +18,16 @@ configuration:
     description: >-
       Zusätzlich den CSA-Testwurzeln vertrauen, für Geräte mit
       Testzertifikaten (Entwicklungskits, nicht zertifizierte Geräte).
+  keep_onboarding_codes:
+    name: Kopplungscodes aufbewahren
+    description: >-
+      Den Kopplungscode jedes Geräts, das das Add-on in dessen eigenem
+      Kopplungsmodus koppelt (nicht eines von einem anderen Controller
+      geteilten), aufbewahren
+      und in der Onboarding-Übersicht der Weboberfläche zeigen, falls das
+      Papier verloren geht. Die Datenbank enthält dann einen Setup-Code je
+      Gerät, unversiegelt, bis die Datenbank versiegelt wird (ein
+      Folgeschritt); sie ist wie ein Schlüssel zu sichern.
   bridge:
     name: Bridge-Hälfte
     description: >-
