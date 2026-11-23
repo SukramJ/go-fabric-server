@@ -47,6 +47,10 @@ type markedSnapshot struct {
 		Datatypes []markedDatatype `json:"datatypes"`
 	} `json:"clusters"`
 	GlobalDatatypes []markedDatatype `json:"globalDatatypes"`
+	Definitions     []struct {
+		Name      string           `json:"name"`
+		Datatypes []markedDatatype `json:"datatypes"`
+	} `json:"definitions"`
 }
 
 // structsOf collects the structs reachable from t by name, each once.
@@ -107,10 +111,9 @@ func structSecret(structs map[string][]*schema.Struct, name string, id uint32) (
 
 // TestSecretMarks: every isSecret mark of the snapshot's clusters — on a
 // command's field, an attribute, a cluster or global datatype's field —
-// is the table's Secret, and the tables hold no Secret beyond the marks:
-// their count is the snapshot's (read from it, never a constant). The
-// marks under the snapshot's top-level definitions are outside what the
-// generator reads.
+// is the table's Secret, and so is a mark of a datatype of the
+// snapshot's top-level definitions; the tables hold no Secret beyond the
+// marks: their count is the snapshot's (read from it, never a constant).
 func TestSecretMarks(t *testing.T) {
 	var snap markedSnapshot
 	if err := json.Unmarshal(parity.SchemaJSON(), &snap); err != nil {
@@ -190,6 +193,22 @@ func TestSecretMarks(t *testing.T) {
 			marks++
 			if found, marked := structSecret(all, dt.Name, f.ID); !found || !marked {
 				t.Errorf("global %s.%s: the table's field is not Secret (found %v)", dt.Name, f.Name, found)
+			}
+		}
+	}
+	// The shared definition sets (WebRtcTransportDefinitions), whose
+	// datatypes a cluster names by "<set>.<datatype>"; the struct keeps
+	// the datatype's own name.
+	for _, set := range snap.Definitions {
+		for _, dt := range set.Datatypes {
+			for _, f := range dt.Fields {
+				if !f.Secret {
+					continue
+				}
+				marks++
+				if found, marked := structSecret(all, dt.Name, f.ID); !found || !marked {
+					t.Errorf("%s.%s.%s: the table's field is not Secret (found %v)", set.Name, dt.Name, f.Name, found)
+				}
 			}
 		}
 	}

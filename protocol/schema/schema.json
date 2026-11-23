@@ -9721,6 +9721,97 @@
     "209": "InvalidTransportType"
    }
   },
+  "WebRtcTransportDefinitions_WebRTCSessionStruct": {
+   "additionalProperties": true,
+   "properties": {
+    "0": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Id",
+     "type": "integer"
+    },
+    "1": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "PeerNodeId",
+     "type": "integer"
+    },
+    "2": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "PeerEndpointId",
+     "type": "integer"
+    },
+    "254": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FabricIndex",
+     "type": "integer"
+    },
+    "3": {
+     "$ref": "#/$defs/Global_StreamUsageEnum",
+     "title": "StreamUsage"
+    },
+    "4": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "VideoStreamId"
+    },
+    "5": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "AudioStreamId"
+    },
+    "6": {
+     "title": "MetadataEnabled",
+     "type": "boolean"
+    },
+    "7": {
+     "items": {
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+     },
+     "title": "VideoStreams",
+     "type": "array"
+    },
+    "8": {
+     "items": {
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+     },
+     "title": "AudioStreams",
+     "type": "array"
+    }
+   },
+   "required": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "6",
+    "254"
+   ],
+   "title": "WebRTCSessionStruct",
+   "type": "object"
+  },
   "cluster.100": {
    "additionalProperties": true,
    "description": "Values of the TemperatureAlarm cluster (0x0064, revision 1), keyed by attribute id.",
@@ -12847,7 +12938,7 @@
    "properties": {
     "0": {
      "items": {
-      "type": "object"
+      "$ref": "#/$defs/WebRtcTransportDefinitions_WebRTCSessionStruct"
      },
      "title": "CurrentSessions",
      "type": "array"
@@ -12872,7 +12963,7 @@
    "properties": {
     "0": {
      "items": {
-      "type": "object"
+      "$ref": "#/$defs/WebRtcTransportDefinitions_WebRTCSessionStruct"
      },
      "title": "CurrentSessions",
      "type": "array"

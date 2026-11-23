@@ -21,6 +21,15 @@ type snapshot struct {
 	Clusters        []sCluster    `json:"clusters"`
 	DeviceTypes     []sDeviceType `json:"deviceTypes"`
 	GlobalDatatypes []sDatatype   `json:"globalDatatypes"`
+	// Definitions are the snapshot's shared definition sets
+	// (WebRtcTransportDefinitions), whose datatypes a cluster names as
+	// "<set>.<datatype>".
+	Definitions []sDefinitions `json:"definitions"`
+}
+
+type sDefinitions struct {
+	Name      string      `json:"name"`
+	Datatypes []sDatatype `json:"datatypes"`
 }
 
 type sCluster struct {

@@ -65,8 +65,23 @@ type gen struct {
 }
 
 // datatype finds the datatype a value names: in the cluster, then in its
-// base cluster, then among the global datatypes (scope "global" first).
+// base cluster, then among the global datatypes (scope "global" first);
+// a name "<set>.<datatype>" in the definition set of that name.
 func (g *gen) datatype(v sValue, cl *sCluster) (dt *sDatatype, varName string) {
+	if set, name, ok := strings.Cut(v.Type, "."); ok {
+		for i := range g.s.Definitions {
+			d := &g.s.Definitions[i]
+			if d.Name != set {
+				continue
+			}
+			for j := range d.Datatypes {
+				if d.Datatypes[j].Name == name {
+					return &d.Datatypes[j], "dt" + ident(set) + "_" + ident(name)
+				}
+			}
+		}
+		return nil, ""
+	}
 	if v.Scope != "global" && cl != nil {
 		for c := cl; c != nil; c = g.byName[c.Base] {
 			for i := range c.Datatypes {

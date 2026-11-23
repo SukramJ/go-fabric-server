@@ -9270,6 +9270,97 @@
     "209": "InvalidTransportType"
    }
   },
+  "WebRtcTransportDefinitions_WebRTCSessionStruct": {
+   "additionalProperties": false,
+   "properties": {
+    "audioStreamId": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "AudioStreamId"
+    },
+    "audioStreams": {
+     "items": {
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+     },
+     "title": "AudioStreams",
+     "type": "array"
+    },
+    "fabricIndex": {
+     "maximum": 255,
+     "minimum": 0,
+     "title": "FabricIndex",
+     "type": "integer"
+    },
+    "id": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "Id",
+     "type": "integer"
+    },
+    "metadataEnabled": {
+     "title": "MetadataEnabled",
+     "type": "boolean"
+    },
+    "peerEndpointId": {
+     "maximum": 65535,
+     "minimum": 0,
+     "title": "PeerEndpointId",
+     "type": "integer"
+    },
+    "peerNodeId": {
+     "maximum": 18446744073709551615,
+     "minimum": 0,
+     "title": "PeerNodeId",
+     "type": "integer"
+    },
+    "streamUsage": {
+     "$ref": "#/$defs/Global_StreamUsageEnum",
+     "title": "StreamUsage"
+    },
+    "videoStreamId": {
+     "anyOf": [
+      {
+       "maximum": 65535,
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "title": "VideoStreamId"
+    },
+    "videoStreams": {
+     "items": {
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+     },
+     "title": "VideoStreams",
+     "type": "array"
+    }
+   },
+   "required": [
+    "id",
+    "peerNodeId",
+    "peerEndpointId",
+    "streamUsage",
+    "metadataEnabled",
+    "fabricIndex"
+   ],
+   "title": "WebRTCSessionStruct",
+   "type": "object"
+  },
   "cluster.AccountLogin": {
    "additionalProperties": false,
    "properties": {
@@ -22950,7 +23041,7 @@
    "properties": {
     "currentSessions": {
      "items": {
-      "type": "object"
+      "$ref": "#/$defs/WebRtcTransportDefinitions_WebRTCSessionStruct"
      },
      "title": "CurrentSessions",
      "type": "array"
@@ -22965,7 +23056,7 @@
    "properties": {
     "currentSessions": {
      "items": {
-      "type": "object"
+      "$ref": "#/$defs/WebRtcTransportDefinitions_WebRTCSessionStruct"
      },
      "title": "CurrentSessions",
      "type": "array"

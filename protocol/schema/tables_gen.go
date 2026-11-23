@@ -4461,7 +4461,7 @@ var clusters = []*Cluster{
 			{Name: "METADATA", Title: "Metadata", Bit: 0},
 		},
 		Attributes: []Attribute{
-			{ID: 0, Name: "CurrentSessions", Property: "currentSessions", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.WebRTCSessionStruct", Meta: MetaStruct}}},
+			{ID: 0, Name: "CurrentSessions", Property: "currentSessions", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.WebRTCSessionStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_WebRTCSessionStruct}}},
 			{ID: 65532, Name: "FeatureMap", Property: "featureMap", Type: Type{Name: "FeatureMap", Meta: MetaBitmap, Bits: 32}},
 			{ID: 65533, Name: "ClusterRevision", Property: "clusterRevision", Type: Type{Name: "ClusterRevision", Meta: MetaUint, Bits: 16}},
 		},
@@ -4471,7 +4471,7 @@ var clusters = []*Cluster{
 				{ID: 1, Name: "OriginatingEndpointId", Property: "originatingEndpointId", Type: Type{Name: "endpoint-no", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 2, Name: "VideoStreamId", Property: "videoStreamId", Type: Type{Name: "CameraAvStreamManagement.VideoStreamID", Meta: MetaUint, Bits: 16}, Nullable: true},
 				{ID: 3, Name: "AudioStreamId", Property: "audioStreamId", Type: Type{Name: "CameraAvStreamManagement.AudioStreamID", Meta: MetaUint, Bits: 16}, Nullable: true},
-				{ID: 4, Name: "IceServers", Property: "iceServers", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICEServerStruct", Meta: MetaStruct}}},
+				{ID: 4, Name: "IceServers", Property: "iceServers", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICEServerStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_ICEServerStruct}}},
 				{ID: 5, Name: "IceTransportPolicy", Property: "iceTransportPolicy", Type: Type{Name: "string", Meta: MetaString}},
 				{ID: 6, Name: "MetadataEnabled", Property: "metadataEnabled", Type: Type{Name: "bool", Meta: MetaBool}},
 				{ID: 8, Name: "VideoStreams", Property: "videoStreams", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "CameraAvStreamManagement.VideoStreamID", Meta: MetaUint, Bits: 16}}},
@@ -4490,7 +4490,7 @@ var clusters = []*Cluster{
 				{ID: 3, Name: "OriginatingEndpointId", Property: "originatingEndpointId", Type: Type{Name: "endpoint-no", Meta: MetaUint, Bits: 16}},
 				{ID: 4, Name: "VideoStreamId", Property: "videoStreamId", Type: Type{Name: "CameraAvStreamManagement.VideoStreamID", Meta: MetaUint, Bits: 16}, Nullable: true},
 				{ID: 5, Name: "AudioStreamId", Property: "audioStreamId", Type: Type{Name: "CameraAvStreamManagement.AudioStreamID", Meta: MetaUint, Bits: 16}, Nullable: true},
-				{ID: 6, Name: "IceServers", Property: "iceServers", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICEServerStruct", Meta: MetaStruct}}},
+				{ID: 6, Name: "IceServers", Property: "iceServers", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICEServerStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_ICEServerStruct}}},
 				{ID: 7, Name: "IceTransportPolicy", Property: "iceTransportPolicy", Type: Type{Name: "string", Meta: MetaString}},
 				{ID: 8, Name: "MetadataEnabled", Property: "metadataEnabled", Type: Type{Name: "bool", Meta: MetaBool}},
 				{ID: 10, Name: "VideoStreams", Property: "videoStreams", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "CameraAvStreamManagement.VideoStreamID", Meta: MetaUint, Bits: 16}}},
@@ -4507,24 +4507,24 @@ var clusters = []*Cluster{
 			}},
 			{ID: 5, Name: "ProvideIceCandidates", Property: "provideIceCandidates", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "WebRtcSessionId", Property: "webRtcSessionId", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCSessionID", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "IceCandidates", Property: "iceCandidates", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICECandidateStruct", Meta: MetaStruct}}, Mandatory: true},
+				{ID: 1, Name: "IceCandidates", Property: "iceCandidates", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICECandidateStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_ICECandidateStruct}}, Mandatory: true},
 			}},
 			{ID: 6, Name: "EndSession", Property: "endSession", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "WebRtcSessionId", Property: "webRtcSessionId", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCSessionID", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "Reason", Property: "reason", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCEndReasonEnum", Meta: MetaEnum, Bits: 8}, Mandatory: true},
+				{ID: 1, Name: "Reason", Property: "reason", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCEndReasonEnum", Meta: MetaEnum, Bits: 8, Enum: dtWebRtcTransportDefinitions_WebRTCEndReasonEnum}, Mandatory: true},
 			}},
 		},
 	},
 	&Cluster{ID: 1364, Name: "WebRtcTransportRequestor", Revision: 2,
 		Attributes: []Attribute{
-			{ID: 0, Name: "CurrentSessions", Property: "currentSessions", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.WebRTCSessionStruct", Meta: MetaStruct}}},
+			{ID: 0, Name: "CurrentSessions", Property: "currentSessions", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.WebRTCSessionStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_WebRTCSessionStruct}}},
 			{ID: 65533, Name: "ClusterRevision", Property: "clusterRevision", Type: Type{Name: "ClusterRevision", Meta: MetaUint, Bits: 16}},
 		},
 		Commands: []Command{
 			{ID: 0, Name: "Offer", Property: "offer", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "WebRtcSessionId", Property: "webRtcSessionId", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCSessionID", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 1, Name: "Sdp", Property: "sdp", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
-				{ID: 2, Name: "IceServers", Property: "iceServers", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICEServerStruct", Meta: MetaStruct}}},
+				{ID: 2, Name: "IceServers", Property: "iceServers", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICEServerStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_ICEServerStruct}}},
 				{ID: 3, Name: "IceTransportPolicy", Property: "iceTransportPolicy", Type: Type{Name: "string", Meta: MetaString}},
 			}},
 			{ID: 1, Name: "Answer", Property: "answer", Request: true, Response: "status", Fields: []Field{
@@ -4533,11 +4533,11 @@ var clusters = []*Cluster{
 			}},
 			{ID: 2, Name: "IceCandidates", Property: "iceCandidates", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "WebRtcSessionId", Property: "webRtcSessionId", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCSessionID", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "IceCandidates", Property: "iceCandidates", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICECandidateStruct", Meta: MetaStruct}}, Mandatory: true},
+				{ID: 1, Name: "IceCandidates", Property: "iceCandidates", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "WebRtcTransportDefinitions.ICECandidateStruct", Meta: MetaStruct, Struct: dtWebRtcTransportDefinitions_ICECandidateStruct}}, Mandatory: true},
 			}},
 			{ID: 3, Name: "End", Property: "end", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "WebRtcSessionId", Property: "webRtcSessionId", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCSessionID", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "Reason", Property: "reason", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCEndReasonEnum", Meta: MetaEnum, Bits: 8}, Mandatory: true},
+				{ID: 1, Name: "Reason", Property: "reason", Type: Type{Name: "WebRtcTransportDefinitions.WebRTCEndReasonEnum", Meta: MetaEnum, Bits: 8, Enum: dtWebRtcTransportDefinitions_WebRTCEndReasonEnum}, Mandatory: true},
 			}},
 		},
 	},
@@ -9130,6 +9130,48 @@ var dt0552_DPTZStruct = &Struct{Name: "DPTZStruct", Fields: []Field{
 var dt0552_PhysicalMovementEnum = &Enum{Name: "PhysicalMovementEnum", Values: []EnumValue{
 	{Value: 0, Name: "Idle"},
 	{Value: 1, Name: "Moving"},
+}}
+
+var dtWebRtcTransportDefinitions_WebRTCSessionStruct = &Struct{Name: "WebRTCSessionStruct", Fields: []Field{
+	{ID: 0, Name: "Id", Property: "id", Type: Type{Name: "WebRTCSessionID", Meta: MetaUint, Bits: 16}, Mandatory: true},
+	{ID: 1, Name: "PeerNodeId", Property: "peerNodeId", Type: Type{Name: "node-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
+	{ID: 2, Name: "PeerEndpointId", Property: "peerEndpointId", Type: Type{Name: "endpoint-no", Meta: MetaUint, Bits: 16}, Mandatory: true},
+	{ID: 3, Name: "StreamUsage", Property: "streamUsage", Type: Type{Name: "StreamUsageEnum", Meta: MetaEnum, Bits: 8, Enum: dtGlobal_StreamUsageEnum}, Mandatory: true},
+	{ID: 4, Name: "VideoStreamId", Property: "videoStreamId", Type: Type{Name: "CameraAvStreamManagement.VideoStreamID", Meta: MetaUint, Bits: 16}, Nullable: true},
+	{ID: 5, Name: "AudioStreamId", Property: "audioStreamId", Type: Type{Name: "CameraAvStreamManagement.AudioStreamID", Meta: MetaUint, Bits: 16}, Nullable: true},
+	{ID: 6, Name: "MetadataEnabled", Property: "metadataEnabled", Type: Type{Name: "bool", Meta: MetaBool}, Mandatory: true},
+	{ID: 7, Name: "VideoStreams", Property: "videoStreams", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "CameraAvStreamManagement.VideoStreamID", Meta: MetaUint, Bits: 16}}},
+	{ID: 8, Name: "AudioStreams", Property: "audioStreams", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "CameraAvStreamManagement.AudioStreamID", Meta: MetaUint, Bits: 16}}},
+	{ID: 254, Name: "FabricIndex", Property: "fabricIndex", Type: Type{Name: "FabricIndex", Meta: MetaUint, Bits: 8}, Mandatory: true},
+}}
+
+var dtWebRtcTransportDefinitions_ICEServerStruct = &Struct{Name: "ICEServerStruct", Fields: []Field{
+	{ID: 0, Name: "Urls", Property: "urls", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "string", Meta: MetaString}}, Mandatory: true},
+	{ID: 1, Name: "Username", Property: "username", Type: Type{Name: "string", Meta: MetaString}},
+	{ID: 2, Name: "Credential", Property: "credential", Type: Type{Name: "string", Meta: MetaString}, Secret: true},
+	{ID: 3, Name: "Caid", Property: "caid", Type: Type{Name: "TlsCertificateManagement.TLSCAID", Meta: MetaUint, Bits: 16}},
+}}
+
+var dtWebRtcTransportDefinitions_ICECandidateStruct = &Struct{Name: "ICECandidateStruct", Fields: []Field{
+	{ID: 0, Name: "Candidate", Property: "candidate", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
+	{ID: 1, Name: "SdpMid", Property: "sdpMid", Type: Type{Name: "string", Meta: MetaString}, Nullable: true, Mandatory: true},
+	{ID: 2, Name: "SdpmLineIndex", Property: "sdpmLineIndex", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Nullable: true, Mandatory: true},
+}}
+
+var dtWebRtcTransportDefinitions_WebRTCEndReasonEnum = &Enum{Name: "WebRTCEndReasonEnum", Values: []EnumValue{
+	{Value: 0, Name: "IceFailed"},
+	{Value: 1, Name: "IceTimeout"},
+	{Value: 2, Name: "UserHangup"},
+	{Value: 3, Name: "UserBusy"},
+	{Value: 4, Name: "Replaced"},
+	{Value: 5, Name: "NoUserMedia"},
+	{Value: 6, Name: "InviteTimeout"},
+	{Value: 7, Name: "AnsweredElsewhere"},
+	{Value: 8, Name: "OutOfResources"},
+	{Value: 9, Name: "MediaTimeout"},
+	{Value: 10, Name: "LowPower"},
+	{Value: 11, Name: "PrivacyMode"},
+	{Value: 12, Name: "UnknownReason"},
 }}
 
 var dt0555_ContainerFormatEnum = &Enum{Name: "ContainerFormatEnum", Values: []EnumValue{
