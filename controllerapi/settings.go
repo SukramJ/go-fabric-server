@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -54,7 +55,13 @@ type settingsStore struct {
 	data settingsData
 }
 
-func openSettings(dir string) (*settingsStore, error) {
+// openSettings loads server.json under dir. A stored fabric label beyond
+// commissioner.MaxLabelLength bytes — 0.10.0 cut labels to 32 characters,
+// go-fabric v0.25.0 refuses more than 32 bytes at the controller's start —
+// is cut to the bound on a rune boundary, logged at Warn and saved back,
+// as go-fabric cuts a stored NodeLabel (CHANGELOG.md, 0.25.0,
+// RestoreNodeLabel).
+func openSettings(dir string, log *slog.Logger) (*settingsStore, error) {
 	s := &settingsStore{data: settingsData{FabricLabel: defaultFabricLabel}}
 	if dir == "" {
 		return s, nil
@@ -72,6 +79,13 @@ func openSettings(dir string) (*settingsStore, error) {
 	}
 	if s.data.FabricLabel == "" {
 		s.data.FabricLabel = defaultFabricLabel
+	}
+	if cut := cutLabel(s.data.FabricLabel); cut != s.data.FabricLabel {
+		log.Warn("fabricserver.label.cut", slog.Int("bytes", len(s.data.FabricLabel)), slog.String("label", cut))
+		s.data.FabricLabel = cut
+		if err := s.saveLocked(); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
@@ -112,14 +126,20 @@ func normalizeLabel(label string) string {
 	if label == "" {
 		return defaultFabricLabel
 	}
-	if len(label) > commissioner.MaxLabelLength {
-		cut := commissioner.MaxLabelLength
-		for cut > 0 && !utf8.RuneStart(label[cut]) {
-			cut--
-		}
-		label = label[:cut]
+	return cutLabel(label)
+}
+
+// cutLabel is label cut to commissioner.MaxLabelLength bytes on a rune
+// boundary.
+func cutLabel(label string) string {
+	if len(label) <= commissioner.MaxLabelLength {
+		return label
 	}
-	return label
+	cut := commissioner.MaxLabelLength
+	for cut > 0 && !utf8.RuneStart(label[cut]) {
+		cut--
+	}
+	return label[:cut]
 }
 
 func (s *settingsStore) setLabel(label string) error {

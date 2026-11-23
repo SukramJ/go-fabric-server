@@ -192,7 +192,7 @@ func New(opts Options) (*Server, error) {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
-	cfg, err := openSettings(opts.StoragePath)
+	cfg, err := openSettings(opts.StoragePath, log)
 	if err != nil {
 		return nil, err
 	}

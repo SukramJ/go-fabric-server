@@ -4,9 +4,14 @@
 package controllerapi_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -169,4 +174,43 @@ func TestFabricLabelMultibyte(t *testing.T) {
 		f, err := e.client.GetMatterFabrics(e.ctx, n.NodeID)
 		return err == nil && len(f) == 1 && f[0]["fabric_label"] == cut
 	})
+}
+
+// TestStoredLabelCut: a server.json of 0.10.0, whose fabric label of 32
+// two-byte runes (64 bytes) was within 0.10.0's 32 characters, is cut at
+// load to 32 bytes on a rune boundary, logged at Warn and saved back; the
+// controller starts with the cut label.
+func TestStoredLabelCut(t *testing.T) {
+	dir := t.TempDir()
+	stored := strings.Repeat("ö", 32)
+	raw, err := json.Marshal(map[string]any{"fabric_label": stored, "wifi": []any{}, "thread": []any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "server.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	s, err := controllerapi.New(controllerapi.Options{StoragePath: dir, Logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut := strings.Repeat("ö", 16)
+	if s.FabricLabel() != cut {
+		t.Fatalf("label %q", s.FabricLabel())
+	}
+	if !strings.Contains(logs.String(), "level=WARN") || !strings.Contains(logs.String(), "fabricserver.label.cut") || !strings.Contains(logs.String(), "bytes=64") {
+		t.Fatalf("no Warn: %s", logs.String())
+	}
+	saved, err := os.ReadFile(filepath.Join(dir, "server.json"))
+	if err != nil || !strings.Contains(string(saved), `"fabric_label": "`+cut+`"`) {
+		t.Fatalf("server.json after the load: %s %v", saved, err)
+	}
+	e := newEnv(t, envOptions{
+		server:    controllerapi.Options{StoragePath: dir},
+		configure: func(c *controller.Config) { c.Label = cut },
+	})
+	if got := e.api.FabricLabel(); got != cut {
+		t.Fatalf("the label at the start %q", got)
+	}
 }
