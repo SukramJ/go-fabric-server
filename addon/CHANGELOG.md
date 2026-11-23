@@ -3,6 +3,18 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
 
+## Unreleased
+
+- **Back up the add-on before this update**: the first start upgrades the
+  database and the bridge node's store one way; the upgraded files do not
+  run on 0.10.0.
+- New option **keep_onboarding_codes** (off): keep each paired device's
+  pairing code and show it in the web UI's onboarding inventory; the
+  database then holds one setup code per device, unsealed.
+- Library update (go-fabric 0.25.0, go-fabric-ui 0.13.0): the web UI
+  checks the host name of every request (the Ingress proxy's address is
+  the admission) and requires its own request header for admin rights.
+
 ## 0.10.0
 
 - No change for the add-on: the release adds Bluetooth and Wi-Fi for the

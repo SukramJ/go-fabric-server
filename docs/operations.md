@@ -31,7 +31,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-passcode` | `20202021` | the bridge node's setup passcode — the public test value: change it before pairing for real |
 | `--bridge-discriminator` | `3840` | the bridge node's discriminator |
 | `--bridge-vendor-id`, `--bridge-product-id` | `0xFFF1`, `0x8001` | the bridge node's vendor and product (the CSA test vendor) |
-| `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel |
+| `--bridge-label` | `fabric-server bridge` | the bridge node's NodeLabel, at most 32 bytes: a longer one stops the start with `--bridge` (naming the byte count). A registry node's label holds the pages' 64 characters and the node serves it cut to 32 bytes on a rune boundary |
 | `--bridge-mdns-interfaces` | — | the host interfaces every device node (the bridge node and each registry node) announces and answers mDNS on, `name[,name…]`; empty is every multicast-capable interface ([Ports and network](#ports-and-network)); an empty or repeated name stops the start |
 | `--bridge-result-timeout` | `5s` | how long a `write` or `command` event waits for the bridge client's `result` |
 | `--bridge-extensions` | — | the features go-fabric implements ahead of matter.js that the bridge node serves, by register ID, `id[,id…]`: `BD-Thread-NetComm-ThreadVariant`, `BD-chip-Thermostat-Events`, `BD-chip-Thermostat-Schedules`, `BD-chip-TimeSynchronization-Features` at go-fabric v0.15.2 ([Surface policies](#surface-policies)); an unknown ID stops the start with the known ones |
@@ -40,14 +40,16 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-bluetooth-adapter` | — | the BLE adapter of the first device node (the `--bridge-*` one): `0` is `hci0`, an adapter name is taken as it is. While that node has no fabric it is commissioned over Bluetooth LE — a node without a network at first boot. Needs `--bridge`, a `--bridge-passcode` other than the public test passcode `20202021` (refused: anyone in Bluetooth range could commission the node), and with `--controller` an adapter other than `--bluetooth-adapter`'s; the host runs bluetoothd and lets the daemon use `org.bluez` on the system bus; the start fails when the adapter cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--bridge-wifi-interface` | — | the Wi-Fi interface (`wlan0`) the first device node joins the network a commissioner provisions on, through wpa_supplicant; the node then serves NetworkCommissioning with the Wi-Fi feature. Needs `--bridge`; the host runs wpa_supplicant with its D-Bus interface (`fi.w1.wpa_supplicant1` on the system bus) and NetworkManager does not manage the interface; the start fails when the driver cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--node-limit` | `8` | the most device nodes the pages may create beside the `--bridge-*` one ([Several device nodes](#several-device-nodes)); `0` creates none |
+| `--controller-keep-onboarding-codes` | `false` | keep the pairing code of every device the controller pairs (go-fabric `controller.Config.KeepOnboardingCodes`) and show it in the controller pages' onboarding inventory, to an admin by `--web-admin-source` only (501 in token mode). The database then holds one setup code per paired device, unsealed ([Files](#files)); add-on option `keep_onboarding_codes` |
 | `--controller-diagnostics-capacity` | `0` (go-fabric's `256`) | the events the controller's diagnostic trace keeps, the oldest dropped first (the controller pages' Diagnostics tab, [The pages](#the-pages)); `0` is go-fabric's `diag.DefaultDiagnosticsCapacity`; a negative value stops the start. No add-on option |
 | `--bridge-node`, `--node-default` | — | removed: further device nodes are created in the pages; either flag (or its environment variable) stops the start with that message |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
 | `--bluetooth-adapter` | — | the BLE adapter `commission_with_code` may commission over, an HCI id or an adapter name (matterjs-server's flag; `0` is `hci0`, `hci1` is taken as it is): go-fabric's BlueZ central over the system bus, which needs rights to `org.bluez` (the `bluetooth` group or a polkit rule); the start fails when the adapter cannot be opened; the BTP segment size follows the ATT_MTU BlueZ reports (BlueZ 5.62 and later; an older BlueZ settles at the minimum, 23) |
 | `--bluetooth-proxy` | — | an ESPHome Bluetooth proxy `commission_with_code` may commission through, `host[:port][,key]` (port 6053; `key` the base64 API encryption key, none for a plaintext API); repeatable, the environment variable gives one; not with `--bluetooth-adapter`. go-fabric's `ble/esphome` central, pure Go, no adapter or D-Bus; the start fails when a proxy refuses (wrong or missing key, no active connections) or none answers ([Bluetooth through ESPHome proxies](#bluetooth-through-esphome-proxies)) |
-| `--web` | — | serve go-fabric-ui's pages on this address: the device nodes' with `--bridge`, the controller's with `--controller`, the Operation page always; read-only unless `--web-admin` or `--web-admin-source` |
+| `--web` | — | serve go-fabric-ui's pages on this address: the device nodes' with `--bridge`, the controller's with `--controller`, the Operation page always; without `--web-admin` or `--web-admin-source` the status only ([The pages](#the-pages)) |
 | `--web-admin` | `false` | the pages may write, show the pairing code and use the controller's admin routes (the page's token mode) |
-| `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |
+| `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on); its requests pass the pages' host check under any name |
+| `--web-allowed-hosts` | — | the DNS names the pages answer under, `name[,name…]`, host names only (no scheme, port, path or wildcard; go-fabric-ui refuses one and the start stops naming the flag). Loopback names and IP addresses always pass; any other `Host` is 403 `host_not_allowed` |
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
 | `--version` | — | print the version and exit |
 
@@ -233,6 +235,20 @@ Back up the whole directory with the daemon stopped (or with
 `sqlite3 fabric-server.db .backup`). Losing `fabric-server.db` loses the
 fabric: every node must be commissioned again.
 
+**The stores upgrade one way.** The first start on go-fabric v0.25.0
+(this server after 0.10.0) upgrades the device stores (`bridge.db`,
+`bridge-<key>.db`) from schema v7 to v12 (go-fabric `CHANGELOG.md:513`,
+`:635`, `:647`, `:693`, `:142`) and the controller's registry in
+`fabric-server.db` from v1 to v3 (`:483`). Back up `bridge*.db` and
+`fabric-server.db` before the upgrade: there is no way back to 0.10.0 with
+the upgraded files.
+
+With `--controller-keep-onboarding-codes`, `fabric-server.db` holds one
+setup code per paired device: secrets of the fabric keys' class (with a
+code and a factory reset anyone can commission the device), stored
+unsealed until the database is sealed (a follow-up). Treat the file and
+its backups like the fabric's keys.
+
 ## Ports and network
 
 - The API: `--listen` (5580 in the image and the unit).
@@ -288,7 +304,7 @@ fabric: every node must be commissioned again.
 | `/ws` | the controller half (WebSocket) |
 | `/bridge` | the bridge half (WebSocket), with `--bridge`; one client at a time |
 | `GET /health` | `{"version", "node_count", "healthy"}`, with `--bridge` also `"device_count"`; 503 while a half is not healthy |
-| `GET /metrics` | expvar: `fabricserver.ws.connections`, `fabricserver.ws.queued_bytes`, `fabricserver.ws.dropped`, `fabricserver.ws.closed_overflow`; the controller's (go-fabric `controller.Config.Metrics`) under `fabricserver.controller.`: `sessions.open` (a gauge), `mrp.retransmits`, `pair.failures`, `case.unresponsive`, `reachability.probes`, `icd.checkins_missed` (counters) — the expvar adapter publishes every go-fabric metric name under the prefix, the others stay `0` on the controller; the bridge nodes' under `fabricserver.bridge.`; the Go runtime's `memstats` |
+| `GET /metrics` | the daemon's expvar variables — those under `fabricserver.` and the Go runtime's `memstats`, nothing else (not expvar's `cmdline`, which would publish `--token` and `--bridge-passcode` given as flags): `fabricserver.ws.connections`, `fabricserver.ws.queued_bytes`, `fabricserver.ws.dropped`, `fabricserver.ws.closed_overflow`; the controller's (go-fabric `controller.Config.Metrics`) under `fabricserver.controller.`: `sessions.open` (a gauge), `mrp.retransmits`, `pair.failures`, `case.unresponsive`, `reachability.probes`, `icd.checkins_missed` (counters) — the expvar adapter publishes every go-fabric metric name under the prefix, the others stay `0` on the controller; the bridge nodes' under `fabricserver.bridge.`; the Go runtime's `memstats` |
 | `GET /schema` | the JSON Schema of the node data values; header `X-Go-Fabric-Version` |
 | `GET /schema/declaration` | the JSON Schema of the bridge half's declaration and patches |
 
@@ -331,6 +347,20 @@ both: `--log-level` at start, then `set_loglevel` over `/ws` or the
 Operation page, each seen by the other's `get_loglevel`/level read; no log
 file is written (`file_loglevel` is `null`).
 
+At debug, `fabricserver.ws.request` carries `args` for `device_command`
+and `write_attribute`: a value the model marks secret is `"[redacted]"`,
+one the model cannot judge `"[unjudged]"` ([protocol](protocol.md),
+Deliberate differences); every other command logs no argument. Give the
+passcode and the token as `FABRIC_SERVER_BRIDGE_PASSCODE` and
+`FABRIC_SERVER_TOKEN` rather than as flags: a flag is in the process's
+command line, which other users of the host can read.
+
+go-fabric's DCL client connects to public addresses only for a URL a
+ledger record names and for the development-certificate mirror: a
+loopback, private, link-local, unspecified or multicast destination is
+refused at the dial (go-fabric `CHANGELOG.md:644` at v0.25.0). A DCL
+mirror on a private address is not reached.
+
 The controller's operational discovery (go-fabric `client/discovery`)
 logs the SRV targets it resolves a node's instance to:
 `matter.discovery.status.resolving` and `matter.discovery.status.resolved`
@@ -344,8 +374,8 @@ alternates reads from the log (go-fabric 0.21.0, #488).
 
 ## The pages
 
-`--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
-0.9.0), both families and the Operation page in one handler. The terms
+`--web host:port` serves go-fabric-ui's pages (`fabricui.NewHandler`,
+go-fabric-ui 0.13.0), both families and the Operation page in one handler. The terms
 the pages use are defined in go-fabric's [glossary](https://docs.thingfabric.dev/reference/glossary/):
 
 - **The node pages** for every device node — the `--bridge-*` one and the
@@ -383,15 +413,42 @@ the pages use are defined in go-fabric's [glossary](https://docs.thingfabric.dev
 
 Three admin modes, the same for both families — a controller route marked
 admin (commissioning, discovery, a write, decommissioning, the credentials,
-the label) follows the rule a node page's write follows:
+the label, and since go-fabric-ui 0.13.0 most reading routes and the
+controller and log streams) follows the rule a node page's write follows:
 
-- default — read-only: no writes, no pairing code, no admin route;
+- default — the status only: `GET /api/v1/node/status`,
+  `/nodes/<key>/status`, `/nodes`, `/operation/info`,
+  `/operation/log/level`, `/controller/status` and the node stream stay
+  open, trimmed (no `config.store`, warnings by code only); every other
+  route is 403 `forbidden` (go-fabric-ui `changelog.md`, 0.13.0, "Admin
+  rights on the reading routes");
 - `--web-admin` — the page's token mode: a random per-process token in
   `GET /api/v1/node/status` and `GET /api/v1/controller/status` the page
   sends with every write;
 - `--web-admin-source IP` — only requests from that address are answered,
   each as an admin: the Ingress proxy of a Home Assistant add-on
   authenticates the user ([addon.md](addon.md)).
+
+An admin request carries `X-Fabric-UI: 1` (the shipped page sends it); a
+writing request's body is `Content-Type: application/json`. Every request
+passes go-fabric-ui's host check first: `localhost` and names under
+`.localhost`, an IP address, a name of `--web-allowed-hosts`; any other
+`Host` is 403 `host_not_allowed`. Behind the Ingress the browser's `Host`
+and `Origin` arrive unchanged and the peer is the proxy, `172.30.32.2`:
+with `--web-admin-source` a request from that address passes the check
+under any name (go-fabric-ui `Options.AllowHost`) — the address is the
+admission, and the proxy authenticates the user.
+
+A device node without a fabric reopens its own commissioning window, on
+the configured passcode, after a window the page opened on fresh
+credentials closes or expires (go-fabric-ui `changelog.md` 0.13.0:
+go-fabric's design). The server keeps that: it sets no
+`node.Commissioning.WindowOnDemand`, whose zero value opens the window as
+before.
+The device nodes state the Aggregator as their device type
+(`ProductDescription.DeviceType`), so the commissionable record names it
+before a device is declared, and keep go-fabric's `LocationCapability`
+default, IndoorOutdoor.
 
 The controller pages and `/ws` share the controller half's state:
 

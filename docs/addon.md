@@ -48,7 +48,16 @@ and mDNS. The API listens on `127.0.0.1` only. The pages
 are on the Ingress port 8099; with host networking that
 listener is on the LAN too, so the daemon answers only the Ingress proxy
 (`172.30.32.2`, `--web-admin-source`), which authenticates the user and is
-the pages' administrator.
+the pages' administrator. The proxy forwards the browser's `Host` and
+`Origin` unchanged; the source address is the admission, so the pages
+answer under whatever name the browser uses (go-fabric-ui
+`Options.AllowHost`) and no host list is configured.
+
+## Updating to the release after 0.10.0
+
+The first start upgrades the stores one way (go-fabric v0.25.0): back up
+the add-on (or `/data`'s `fabric-server.db` and `bridge*.db`) before the
+update; the upgraded files do not run on 0.10.0.
 
 ## No discovery
 

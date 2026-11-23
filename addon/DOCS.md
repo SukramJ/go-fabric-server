@@ -49,7 +49,11 @@ The database and settings are under `/data`; a backup stops the add-on
 first. The add-on's web UI (Ingress) shows the controller's pages — the
 commissioned nodes, commissioning, the Wi-Fi and Thread credentials, the
 fabric label — and the bridge node's pages when **bridge** is on; it
-answers the Ingress proxy only.
+answers the Ingress proxy only: the proxy's address is the admission, so
+the pages answer under the name your browser uses.
+
+Back up the add-on before updating from 0.10.0: the first start upgrades
+the database one way, with no way back to 0.10.0.
 
 ## Bluetooth through ESPHome proxies
 

@@ -6,6 +6,77 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+**Back up `--storage-path` before upgrading from 0.10.0.** The first start
+upgrades the device stores (`bridge.db`, `bridge-<key>.db`, schema v7 →
+v12) and the controller's registry in `fabric-server.db` (v1 → v3) one
+way; the upgraded files do not run on 0.10.0 (`docs/operations.md`,
+Files).
+
+### Added
+
+- `--web-allowed-hosts name[,name…]` (`FABRIC_SERVER_WEB_ALLOWED_HOSTS`):
+  the DNS names the pages answer under (go-fabric-ui
+  `Options.AllowedHosts`); an entry with a port, scheme, path or wildcard
+  stops the start, naming the flag.
+- `--controller-keep-onboarding-codes` (#70): the controller keeps the
+  pairing code of every device it pairs, and the controller pages show
+  them in the onboarding inventory to an admin by `--web-admin-source`
+  (501 in token mode). The database then holds one setup code per device,
+  unsealed until the sealing follow-up. Add-on option
+  `keep_onboarding_codes`.
+- The isSecret marks of go-fabric's snapshot in `protocol/schema`
+  (`Field.Secret`, `Attribute.Secret`) and `"x-secret": true` in
+  `GET /schema` and `GET /schema/declaration`.
+- The argument log: `fabricserver.ws.request` carries `args` at debug for
+  `device_command` and `write_attribute`, a secret value `"[redacted]"`,
+  what the model cannot judge `"[unjudged]"`; `fabricserver.ws.error`
+  logs these commands' details `"[redacted]"` when their target holds a
+  secret.
+
+### Changed
+
+- go-fabric 0.22.2 → 0.25.0 under its new module path
+  `thingfabric.dev/go-fabric` (with `ble/bluez`, `ble/esphome`,
+  `wifi/wpasupplicant`); go-fabric-ui 0.9.2 → 0.13.0. The first node's
+  Bluetooth peripheral is go-fabric's `contract.GATTPeripheral`
+  (`node.Network.GATT`).
+- `server_info`'s go-fabric version and `GET /schema`'s provenance
+  (`x-go-fabric-version`, `x-matter-source-commit`) name go-fabric v0.25.0
+  and matter.js `b25ed960`.
+- `--web` without `--web-admin` or `--web-admin-source` shows the status
+  only: go-fabric-ui 0.13.0 makes most reading routes an admin's. Every
+  request passes go-fabric-ui's host check: a DNS name only with
+  `--web-allowed-hosts`, or from `--web-admin-source`'s address (the
+  Ingress proxy). An admin request carries `X-Fabric-UI: 1`, a body
+  `Content-Type: application/json`.
+- `/bridge` `host` applies `label` first, then the host statements, then
+  `reachable`, and answers go-fabric's refusal: `InvalidArguments` for
+  `device.ErrNotBridged`, `UnknownError` for any other (the node's store
+  refusing the label), `host: <text>`; a refused label changes nothing.
+  `declare` refuses what go-fabric 0.25.0's kit refuses
+  (`docs/protocol.md`, `declare`).
+- The device nodes state the Aggregator as their device type, so the
+  commissionable record names it before a device is declared.
+- `--bridge-label` beyond 32 bytes stops the start with `--bridge`; a
+  registry node's label (64 characters) is served cut to 32 bytes on a
+  rune boundary.
+
+### Fixed
+
+- `declare` replacing a served device by a withheld one under the same
+  key: the served one is removed first (go-fabric 0.25.0 refused the
+  add), and the key keeps its endpoint number for the device served after.
+- The fabric label is cut to 32 bytes on a rune boundary, not to 32
+  characters: a multibyte label could stop the controller's start (#73).
+- A camera command after the camera service closed answers `NodeNotReady`
+  (#73).
+
+### Security
+
+- `GET /metrics` publishes the daemon's `fabricserver.*` variables and
+  `memstats` only; expvar's `cmdline` published the daemon's arguments,
+  `--token` and `--bridge-passcode` among them when given as flags.
+
 ## [0.10.0] - 2026-11-13
 
 ### Added
