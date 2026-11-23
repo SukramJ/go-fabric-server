@@ -19,6 +19,7 @@ import (
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 	"github.com/SukramJ/go-fabric-server/protocol"
+	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
 
 // icdNodeConfig is a LIT ICD node of the program's own composition
@@ -299,13 +300,35 @@ func TestSecretsNotLogged(t *testing.T) {
 	// Failed calls carry their arguments in no log line either.
 	_ = e.client.Call(e.ctx, "set_wifi_credentials", map[string]any{"ssid": 1, "credentials": "wifi-pass-9137"}, nil)
 	_ = e.client.Call(e.ctx, "commission_on_network", map[string]any{"setup_pin_code": 99999999, "filter_type": 9, "filter": 1}, nil)
+	// A device_command with a secret payload logs its args with the
+	// secret redacted; one of the wrong JSON type, which the encoder
+	// refuses, logs the value nowhere — fabricserver.ws.error's details,
+	// the encoder's text, quote it, so they are "[redacted]" there.
+	dl := schema.ClusterByName("DoorLock")
+	_ = e.client.Call(e.ctx, "device_command", map[string]any{
+		"node_id": n.NodeID, "endpoint_id": 1, "cluster_id": dl.ID, "command_name": "LockDoor",
+		"payload": map[string]any{"pinCode": "cGluLTUyODE5Mw=="},
+	}, nil)
+	_ = e.client.Call(e.ctx, "device_command", map[string]any{
+		"node_id": n.NodeID, "endpoint_id": 1, "cluster_id": dl.ID, "command_name": "LockDoor",
+		"payload": map[string]any{"pinCode": 73519246},
+	}, nil)
 	out := logs.String()
+	if !strings.Contains(out, "args=") || !strings.Contains(out, "[redacted]") {
+		t.Error("the device_command's args are not logged redacted")
+	}
 	for _, secret := range []string{
+		"cGluLTUyODE5Mw==", "73519246",
 		"wifi-pass-9137", dataset, "99999999", strconv.FormatUint(uint64(e.dev.Passcode()), 10),
 		fmt.Sprint(w["setup_pin_code"]), fmt.Sprint(w["setup_manual_code"]), fmt.Sprint(w["setup_qr_code"]),
 	} {
 		if strings.Contains(out, secret) {
 			t.Errorf("the log holds a secret %q", secret)
+			for _, l := range strings.Split(out, "\n") {
+				if strings.Contains(l, secret) {
+					t.Log(l)
+				}
+			}
 		}
 	}
 	if !strings.Contains(out, "fabricserver.ws.request") {

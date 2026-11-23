@@ -631,11 +631,11 @@ var clusters = []*Cluster{
 			}},
 			{ID: 2, Name: "AddOrUpdateWiFiNetwork", Property: "addOrUpdateWiFiNetwork", Request: true, Response: "NetworkConfigResponse", Fields: []Field{
 				{ID: 0, Name: "Ssid", Property: "ssid", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
-				{ID: 1, Name: "Credentials", Property: "credentials", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 1, Name: "Credentials", Property: "credentials", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 2, Name: "Breadcrumb", Property: "breadcrumb", Type: Type{Name: "uint64", Meta: MetaUint, Bits: 64}},
 			}},
 			{ID: 3, Name: "AddOrUpdateThreadNetwork", Property: "addOrUpdateThreadNetwork", Request: true, Response: "NetworkConfigResponse", Fields: []Field{
-				{ID: 0, Name: "OperationalDataset", Property: "operationalDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "OperationalDataset", Property: "operationalDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 1, Name: "Breadcrumb", Property: "breadcrumb", Type: Type{Name: "uint64", Meta: MetaUint, Bits: 64}},
 			}},
 			{ID: 4, Name: "RemoveNetwork", Property: "removeNetwork", Request: true, Response: "NetworkConfigResponse", Fields: []Field{
@@ -702,7 +702,7 @@ var clusters = []*Cluster{
 		},
 		Commands: []Command{
 			{ID: 0, Name: "TestEventTrigger", Property: "testEventTrigger", Request: true, Response: "status", Fields: []Field{
-				{ID: 0, Name: "EnableKey", Property: "enableKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "EnableKey", Property: "enableKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 1, Name: "EventTrigger", Property: "eventTrigger", Type: Type{Name: "uint64", Meta: MetaUint, Bits: 64}, Mandatory: true},
 			}},
 			{ID: 1, Name: "TimeSnapshot", Property: "timeSnapshot", Request: true, Response: "TimeSnapshotResponse", Fields: nil},
@@ -711,7 +711,7 @@ var clusters = []*Cluster{
 				{ID: 1, Name: "PosixTimeMs", Property: "posixTimeMs", Type: Type{Name: "posix-ms", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
 			}},
 			{ID: 3, Name: "PayloadTestRequest", Property: "payloadTestRequest", Request: true, Response: "PayloadTestResponse", Fields: []Field{
-				{ID: 0, Name: "EnableKey", Property: "enableKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "EnableKey", Property: "enableKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 1, Name: "Value", Property: "value", Type: Type{Name: "uint8", Meta: MetaUint, Bits: 8}, Mandatory: true},
 				{ID: 2, Name: "Count", Property: "count", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
 			}},
@@ -1078,7 +1078,7 @@ var clusters = []*Cluster{
 		Commands: []Command{
 			{ID: 0, Name: "OpenCommissioningWindow", Property: "openCommissioningWindow", Request: true, Response: "status", Timed: true, Fields: []Field{
 				{ID: 0, Name: "CommissioningTimeout", Property: "commissioningTimeout", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "PakePasscodeVerifier", Property: "pakePasscodeVerifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 1, Name: "PakePasscodeVerifier", Property: "pakePasscodeVerifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 2, Name: "Discriminator", Property: "discriminator", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 3, Name: "Iterations", Property: "iterations", Type: Type{Name: "uint32", Meta: MetaUint, Bits: 32}, Mandatory: true},
 				{ID: 4, Name: "Salt", Property: "salt", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
@@ -1124,7 +1124,7 @@ var clusters = []*Cluster{
 			{ID: 6, Name: "AddNoc", Property: "addNoc", Request: true, Response: "NocResponse", Fields: []Field{
 				{ID: 0, Name: "NocValue", Property: "nocValue", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
 				{ID: 1, Name: "IcacValue", Property: "icacValue", Type: Type{Name: "octstr", Meta: MetaBytes}},
-				{ID: 2, Name: "IpkValue", Property: "ipkValue", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 2, Name: "IpkValue", Property: "ipkValue", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 3, Name: "CaseAdminSubject", Property: "caseAdminSubject", Type: Type{Name: "subject-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
 				{ID: 4, Name: "AdminVendorId", Property: "adminVendorId", Type: Type{Name: "vendor-id", Meta: MetaUint, Bits: 16}, Mandatory: true},
 			}},
@@ -1249,8 +1249,8 @@ var clusters = []*Cluster{
 			{ID: 0, Name: "RegisterClient", Property: "registerClient", Request: true, Response: "RegisterClientResponse", Fields: []Field{
 				{ID: 0, Name: "CheckInNodeId", Property: "checkInNodeId", Type: Type{Name: "node-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
 				{ID: 1, Name: "MonitoredSubject", Property: "monitoredSubject", Type: Type{Name: "subject-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
-				{ID: 2, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
-				{ID: 3, Name: "VerificationKey", Property: "verificationKey", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 2, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
+				{ID: 3, Name: "VerificationKey", Property: "verificationKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 				{ID: 4, Name: "ClientType", Property: "clientType", Type: Type{Name: "ClientTypeEnum", Meta: MetaEnum, Bits: 8, Enum: dt0046_ClientTypeEnum}, Mandatory: true},
 			}},
 			{ID: 1, Name: "RegisterClientResponse", Property: "registerClientResponse", Request: false, Response: "", Fields: []Field{
@@ -1258,7 +1258,7 @@ var clusters = []*Cluster{
 			}},
 			{ID: 2, Name: "UnregisterClient", Property: "unregisterClient", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "CheckInNodeId", Property: "checkInNodeId", Type: Type{Name: "node-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
-				{ID: 1, Name: "VerificationKey", Property: "verificationKey", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 1, Name: "VerificationKey", Property: "verificationKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 3, Name: "StayActiveRequest", Property: "stayActiveRequest", Request: true, Response: "StayActiveResponse", Fields: []Field{
 				{ID: 0, Name: "StayActiveDuration", Property: "stayActiveDuration", Type: Type{Name: "uint32", Meta: MetaUint, Bits: 32}, Mandatory: true},
@@ -1894,7 +1894,7 @@ var clusters = []*Cluster{
 				{ID: 0, Name: "GroupId", Property: "groupId", Type: Type{Name: "group-id", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 1, Name: "Endpoints", Property: "endpoints", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "endpoint-no", Meta: MetaUint, Bits: 16}}, Mandatory: true},
 				{ID: 2, Name: "KeySetId", Property: "keySetId", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 3, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 3, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 				{ID: 4, Name: "UseAuxiliaryAcl", Property: "useAuxiliaryAcl", Type: Type{Name: "bool", Meta: MetaBool}},
 				{ID: 5, Name: "ReplaceEndpoints", Property: "replaceEndpoints", Type: Type{Name: "bool", Meta: MetaBool}},
 				{ID: 6, Name: "McastAddrPolicy", Property: "mcastAddrPolicy", Type: Type{Name: "MulticastAddrPolicyEnum", Meta: MetaEnum, Bits: 8, Enum: dt0065_MulticastAddrPolicyEnum}},
@@ -1910,7 +1910,7 @@ var clusters = []*Cluster{
 			{ID: 3, Name: "UpdateGroupKey", Property: "updateGroupKey", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "GroupId", Property: "groupId", Type: Type{Name: "group-id", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 1, Name: "KeySetId", Property: "keySetId", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 2, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 2, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 4, Name: "ConfigureAuxiliaryAcl", Property: "configureAuxiliaryAcl", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "GroupId", Property: "groupId", Type: Type{Name: "group-id", Meta: MetaUint, Bits: 16}, Mandatory: true},
@@ -2565,7 +2565,7 @@ var clusters = []*Cluster{
 			{ID: 129, Name: "AliroReaderGroupIdentifier", Property: "aliroReaderGroupIdentifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true},
 			{ID: 130, Name: "AliroReaderGroupSubIdentifier", Property: "aliroReaderGroupSubIdentifier", Type: Type{Name: "octstr", Meta: MetaBytes}},
 			{ID: 131, Name: "AliroExpeditedTransactionSupportedProtocolVersions", Property: "aliroExpeditedTransactionSupportedProtocolVersions", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "octstr", Meta: MetaBytes}}},
-			{ID: 132, Name: "AliroGroupResolvingKey", Property: "aliroGroupResolvingKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true},
+			{ID: 132, Name: "AliroGroupResolvingKey", Property: "aliroGroupResolvingKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Secret: true},
 			{ID: 133, Name: "AliroSupportedBleuwbProtocolVersions", Property: "aliroSupportedBleuwbProtocolVersions", Type: Type{Name: "list", Meta: MetaList, Entry: &Type{Name: "octstr", Meta: MetaBytes}}},
 			{ID: 134, Name: "AliroBleAdvertisingVersion", Property: "aliroBleAdvertisingVersion", Type: Type{Name: "uint8", Meta: MetaUint, Bits: 8}},
 			{ID: 135, Name: "NumberOfAliroCredentialIssuerKeysSupported", Property: "numberOfAliroCredentialIssuerKeysSupported", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}},
@@ -2575,15 +2575,15 @@ var clusters = []*Cluster{
 		},
 		Commands: []Command{
 			{ID: 0, Name: "LockDoor", Property: "lockDoor", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 1, Name: "UnlockDoor", Property: "unlockDoor", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 2, Name: "Toggle", Property: "toggle", Request: true, Response: "status", Timed: true, Fields: nil},
 			{ID: 3, Name: "UnlockWithTimeout", Property: "unlockWithTimeout", Request: true, Response: "status", Timed: true, Fields: []Field{
 				{ID: 0, Name: "Timeout", Property: "timeout", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 1, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 11, Name: "SetWeekDaySchedule", Property: "setWeekDaySchedule", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "WeekDayIndex", Property: "weekDayIndex", Type: Type{Name: "uint8", Meta: MetaUint, Bits: 8}, Mandatory: true},
@@ -2682,7 +2682,7 @@ var clusters = []*Cluster{
 			{ID: 34, Name: "SetCredential", Property: "setCredential", Request: true, Response: "SetCredentialResponse", Timed: true, Fields: []Field{
 				{ID: 0, Name: "OperationType", Property: "operationType", Type: Type{Name: "DataOperationTypeEnum", Meta: MetaEnum, Bits: 8, Enum: dt0101_DataOperationTypeEnum}, Mandatory: true},
 				{ID: 1, Name: "Credential", Property: "credential", Type: Type{Name: "CredentialStruct", Meta: MetaStruct, Struct: dt0101_CredentialStruct}, Mandatory: true},
-				{ID: 2, Name: "CredentialData", Property: "credentialData", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 2, Name: "CredentialData", Property: "credentialData", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 3, Name: "UserIndex", Property: "userIndex", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Nullable: true, Mandatory: true},
 				{ID: 4, Name: "UserStatus", Property: "userStatus", Type: Type{Name: "UserStatusEnum", Meta: MetaEnum, Bits: 8, Enum: dt0101_UserStatusEnum}, Nullable: true, Mandatory: true},
 				{ID: 5, Name: "UserType", Property: "userType", Type: Type{Name: "UserTypeEnum", Meta: MetaEnum, Bits: 8, Enum: dt0101_UserTypeEnum}, Nullable: true, Mandatory: true},
@@ -2707,13 +2707,13 @@ var clusters = []*Cluster{
 				{ID: 0, Name: "Credential", Property: "credential", Type: Type{Name: "CredentialStruct", Meta: MetaStruct, Struct: dt0101_CredentialStruct}, Nullable: true, Mandatory: true},
 			}},
 			{ID: 39, Name: "UnboltDoor", Property: "unboltDoor", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 40, Name: "SetAliroReaderConfig", Property: "setAliroReaderConfig", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "SigningKey", Property: "signingKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "SigningKey", Property: "signingKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 1, Name: "VerificationKey", Property: "verificationKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
 				{ID: 2, Name: "GroupIdentifier", Property: "groupIdentifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
-				{ID: 3, Name: "GroupResolvingKey", Property: "groupResolvingKey", Type: Type{Name: "octstr", Meta: MetaBytes}},
+				{ID: 3, Name: "GroupResolvingKey", Property: "groupResolvingKey", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 			}},
 			{ID: 41, Name: "ClearAliroReaderConfig", Property: "clearAliroReaderConfig", Request: true, Response: "status", Timed: true, Fields: nil},
 		},
@@ -3743,7 +3743,7 @@ var clusters = []*Cluster{
 		Commands: []Command{
 			{ID: 0, Name: "NetworkPassphraseRequest", Property: "networkPassphraseRequest", Request: true, Response: "NetworkPassphraseResponse", Fields: nil},
 			{ID: 1, Name: "NetworkPassphraseResponse", Property: "networkPassphraseResponse", Request: false, Response: "", Fields: []Field{
-				{ID: 0, Name: "Passphrase", Property: "passphrase", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "Passphrase", Property: "passphrase", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 			}},
 		},
 	},
@@ -3765,14 +3765,14 @@ var clusters = []*Cluster{
 			{ID: 0, Name: "GetActiveDatasetRequest", Property: "getActiveDatasetRequest", Request: true, Response: "DatasetResponse", Fields: nil},
 			{ID: 1, Name: "GetPendingDatasetRequest", Property: "getPendingDatasetRequest", Request: true, Response: "DatasetResponse", Fields: nil},
 			{ID: 2, Name: "DatasetResponse", Property: "datasetResponse", Request: false, Response: "", Fields: []Field{
-				{ID: 0, Name: "Dataset", Property: "dataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "Dataset", Property: "dataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 			}},
 			{ID: 3, Name: "SetActiveDatasetRequest", Property: "setActiveDatasetRequest", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "ActiveDataset", Property: "activeDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "ActiveDataset", Property: "activeDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 1, Name: "Breadcrumb", Property: "breadcrumb", Type: Type{Name: "uint64", Meta: MetaUint, Bits: 64}},
 			}},
 			{ID: 4, Name: "SetPendingDatasetRequest", Property: "setPendingDatasetRequest", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "PendingDataset", Property: "pendingDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "PendingDataset", Property: "pendingDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 			}},
 		},
 	},
@@ -3785,7 +3785,7 @@ var clusters = []*Cluster{
 		},
 		Commands: []Command{
 			{ID: 0, Name: "AddNetwork", Property: "addNetwork", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "OperationalDataset", Property: "operationalDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "OperationalDataset", Property: "operationalDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 			}},
 			{ID: 1, Name: "RemoveNetwork", Property: "removeNetwork", Request: true, Response: "status", Timed: true, Fields: []Field{
 				{ID: 0, Name: "ExtendedPanId", Property: "extendedPanId", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
@@ -3794,7 +3794,7 @@ var clusters = []*Cluster{
 				{ID: 0, Name: "ExtendedPanId", Property: "extendedPanId", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
 			}},
 			{ID: 3, Name: "OperationalDatasetResponse", Property: "operationalDatasetResponse", Request: false, Response: "", Fields: []Field{
-				{ID: 0, Name: "OperationalDataset", Property: "operationalDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 0, Name: "OperationalDataset", Property: "operationalDataset", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 			}},
 		},
 	},
@@ -4109,11 +4109,11 @@ var clusters = []*Cluster{
 				{ID: 0, Name: "TempAccountIdentifier", Property: "tempAccountIdentifier", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
 			}},
 			{ID: 1, Name: "GetSetupPinResponse", Property: "getSetupPinResponse", Request: false, Response: "", Fields: []Field{
-				{ID: 0, Name: "SetupPin", Property: "setupPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
+				{ID: 0, Name: "SetupPin", Property: "setupPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true, Secret: true},
 			}},
 			{ID: 2, Name: "Login", Property: "login", Request: true, Response: "status", Timed: true, Fields: []Field{
 				{ID: 0, Name: "TempAccountIdentifier", Property: "tempAccountIdentifier", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
-				{ID: 1, Name: "SetupPin", Property: "setupPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
+				{ID: 1, Name: "SetupPin", Property: "setupPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true, Secret: true},
 				{ID: 2, Name: "Node", Property: "node", Type: Type{Name: "node-id", Meta: MetaUint, Bits: 64}},
 			}},
 			{ID: 3, Name: "Logout", Property: "logout", Request: true, Response: "status", Timed: true, Fields: []Field{
@@ -4154,17 +4154,17 @@ var clusters = []*Cluster{
 		},
 		Commands: []Command{
 			{ID: 0, Name: "UpdatePin", Property: "updatePin", Request: true, Response: "status", Timed: true, Fields: []Field{
-				{ID: 0, Name: "OldPin", Property: "oldPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
-				{ID: 1, Name: "NewPin", Property: "newPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
+				{ID: 0, Name: "OldPin", Property: "oldPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true, Secret: true},
+				{ID: 1, Name: "NewPin", Property: "newPin", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true, Secret: true},
 			}},
 			{ID: 1, Name: "ResetPin", Property: "resetPin", Request: true, Response: "ResetPinResponse", Timed: true, Fields: nil},
 			{ID: 2, Name: "ResetPinResponse", Property: "resetPinResponse", Request: false, Response: "", Fields: []Field{
-				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true},
+				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "string", Meta: MetaString}, Mandatory: true, Secret: true},
 			}},
 			{ID: 3, Name: "Enable", Property: "enable", Request: true, Response: "status", Timed: true, Fields: nil},
 			{ID: 4, Name: "Disable", Property: "disable", Request: true, Response: "status", Timed: true, Fields: nil},
 			{ID: 5, Name: "AddBonusTime", Property: "addBonusTime", Request: true, Response: "status", Fields: []Field{
-				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "string", Meta: MetaString}},
+				{ID: 0, Name: "PinCode", Property: "pinCode", Type: Type{Name: "string", Meta: MetaString}, Secret: true},
 				{ID: 1, Name: "BonusTime", Property: "bonusTime", Type: Type{Name: "elapsed-s", Meta: MetaUint, Bits: 32}, Mandatory: true},
 			}},
 			{ID: 6, Name: "SetScreenDailyTime", Property: "setScreenDailyTime", Request: true, Response: "status", Fields: []Field{
@@ -4690,7 +4690,7 @@ var clusters = []*Cluster{
 			}},
 			{ID: 2, Name: "ReverseOpenCommissioningWindow", Property: "reverseOpenCommissioningWindow", Request: false, Response: "", Fields: []Field{
 				{ID: 0, Name: "CommissioningTimeout", Property: "commissioningTimeout", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "PakePasscodeVerifier", Property: "pakePasscodeVerifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 1, Name: "PakePasscodeVerifier", Property: "pakePasscodeVerifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 2, Name: "Discriminator", Property: "discriminator", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 3, Name: "Iterations", Property: "iterations", Type: Type{Name: "uint32", Meta: MetaUint, Bits: 32}, Mandatory: true},
 				{ID: 4, Name: "Salt", Property: "salt", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
@@ -4834,7 +4834,7 @@ var clusters = []*Cluster{
 			}},
 			{ID: 4, Name: "OpenJointCommissioningWindow", Property: "openJointCommissioningWindow", Request: true, Response: "status", Fields: []Field{
 				{ID: 0, Name: "CommissioningTimeout", Property: "commissioningTimeout", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
-				{ID: 1, Name: "PakePasscodeVerifier", Property: "pakePasscodeVerifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
+				{ID: 1, Name: "PakePasscodeVerifier", Property: "pakePasscodeVerifier", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true, Secret: true},
 				{ID: 2, Name: "Discriminator", Property: "discriminator", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
 				{ID: 3, Name: "Iterations", Property: "iterations", Type: Type{Name: "uint32", Meta: MetaUint, Bits: 32}, Mandatory: true},
 				{ID: 4, Name: "Salt", Property: "salt", Type: Type{Name: "octstr", Meta: MetaBytes}, Mandatory: true},
@@ -6121,11 +6121,11 @@ var dt003F_GroupKeyMulticastPolicyEnum = &Enum{Name: "GroupKeyMulticastPolicyEnu
 var dt003F_GroupKeySetStruct = &Struct{Name: "GroupKeySetStruct", Fields: []Field{
 	{ID: 0, Name: "GroupKeySetId", Property: "groupKeySetId", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
 	{ID: 1, Name: "GroupKeySecurityPolicy", Property: "groupKeySecurityPolicy", Type: Type{Name: "GroupKeySecurityPolicyEnum", Meta: MetaEnum, Bits: 8, Enum: dt003F_GroupKeySecurityPolicyEnum}, Mandatory: true},
-	{ID: 2, Name: "EpochKey0", Property: "epochKey0", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true},
+	{ID: 2, Name: "EpochKey0", Property: "epochKey0", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true, Secret: true},
 	{ID: 3, Name: "EpochStartTime0", Property: "epochStartTime0", Type: Type{Name: "epoch-us", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
-	{ID: 4, Name: "EpochKey1", Property: "epochKey1", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true},
+	{ID: 4, Name: "EpochKey1", Property: "epochKey1", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true, Secret: true},
 	{ID: 5, Name: "EpochStartTime1", Property: "epochStartTime1", Type: Type{Name: "epoch-us", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
-	{ID: 6, Name: "EpochKey2", Property: "epochKey2", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true},
+	{ID: 6, Name: "EpochKey2", Property: "epochKey2", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true, Secret: true},
 	{ID: 7, Name: "EpochStartTime2", Property: "epochStartTime2", Type: Type{Name: "epoch-us", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
 	{ID: 8, Name: "GroupKeyMulticastPolicy", Property: "groupKeyMulticastPolicy", Type: Type{Name: "GroupKeyMulticastPolicyEnum", Meta: MetaEnum, Bits: 8, Enum: dt003F_GroupKeyMulticastPolicyEnum}},
 	{ID: 254, Name: "FabricIndex", Property: "fabricIndex", Type: Type{Name: "FabricIndex", Meta: MetaUint, Bits: 8}},
@@ -6149,7 +6149,7 @@ var dt0046_ClientTypeEnum = &Enum{Name: "ClientTypeEnum", Values: []EnumValue{
 var dt0046_MonitoringRegistrationStruct = &Struct{Name: "MonitoringRegistrationStruct", Fields: []Field{
 	{ID: 1, Name: "CheckInNodeId", Property: "checkInNodeId", Type: Type{Name: "node-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
 	{ID: 2, Name: "MonitoredSubject", Property: "monitoredSubject", Type: Type{Name: "subject-id", Meta: MetaUint, Bits: 64}, Mandatory: true},
-	{ID: 3, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}},
+	{ID: 3, Name: "Key", Property: "key", Type: Type{Name: "octstr", Meta: MetaBytes}, Secret: true},
 	{ID: 4, Name: "ClientType", Property: "clientType", Type: Type{Name: "ClientTypeEnum", Meta: MetaEnum, Bits: 8, Enum: dt0046_ClientTypeEnum}, Mandatory: true},
 	{ID: 254, Name: "FabricIndex", Property: "fabricIndex", Type: Type{Name: "FabricIndex", Meta: MetaUint, Bits: 8}, Mandatory: true},
 }}
@@ -9400,11 +9400,11 @@ var dt0752_DatastoreGroupKeyMulticastPolicyEnum = &Enum{Name: "DatastoreGroupKey
 var dt0752_DatastoreGroupKeySetStruct = &Struct{Name: "DatastoreGroupKeySetStruct", Fields: []Field{
 	{ID: 0, Name: "GroupKeySetId", Property: "groupKeySetId", Type: Type{Name: "uint16", Meta: MetaUint, Bits: 16}, Mandatory: true},
 	{ID: 1, Name: "GroupKeySecurityPolicy", Property: "groupKeySecurityPolicy", Type: Type{Name: "DatastoreGroupKeySecurityPolicyEnum", Meta: MetaEnum, Bits: 8, Enum: dt0752_DatastoreGroupKeySecurityPolicyEnum}, Mandatory: true},
-	{ID: 2, Name: "EpochKey0", Property: "epochKey0", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true},
+	{ID: 2, Name: "EpochKey0", Property: "epochKey0", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true, Secret: true},
 	{ID: 3, Name: "EpochStartTime0", Property: "epochStartTime0", Type: Type{Name: "epoch-us", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
-	{ID: 4, Name: "EpochKey1", Property: "epochKey1", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true},
+	{ID: 4, Name: "EpochKey1", Property: "epochKey1", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true, Secret: true},
 	{ID: 5, Name: "EpochStartTime1", Property: "epochStartTime1", Type: Type{Name: "epoch-us", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
-	{ID: 6, Name: "EpochKey2", Property: "epochKey2", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true},
+	{ID: 6, Name: "EpochKey2", Property: "epochKey2", Type: Type{Name: "octstr", Meta: MetaBytes}, Nullable: true, Mandatory: true, Secret: true},
 	{ID: 7, Name: "EpochStartTime2", Property: "epochStartTime2", Type: Type{Name: "epoch-us", Meta: MetaUint, Bits: 64}, Nullable: true, Mandatory: true},
 	{ID: 8, Name: "GroupKeyMulticastPolicy", Property: "groupKeyMulticastPolicy", Type: Type{Name: "DatastoreGroupKeyMulticastPolicyEnum", Meta: MetaEnum, Bits: 8, Enum: dt0752_DatastoreGroupKeyMulticastPolicyEnum}},
 }}

@@ -1622,7 +1622,8 @@
     "key": {
      "contentEncoding": "base64",
      "title": "Key",
-     "type": "string"
+     "type": "string",
+     "x-secret": true
     },
     "monitoredSubject": {
      "maximum": 18446744073709551615,
@@ -8491,7 +8492,8 @@
        "type": "null"
       }
      ],
-     "title": "EpochKey0"
+     "title": "EpochKey0",
+     "x-secret": true
     },
     "epochKey1": {
      "anyOf": [
@@ -8503,7 +8505,8 @@
        "type": "null"
       }
      ],
-     "title": "EpochKey1"
+     "title": "EpochKey1",
+     "x-secret": true
     },
     "epochKey2": {
      "anyOf": [
@@ -8515,7 +8518,8 @@
        "type": "null"
       }
      ],
-     "title": "EpochKey2"
+     "title": "EpochKey2",
+     "x-secret": true
     },
     "epochStartTime0": {
      "anyOf": [

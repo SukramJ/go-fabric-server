@@ -2075,7 +2075,8 @@
     "3": {
      "contentEncoding": "base64",
      "title": "Key",
-     "type": "string"
+     "type": "string",
+     "x-secret": true
     },
     "4": {
      "$ref": "#/$defs/0046_ClientTypeEnum",
@@ -8952,7 +8953,8 @@
        "type": "null"
       }
      ],
-     "title": "EpochKey0"
+     "title": "EpochKey0",
+     "x-secret": true
     },
     "3": {
      "anyOf": [
@@ -8976,7 +8978,8 @@
        "type": "null"
       }
      ],
-     "title": "EpochKey1"
+     "title": "EpochKey1",
+     "x-secret": true
     },
     "5": {
      "anyOf": [
@@ -9000,7 +9003,8 @@
        "type": "null"
       }
      ],
-     "title": "EpochKey2"
+     "title": "EpochKey2",
+     "x-secret": true
     },
     "7": {
      "anyOf": [
@@ -14580,7 +14584,8 @@
        "type": "null"
       }
      ],
-     "title": "AliroGroupResolvingKey"
+     "title": "AliroGroupResolvingKey",
+     "x-secret": true
     },
     "133": {
      "items": {

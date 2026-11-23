@@ -49,7 +49,9 @@ type sConformance struct {
 }
 
 // sValue is a typed element: an attribute's or a field's effective type, a
-// list entry.
+// list entry. Secret is matter.js's isSecret mark: on a field object
+// beside its id and name (read through sField's embedded sValue), and on
+// an attribute inside its effective (DoorLock AliroGroupResolvingKey).
 type sValue struct {
 	Type        string       `json:"type"`
 	Metatype    string       `json:"metatype"`
@@ -59,6 +61,7 @@ type sValue struct {
 	Quality     sQuality     `json:"quality"`
 	Conformance sConformance `json:"conformance"`
 	Access      sAccess      `json:"access"`
+	Secret      bool         `json:"isSecret"`
 }
 
 type sAttribute struct {
