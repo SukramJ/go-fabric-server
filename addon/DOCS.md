@@ -20,6 +20,12 @@ acts on the official add-on only — so this add-on sends no discovery:
 - **log_level** (info): critical, error, warning, notice, info or debug.
 - **enable_test_net_dcl** (false): also trust the CSA test roots, for
   devices with test certificates.
+- **keep_onboarding_codes** (false): keep the pairing code of every
+  device the add-on pairs and show it in the web UI's onboarding inventory
+  (`--controller-keep-onboarding-codes`). The database then holds one
+  setup code per device — with it and a factory reset anyone can pair the
+  device — stored unsealed until the database is sealed (a follow-up), so
+  its backups are secrets like a key.
 - **bridge** (false): also run the bridge half for hosts that declare
   devices over `/bridge`, with its own Matter node.
 - **bridge_port** (5540): that node's Matter port.

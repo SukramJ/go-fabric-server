@@ -20,6 +20,13 @@ configuration:
     description: >-
       Also trust the CSA test roots, for devices with test certificates
       (development kits, uncertified devices).
+  keep_onboarding_codes:
+    name: Keep the pairing codes
+    description: >-
+      Keep the pairing code of every device the add-on pairs and show it
+      in the web UI's onboarding inventory, for when the paper is lost. The
+      database then holds one setup code per device, stored unsealed until
+      the database is sealed (a follow-up); back it up like a key.
   bridge:
     name: Bridge half
     description: >-

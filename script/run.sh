@@ -17,6 +17,7 @@ export FABRIC_SERVER_LISTEN="127.0.0.1:$(bashio::config 'port')"
 export FABRIC_SERVER_STORAGE_PATH="/data"
 export FABRIC_SERVER_LOG_LEVEL="$(bashio::config 'log_level')"
 export FABRIC_SERVER_ENABLE_TEST_NET_DCL="$(bashio::config 'enable_test_net_dcl')"
+export FABRIC_SERVER_CONTROLLER_KEEP_ONBOARDING_CODES="$(bashio::config 'keep_onboarding_codes')"
 
 # --- The bridge half (/bridge) and its node ---
 export FABRIC_SERVER_BRIDGE="$(bashio::config 'bridge')"
