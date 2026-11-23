@@ -6,6 +6,7 @@ package controllerapi
 import (
 	"bytes"
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
@@ -20,16 +21,31 @@ const (
 	unjudged = "[unjudged]"
 )
 
+// argMembers are the args members each handler reads besides its target
+// (cmdDeviceCommand, cmdWriteAttribute): wire names of this server's
+// protocol, not Matter ids. Any other member is logged "[unjudged]".
+var argMembers = map[string][]string{
+	"device_command":  {"node_id", "endpoint_id", "cluster_id", "command_name", "timed_request_timeout_ms", "interaction_timeout_ms"},
+	"write_attribute": {"node_id", "attribute_path", "timed_request_timeout_ms"},
+}
+
+// sdpCredential is an SDP line whose value is a credential, ice-ufrag or
+// ice-pwd, matched without regard to case — matterjs-server's
+// SDP_CREDENTIAL_LINES (packages/ws-client/src/logging-redaction.ts:72-76).
+var sdpCredential = regexp.MustCompile(`(?im)^(a=(?:ice-ufrag|ice-pwd):)[^\r\n]*`)
+
 // loggedArgs is the args member of fabricserver.ws.request at Debug, for
 // the two commands whose arguments the model describes: device_command
 // (the payload judged by the request fields of its command) and
-// write_attribute (the value judged by its attribute). Every other member
-// is logged as given; every other command logs no argument (ok false):
-// their arguments are outside the snapshot, and the server keeps no table
-// of names. The judgement fails closed — an unknown cluster, command or
-// attribute, a value of another shape than the model's, or a member the
-// model does not define is logged as "[unjudged]" — and the raw frame is
-// never logged.
+// write_attribute (the value judged by its attribute). The members the
+// handler reads besides (argMembers) are logged as given; every other
+// command logs no argument (ok false): their arguments are outside the
+// snapshot, and the server keeps no table of names. The judgement fails
+// closed — an unknown cluster, command or attribute, a value of another
+// shape than the model's, a struct the tables do not resolve, a member
+// the model does not define and a top-level member no handler reads are
+// logged as "[unjudged]" — the credential lines of an SDP string are
+// masked, and the raw frame is never logged.
 func loggedArgs(command string, raw json.RawMessage) (args any, ok bool) {
 	var (
 		target string
@@ -63,7 +79,12 @@ func loggedArgs(command string, raw json.RawMessage) (args any, ok bool) {
 		// The args decoder matches a member's name without regard to case
 		// (encoding/json), so every spelling of the target is judged.
 		if !strings.EqualFold(k, target) {
-			out[k] = val
+			out[k] = unjudged
+			for _, m := range argMembers[command] {
+				if strings.EqualFold(k, m) {
+					out[k] = judgeValue(schema.Type{}, false, val)
+				}
+			}
 			continue
 		}
 		switch {
@@ -157,9 +178,13 @@ func judgeValue(t schema.Type, secret bool, v any) any {
 	case schema.MetaAny, schema.MetaBool, schema.MetaUint, schema.MetaInt, schema.MetaFloat, schema.MetaDouble,
 		schema.MetaString, schema.MetaBytes, schema.MetaEnum, schema.MetaBitmap:
 	}
-	switch v.(type) {
+	switch x := v.(type) {
 	case map[string]any, []any:
 		return unjudged
+	case string:
+		// matterjs-server masks the SDP's credential lines in a member
+		// named sdp (logging-redaction.ts:143-148); every string here.
+		return sdpCredential.ReplaceAllString(x, "${1}"+redacted)
 	}
 	return v
 }
@@ -171,6 +196,8 @@ func holdsSecret(t schema.Type, secret bool, seen map[*schema.Struct]bool) bool 
 		return true
 	}
 	switch {
+	case t.Meta == schema.MetaStruct && t.Struct == nil:
+		return true // a struct the tables do not resolve: fail closed
 	case t.Struct != nil:
 		if seen[t.Struct] {
 			return false

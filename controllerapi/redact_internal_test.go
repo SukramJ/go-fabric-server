@@ -172,3 +172,47 @@ func TestLoggedDetails(t *testing.T) {
 		}
 	}
 }
+
+// TestLoggedArgsFailClosed: a top-level member no handler reads is
+// "[unjudged]", one it reads is logged as given by every spelling the
+// args decoder accepts; the SDP's ice-ufrag and ice-pwd lines are masked
+// as matterjs-server masks them; the ICE server's credential (a mark
+// under the snapshot's definitions) is "[redacted]"; a struct the tables
+// do not resolve holds a secret for the error details.
+func TestLoggedArgsFailClosed(t *testing.T) {
+	const pin = "OTE3MzU="
+	dl := schema.ClusterByName("DoorLock")
+	got := argsJSON(t, "device_command", map[string]any{
+		"Node_ID": 7, "cluster_id": dl.ID, "command_name": "LockDoor",
+		"paylod": map[string]any{"pinCode": pin}, "payload": map[string]any{},
+	})
+	if strings.Contains(got, pin) || !strings.Contains(got, `"paylod":"[unjudged]"`) || !strings.Contains(got, `"Node_ID":7`) {
+		t.Errorf("top-level members: %s", got)
+	}
+	if got := argsJSON(t, "write_attribute", map[string]any{"attribute_path": "1/6/0", "value": true, "extra": pin}); strings.Contains(got, pin) {
+		t.Errorf("write top-level: %s", got)
+	}
+
+	wp := schema.ClusterByName("WebRtcTransportProvider")
+	offer := wp.CommandByName("ProvideOffer")
+	const ufrag, pwd = "Xq7ufragZ", "pwdSecret9876543210abcd"
+	sdp := "v=0\r\na=ice-ufrag:" + ufrag + "\r\nA=ICE-PWD:" + pwd + "\r\na=fingerprint:sha-256 AB:CD\r\n"
+	got = argsJSON(t, "device_command", map[string]any{
+		"cluster_id": wp.ID, "command_name": offer.Name,
+		"payload": map[string]any{
+			"sdp":        sdp,
+			"iceServers": []any{map[string]any{"urls": []any{"turn:example.org"}, "username": "u", "credential": pwd}},
+		},
+	})
+	if strings.Contains(got, ufrag) || strings.Contains(got, pwd) || !strings.Contains(got, "a=ice-ufrag:[redacted]") ||
+		!strings.Contains(got, "A=ICE-PWD:[redacted]") || !strings.Contains(got, "a=fingerprint") || !strings.Contains(got, `"credential":"[redacted]"`) {
+		t.Errorf("WebRTC: %s", got)
+	}
+
+	if !holdsSecret(schema.Type{Meta: schema.MetaStruct}, false, map[*schema.Struct]bool{}) {
+		t.Error("an unresolved struct holds no secret")
+	}
+	if got := judgeValue(schema.Type{Meta: schema.MetaStruct}, false, map[string]any{"x": 1}); got != unjudged {
+		t.Errorf("an unresolved struct: %v", got)
+	}
+}
