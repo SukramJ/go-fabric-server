@@ -108,12 +108,16 @@ type withheldDevice struct {
 	SpecLevel  string `json:"spec_level"`
 }
 
+// batchAdd is node.Batch.Add; a variable so a test can make an add fail
+// (the replace that removed the served device first).
+var batchAdd = func(bt *node.Batch, ep node.Endpoint) error { return bt.Add(ep) }
+
 // add adds b's device in bt. A device the specification level withheld
 // is recorded by the node (node.Aggregator.Add), serves nothing and is no
 // error: it is logged once as a warning, as go-fabric's reference daemon
 // does (examples/reference-bridge/surface.go addAll).
 func (s *Server) add(bt *node.Batch, b *bridged) error {
-	err := bt.Add(b.dev)
+	err := batchAdd(bt, b.dev)
 	var w *surface.WithheldError
 	if !errors.As(err, &w) {
 		return err
@@ -139,7 +143,9 @@ func (s *Server) add(bt *node.Batch, b *bridged) error {
 // go-fabric #585 asks for a Replace that does this in one step.
 //
 // gone reports that prev left the node and b did not take its place (b's
-// Add failed after prev's Remove): the key is then no longer declared.
+// Add failed after prev's Remove): the key is then no longer declared, and
+// its endpoint number, which the Remove reserved, is freed (Batch.Forget),
+// as for any key the document no longer names.
 func (s *Server) replace(bt *node.Batch, prev, b *bridged) (gone bool, err error) {
 	if prev.withheld == nil && b.withheld == nil {
 		return false, bt.Replace(device.StringKey(b.key), b.dev)
@@ -151,6 +157,9 @@ func (s *Server) replace(bt *node.Batch, prev, b *bridged) (gone bool, err error
 		return false, err
 	}
 	if err := s.add(bt, b); err != nil {
+		if ferr := bt.Forget(device.StringKey(b.key)); ferr != nil {
+			err = errors.Join(err, ferr)
+		}
 		return true, err
 	}
 	return false, nil
@@ -214,15 +223,18 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 	})
 	s.mu.Lock()
 	order := make([]string, 0, len(devs))
+	var removedGone []string
 	for i, b := range devs {
 		r := &results[i]
 		switch {
 		case r.gone:
 			// The served prev was removed and b did not take its place:
-			// the key is no longer on the node, nor declared here.
+			// the key is no longer on the node, nor declared here, and the
+			// answer lists it in removed.
 			b.release()
 			old[b.key].release()
 			delete(s.devices, b.key)
+			removedGone = append(removedGone, b.key)
 			continue
 		case r.Error != "":
 			b.release()
@@ -246,6 +258,7 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 		old[key].release()
 		delete(s.devices, key)
 	}
+	removed = append(removed, removedGone...)
 	s.order = order
 	var withheld []withheldDevice
 	for _, key := range order {

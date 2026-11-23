@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"thingfabric.dev/go-fabric/node"
 	"thingfabric.dev/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
@@ -222,5 +223,35 @@ func TestSurfaceWithheldReplaced(t *testing.T) {
 	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"Closure"}]}`))
 	if err != nil || res.Devices[0].Action != "added" || len(res.Withheld) != 1 {
 		t.Fatalf("declare after forget: %+v %v", res, err)
+	}
+}
+
+// TestSurfaceReplaceFailsAfterRemove: a served device replaced by a
+// withheld one whose add fails after the served one's removal leaves the
+// node without the key: the answer names the error and lists the key in
+// removed, node_info no longer lists it, and its endpoint number is freed
+// (a later declare of the key gets a fresh one).
+func TestSurfaceReplaceFailsAfterRemove(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
+	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"OnOffLight"},{"key":"d","type":"OnOffLight"}]}`))
+	if err != nil || res.Devices[0].Endpoint == nil {
+		t.Fatalf("declare: %+v %v", res, err)
+	}
+	first := *res.Devices[0].Endpoint
+	refused := errors.New("the add is refused")
+	restore := bridgeapi.SetBatchAdd(func(*node.Batch, node.Endpoint) error { return refused })
+	res, err = e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"Closure"},{"key":"d","type":"OnOffLight"}]}`))
+	restore()
+	if err != nil || res.Devices[0].Error == "" || !slices.Equal(res.Removed, []string{"c"}) {
+		t.Fatalf("the failed replace: %+v %v", res, err)
+	}
+	if keys := nodeKeys(t, e); !slices.Equal(keys, []string{"d"}) {
+		t.Fatalf("node_info keys %v, want [d]", keys)
+	}
+	// d keeps its number; c's was freed, so c comes back under another
+	// one than it had: the next free after d's.
+	res, err = e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"OnOffLight"},{"key":"d","type":"OnOffLight"}]}`))
+	if err != nil || res.Devices[0].Action != "added" || res.Devices[0].Endpoint == nil || *res.Devices[0].Endpoint == first {
+		t.Fatalf("declare after the failed replace: %+v %v (the number %d)", res, err, first)
 	}
 }
