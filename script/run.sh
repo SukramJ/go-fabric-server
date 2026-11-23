@@ -53,9 +53,12 @@ fi
 
 # --- The node pages through Ingress ---
 # On the host's network: listen on ingress_port and answer only the Ingress
-# proxy, which is also the pages' administrator.
+# proxy, which is also the pages' administrator. It forwards the browser's
+# Host unchanged and authenticates the user, so its requests pass the
+# pages' host check under any name (--web-proxy-source).
 export FABRIC_SERVER_WEB="0.0.0.0:8099"
 export FABRIC_SERVER_WEB_ADMIN_SOURCE="172.30.32.2"
+export FABRIC_SERVER_WEB_PROXY_SOURCE="172.30.32.2"
 
 # --- BLE commissioning through ESPHome Bluetooth proxies ---
 # One --bluetooth-proxy per entry (host[:port][,key]); the keys stay out of

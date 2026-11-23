@@ -37,11 +37,14 @@ import (
 //
 // go-fabric-ui checks every request's Host: loopback names and IP
 // addresses pass, a DNS name only when --web-allowed-hosts lists it
-// (Options.AllowedHosts) — or, with --web-admin-source, when the request
-// comes from that address (Options.AllowHost: behind the Ingress the proxy
-// forwards the browser's Host unchanged, and only the proxy has that
-// source address; go-ha2fabric's shape). done ends the event streams
-// (Options.Done); nil never does.
+// (Options.AllowedHosts) — or, with --web-proxy-source, when the request
+// comes from that address (Options.AllowHost). go-fabric-ui hands its
+// host check to such a proxy (fabricui/options.go:320-329: it must answer
+// from what only the proxy can produce; the proxy's authentication of the
+// user and its server names are the check then), so the flag names an
+// authenticating proxy that forwards the browser's Host, never an address
+// a browser connects from itself; --web-admin-source alone keeps the
+// check. done ends the event streams (Options.Done); nil never does.
 func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistry, ctrl fabricui.ControllerSource, ev *fabricui.Events, ops fabricui.Operations, log *slog.Logger, done <-chan struct{}) (http.Handler, error) {
 	o := fabricui.Options{
 		Events: ev, Logger: log, Controller: ctrl, Operations: ops,
@@ -66,8 +69,12 @@ func webHandler(c Config, life *nodeLifecycle, def *bridgeHalf, reg *nodeRegistr
 		return nil, err
 	}
 	o.Admin = admin
-	if c.WebAdminSource != "" {
-		o.AllowHost = admin
+	if c.WebProxySource != "" {
+		proxy, err := netip.ParseAddr(c.WebProxySource)
+		if err != nil {
+			return nil, fmt.Errorf("--web-proxy-source %q: %w", c.WebProxySource, err)
+		}
+		o.AllowHost = func(r *http.Request) bool { return fromAddr(r, proxy) }
 	}
 	h, err := fabricui.NewHandler(o)
 	if err != nil {

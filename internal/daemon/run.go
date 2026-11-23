@@ -126,10 +126,15 @@ type Config struct {
 	// WebAllowedHosts are the DNS names the pages answer under besides
 	// loopback names and IP addresses (--web-allowed-hosts, name[,name...];
 	// go-fabric-ui Options.AllowedHosts).
+	// WebProxySource is the address of a proxy that forwards the
+	// browser's Host unchanged and authenticates the user
+	// (--web-proxy-source; go-fabric-ui Options.AllowHost): its requests
+	// pass the host check under any name.
 	Web             string
 	WebAdmin        bool
 	WebAdminSource  string
 	WebAllowedHosts string
+	WebProxySource  string
 }
 
 // The migrations of the flags the node registry replaced (go-fabric-ui
@@ -188,6 +193,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.Web, "web", "", "serve the pages (go-fabric-ui) on this address — the bridge node's with --bridge, the controller's with --controller; the status only unless --web-admin or --web-admin-source; a DNS name in the Host only with --web-allowed-hosts")
 	fs.BoolVar(&c.WebAdmin, "web-admin", false, "let the pages write, show the pairing code and use the controller's admin routes (the page's token mode)")
 	fs.StringVar(&c.WebAllowedHosts, "web-allowed-hosts", "", "the DNS names the pages answer under, name[,name...] (host names only, no port); loopback names and IP addresses always pass")
+	fs.StringVar(&c.WebProxySource, "web-proxy-source", "", "the IP address of a proxy that forwards the browser's Host unchanged and authenticates the user (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on): its requests pass the pages' host check under any name; never an address a browser connects from")
 	fs.StringVar(&c.WebAdminSource, "web-admin-source", "", "admit page requests from this IP address only, as an admin (an Ingress proxy: 172.30.32.2 in a Home Assistant add-on)")
 	set := map[string]bool{}
 	if err := fs.Parse(args); err != nil {

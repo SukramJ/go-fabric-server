@@ -72,9 +72,11 @@ func TestWebHosts(t *testing.T) {
 
 // TestWebRights: without --web-admin and --web-admin-source the pages
 // show the status (an open route) and refuse an admin-only read 403
-// forbidden. Behind the Ingress — the peer the admin source, the
-// browser's Host and Origin forwarded unchanged, the client's header —
-// an admin write passes; another peer is refused.
+// forbidden. The admin source alone keeps the host check: a DNS Host is
+// 403 host_not_allowed. Behind the Ingress — the peer the admin source
+// and the proxy source, the browser's Host and Origin forwarded
+// unchanged, the client's header — an admin write passes; another peer
+// is refused.
 func TestWebRights(t *testing.T) {
 	ops, log := testOps()
 	h, err := webHandler(Config{}, nil, nil, nil, nil, nil, ops, log, nil)
@@ -89,14 +91,26 @@ func TestWebRights(t *testing.T) {
 		t.Fatalf("an admin-only read without admin flags: %d %s", rec.Code, rec.Body)
 	}
 
-	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil, ops, log, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	ingress := map[string]string{
 		fabricui.RequestHeader: "1", "Content-Type": "application/json", "Origin": "https://homeassistant.local:8123",
 	}
 	const write = "http://homeassistant.local:8123/api/v1/operation/log/level"
+	// The admin source alone keeps go-fabric-ui's host check.
+	src, err := webHandler(Config{WebAdminSource: "172.30.32.2"}, nil, nil, nil, nil, nil, ops, log, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := serve(src, http.MethodPut, write, "172.30.32.2:41000", `{"level":"debug"}`, ingress); rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "host_not_allowed") {
+		t.Fatalf("the admin source without --web-proxy-source: %d %s", rec.Code, rec.Body)
+	}
+	if _, err := webHandler(Config{WebProxySource: "nope"}, nil, nil, nil, nil, nil, nil, nil, nil); err == nil || !strings.Contains(err.Error(), "--web-proxy-source") {
+		t.Fatalf("a malformed proxy source: %v", err)
+	}
+	// The add-on's shape: the proxy is the admin source and the proxy.
+	ing, err := webHandler(Config{WebAdminSource: "172.30.32.2", WebProxySource: "172.30.32.2"}, nil, nil, nil, nil, nil, ops, log, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if rec := serve(ing, http.MethodPut, write, "172.30.32.2:41000", `{"level":"debug"}`, ingress); rec.Code != http.StatusOK {
 		t.Fatalf("the Ingress's admin write: %d %s", rec.Code, rec.Body)
 	}
