@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 go-fabric-server is licensed under the Apache License 2.0 (see
-[`LICENSE`](LICENSE)). It depends on six Go modules directly (go-fabric, its BlueZ central and peripheral github.com/SukramJ/go-fabric/ble/bluez, its ESPHome-proxy central github.com/SukramJ/go-fabric/ble/esphome, its wpa_supplicant Wi-Fi driver github.com/SukramJ/go-fabric/wifi/wpasupplicant, coder/websocket, go-fabric-ui); every
+[`LICENSE`](LICENSE)). It depends on six Go modules directly (go-fabric, its BlueZ central and peripheral thingfabric.dev/go-fabric/ble/bluez, its ESPHome-proxy central thingfabric.dev/go-fabric/ble/esphome, its wpa_supplicant Wi-Fi driver thingfabric.dev/go-fabric/wifi/wpasupplicant, coder/websocket, go-fabric-ui); every
 further dependency is a decision recorded here (MIT, Apache-2.0, BSD and
 the equivalent ISC only). No third-party source is copied into this tree,
 except the documented JSON examples of matterjs-server that serve as test
@@ -14,40 +14,41 @@ fixtures (below).
 The Matter side: the controller facade, the device kit, the snapshot of the
 matter.js model the protocol schema is generated from.
 
-- Source: <https://github.com/SukramJ/go-fabric>
+- Module: `thingfabric.dev/go-fabric` (from v0.25.0).
+- Source: <https://github.com/thingfabric/go-fabric>
 - Copyright (C) 2026 SukramJ. Apache License 2.0; its own notices
   (matter.js, filippo.io/nistec, …) travel in its `THIRD-PARTY-NOTICES.md`
   and `licenses/`.
 - Decision: concept v8 B.1 — the one place of Matter knowledge.
 
-### github.com/SukramJ/go-fabric/ble/bluez — Apache-2.0
+### thingfabric.dev/go-fabric/ble/bluez — Apache-2.0
 
 go-fabric's BLE central on BlueZ over the system bus (`--bluetooth-adapter`)
 and its BLE peripheral (`--bridge-bluetooth-adapter`, brief S13),
 a module of its own so the D-Bus dependency stays out of go-fabric.
 
-- Source: <https://github.com/SukramJ/go-fabric/tree/main/ble/bluez>
+- Source: <https://github.com/thingfabric/go-fabric/tree/main/ble/bluez>
 - Copyright (C) 2026 SukramJ. Apache License 2.0.
 - Decision: report S3, Questions Q22; brief F1 §2 (v0.12.1).
 
-### github.com/SukramJ/go-fabric/ble/esphome — Apache-2.0
+### thingfabric.dev/go-fabric/ble/esphome — Apache-2.0
 
 go-fabric's BLE central over ESPHome Bluetooth proxies on the ESPHome native
 API (`--bluetooth-proxy`), pure Go, a module of its own so the Noise
 dependency stays out of go-fabric.
 
-- Source: <https://github.com/SukramJ/go-fabric/tree/main/ble/esphome>
+- Source: <https://github.com/thingfabric/go-fabric/tree/main/ble/esphome>
 - Copyright (C) 2026 SukramJ. Apache License 2.0; its notices travel in
   its `THIRD-PARTY-NOTICES.md`.
 - Decision: brief S5 (go-fabric brief BP1, v0.13.5).
 
-### github.com/SukramJ/go-fabric/wifi/wpasupplicant — Apache-2.0
+### thingfabric.dev/go-fabric/wifi/wpasupplicant — Apache-2.0
 
 go-fabric's Wi-Fi driver through wpa_supplicant's D-Bus interface
 (`--bridge-wifi-interface`, the first device node's `node.Network.WiFi`), a
 module of its own so the D-Bus dependency stays out of go-fabric.
 
-- Source: <https://github.com/SukramJ/go-fabric/tree/main/wifi/wpasupplicant>
+- Source: <https://github.com/thingfabric/go-fabric/tree/main/wifi/wpasupplicant>
 - Copyright (C) 2026 SukramJ. Apache License 2.0.
 - Decision: brief S13 (go-fabric ADR 0031).
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric/logring"
+	"thingfabric.dev/go-fabric/logring"
 
 	"github.com/SukramJ/go-fabric-server/internal/version"
 )

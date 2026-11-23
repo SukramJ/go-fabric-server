@@ -176,12 +176,12 @@ adopted by a new node, and can be deleted.
 
 go-fabric serves each endpoint's surface — device types, clusters,
 features — as a value composed under node-level policies (its
-[ADR 0030](https://github.com/SukramJ/go-fabric/blob/v0.15.2/docs/adr/0030-the-served-surface-is-a-value-under-policies.md)),
+[ADR 0030](https://github.com/thingfabric/go-fabric/blob/v0.15.2/docs/adr/0030-the-served-surface-is-a-value-under-policies.md)),
 the bridge node's `node.Config.Surface`. Three flags set them:
 
 - `--bridge-extensions` enables features go-fabric implements ahead of
   matter.js, by their row in go-fabric's
-  [Ahead-of-matter.js register](https://github.com/SukramJ/go-fabric/blob/v0.15.2/notes/parity/by_design.md).
+  [Ahead-of-matter.js register](https://github.com/thingfabric/go-fabric/blob/v0.15.2/notes/parity/by_design.md).
   A declaration that selects such a feature while its row is not enabled
   — Thermostat's `MatterScheduleConfiguration` (row
   `BD-chip-Thermostat-Schedules`) or its events feature
@@ -346,7 +346,7 @@ alternates reads from the log (go-fabric 0.21.0, #488).
 
 `--web host:port` serves go-fabric-ui's pages (`fabricui.Handler`, contract
 0.9.0), both families and the Operation page in one handler. The terms
-the pages use are defined in go-fabric's [glossary](https://sukramj.github.io/go-fabric/reference/glossary/):
+the pages use are defined in go-fabric's [glossary](https://docs.thingfabric.dev/reference/glossary/):
 
 - **The node pages** for every device node — the `--bridge-*` one and the
   registry's — under a node selector that lists the default node first
@@ -424,7 +424,7 @@ The controller pages and `/ws` share the controller half's state:
 ESPHome Bluetooth proxies (ESP32 boards that scan and hold GATT connections
 for the daemon, reached over the ESPHome native API on TCP), so the host
 needs neither an adapter nor system-bus rights. go-fabric's guide
-[`docs/guides/ble-proxies.md`](https://github.com/SukramJ/go-fabric/blob/main/docs/guides/ble-proxies.md)
+[`docs/guides/ble-proxies.md`](https://github.com/thingfabric/go-fabric/blob/main/docs/guides/ble-proxies.md)
 is the full description.
 
 - **The proxy needs `bluetooth_proxy: active: true`.** Without it the proxy
@@ -477,7 +477,7 @@ The daemon's first device node (the `--bridge-*` one) can be commissioned
 like a device that leaves the box: over Bluetooth LE, and onto the Wi-Fi
 network the commissioner provisions. Two flags give it go-fabric's two host
 ports (go-fabric's guide
-[`docs/guides/first-boot-without-network.md`](https://github.com/SukramJ/go-fabric/blob/main/docs/guides/first-boot-without-network.md)):
+[`docs/guides/first-boot-without-network.md`](https://github.com/thingfabric/go-fabric/blob/main/docs/guides/first-boot-without-network.md)):
 
 | Flag | Port | go-fabric module |
 | --- | --- | --- |
@@ -535,8 +535,8 @@ fabric-server --bridge --bridge-bluetooth-adapter hci1 --bridge-wifi-interface w
   override; set a passcode of your own ([by_design.md](by_design.md) B27).
   One central at a time. The Wi-Fi credential arrives inside the PASE
   session, goes to wpa_supplicant and is never logged (go-fabric
-  [`docs/security.md`](https://github.com/SukramJ/go-fabric/blob/main/docs/security.md),
-  [ADR 0031](https://github.com/SukramJ/go-fabric/blob/main/docs/adr/0031-ble-and-wifi-provisioning-on-the-device-side.md)).
+  [`docs/security.md`](https://github.com/thingfabric/go-fabric/blob/main/docs/security.md),
+  [ADR 0031](https://github.com/thingfabric/go-fabric/blob/main/docs/adr/0031-ble-and-wifi-provisioning-on-the-device-side.md)).
 - **The log.** One line per port at start: `fabricserver.node_ble`
   (`adapter`) and `fabricserver.node_wifi` (`interface`). A port that cannot
   be opened stops the start, naming its flag.

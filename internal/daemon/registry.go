@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric/node"
+	"thingfabric.dev/go-fabric/node"
 )
 
 // registryFile is the node registry's file under --storage-path.

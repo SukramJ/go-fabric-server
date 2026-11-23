@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/SukramJ/go-fabric/parity"
+	"thingfabric.dev/go-fabric/parity"
 )
 
 // The parts of parity/schema.json the generator reads.
@@ -136,7 +136,7 @@ func goFabricVersion() string {
 		return "unknown"
 	}
 	for _, d := range info.Deps {
-		if d.Path == "github.com/SukramJ/go-fabric" {
+		if d.Path == "thingfabric.dev/go-fabric" {
 			if d.Replace != nil {
 				return d.Replace.Version
 			}

@@ -11,7 +11,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/SukramJ/go-fabric/contract"
+	"thingfabric.dev/go-fabric/contract"
 )
 
 // hooks are the host's hooks on one declared cluster of one device: the

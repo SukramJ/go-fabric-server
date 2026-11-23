@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/SukramJ/go-fabric/controller/attestation"
+	"thingfabric.dev/go-fabric/controller/attestation"
 )
 
 // testCertificateHint is matterjs-server's refusal of a test certificate

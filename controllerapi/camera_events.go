@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	wpdef "github.com/SukramJ/go-fabric/cluster/spec/webrtctransportprovider"
-	"github.com/SukramJ/go-fabric/controller/camera"
+	wpdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportprovider"
+	"thingfabric.dev/go-fabric/controller/camera"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

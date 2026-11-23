@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/SukramJ/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/camera"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

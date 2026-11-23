@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	netcommdef "github.com/SukramJ/go-fabric/cluster/spec/networkcommissioning"
-	threaddiagdef "github.com/SukramJ/go-fabric/cluster/spec/threadnetworkdiagnostics"
-	"github.com/SukramJ/go-fabric/controller/topology"
-	"github.com/SukramJ/go-fabric/thread/brdiscovery"
+	netcommdef "thingfabric.dev/go-fabric/cluster/spec/networkcommissioning"
+	threaddiagdef "thingfabric.dev/go-fabric/cluster/spec/threadnetworkdiagnostics"
+	"thingfabric.dev/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/thread/brdiscovery"
 )
 
 func attrsOf(t *testing.T, doc string) map[string]json.RawMessage {

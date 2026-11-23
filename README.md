@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Open your Home Assistant instance and add this add-on repository.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FSukramJ%2Fgo-fabric-server)
 
-A stand-alone daemon on [go-fabric](https://github.com/SukramJ/go-fabric) with
+A stand-alone daemon on [go-fabric](https://github.com/thingfabric/go-fabric) with
 a WebSocket/JSON API in both Matter roles: a **controller server**
 wire-compatible with the API Home Assistant's Matter integration speaks (the
 python-matter-server / matterjs-server contract, schema 14), and a
@@ -73,7 +73,7 @@ certified by the Alliance. See go-fabric's README, section "Not certified".
 - [`docs/addon.md`](docs/addon.md) — the Home Assistant add-on
 - [`docs/compat.md`](docs/compat.md) — the python-client compatibility job
 - [`docs/by_design.md`](docs/by_design.md) — the deliberate differences, each with its reason
-- go-fabric's [glossary](https://sukramj.github.io/go-fabric/reference/glossary/) — the Matter terms (fabric, commissioner, session, border router) and the family's own (the page families, Topology versus Network, peer, diagnostic trace)
+- go-fabric's [glossary](https://docs.thingfabric.dev/reference/glossary/) — the Matter terms (fabric, commissioner, session, border router) and the family's own (the page families, Topology versus Network, peer, diagnostic trace)
 - [`docs/reports/S1.md`](docs/reports/S1.md), [`docs/reports/S2.md`](docs/reports/S2.md), [`docs/reports/S3.md`](docs/reports/S3.md) — what each bundle delivered and what it left to go-fabric
 
 ## Development
@@ -98,7 +98,7 @@ network, and the Go client of this repository drives the API.
 
 ## Acknowledgements
 
-Built on [go-fabric](https://github.com/SukramJ/go-fabric), a semantic port
+Built on [go-fabric](https://github.com/thingfabric/go-fabric), a semantic port
 of [matter.js](https://github.com/matter-js/matter.js) (Apache-2.0). The
 controller API follows [matterjs-server](https://github.com/matter-js/matterjs-server)
 (Apache-2.0), whose documented examples are this repository's compatibility

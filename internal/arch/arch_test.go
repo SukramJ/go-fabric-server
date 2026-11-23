@@ -20,7 +20,7 @@ import (
 
 const (
 	module   = "github.com/SukramJ/go-fabric-server"
-	goFabric = "github.com/SukramJ/go-fabric/"
+	goFabric = "thingfabric.dev/go-fabric/"
 )
 
 // facade are the go-fabric packages the server may import: the roles'
@@ -55,10 +55,6 @@ var facade = map[string]bool{
 	// The type of controller.Config.Diagnostics (brief S11 §3, go-fabric
 	// #483): the diagnostic trace's capacity, --controller-diagnostics-capacity.
 	"diag": true,
-	// The border-router registry's entries (brief S9 §2, go-fabric #461):
-	// the type of controller.Controller.BorderRouters and of
-	// topology.Build's second input.
-	"thread/brdiscovery": true,
 	// The controller side of cameras (brief S8, go-fabric #410): the
 	// service camera_* and send_webrtc_provider_command map onto; #410
 	// expects the server to import this package only.
@@ -79,14 +75,12 @@ var facade = map[string]bool{
 	// The first device node's Wi-Fi driver through wpa_supplicant (brief
 	// S13, go-fabric ADR 0031): node.Network.WiFi's Driver,
 	// --bridge-wifi-interface; ble/bluez above is also its BLE peripheral
-	// (node.Network.BLE, --bridge-bluetooth-adapter).
+	// (node.Network.GATT, --bridge-bluetooth-adapter).
 	"wifi/wpasupplicant": true,
 	"thread":             true,
 	"client/discovery":   true,
 	"client/exchange":    true,
 	"client/handshake":   true,
-	"client/interaction": true,
-	"client/peer":        true,
 }
 
 // exceptions are imports below the facade one package may make, each a
@@ -102,7 +96,10 @@ var testOnly = map[string]bool{
 	// site device that serves it — fabrictest has no BLE device (report
 	// S5, Questions).
 	"ble/esphome/esphometest": true, "controller/ble/bletest": true,
-	"bridge/bridgetest": true, "transport/btp": true,
+	// The border-router registry's entries (brief S9 §2, go-fabric #461):
+	// the type of controller.Controller.BorderRouters and of
+	// topology.Build's second input, which only a test builds (S14).
+	"thread/brdiscovery": true,
 	// go-fabric's test camera for a host's in-process tests (brief S9 §3,
 	// go-fabric #460 (d)): the camera of the controllerapi env.
 	"controller/camera/cameratest": true,
@@ -136,7 +133,7 @@ func TestImports(t *testing.T) {
 		t.Fatal(err)
 	}
 	fset := token.NewFileSet()
-	files := 0
+	files, judged := 0, 0
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -163,6 +160,7 @@ func TestImports(t *testing.T) {
 			where := filepath.ToSlash(strings.TrimPrefix(path, root+string(os.PathSeparator)))
 			switch {
 			case strings.HasPrefix(p, goFabric):
+				judged++
 				if !facadeImport(pkg, strings.TrimPrefix(p, goFabric), isTest) {
 					t.Errorf("%s imports %s: below go-fabric's facade", where, p)
 				}
@@ -190,6 +188,12 @@ func TestImports(t *testing.T) {
 	}
 	if files < 20 {
 		t.Fatalf("walked %d files: the root is wrong", files)
+	}
+	// The bite line: a go-fabric import under another prefix than goFabric
+	// (a path not rewritten, a module that moved) is judged by nothing
+	// above, so a walk that judged none has not checked the facade.
+	if judged == 0 {
+		t.Fatalf("judged no import of %s: the module path is wrong", goFabric)
 	}
 }
 
@@ -223,6 +227,8 @@ func TestGuardRefuses(t *testing.T) {
 		// The Q1 exception is gone (S3): no package reads TLV.
 		{"controllerapi", "tlv", false},
 		{"internal/wire", "tlv", false},
+		// Test-only since S14: no production file builds the registry.
+		{"controllerapi", "thread/brdiscovery", false},
 	} {
 		if facadeImport(c.pkg, c.dep, c.test) {
 			t.Errorf("%s may not import %s", c.pkg, c.dep)
@@ -237,7 +243,7 @@ func TestGuardRefuses(t *testing.T) {
 		{"controllerapi", "cluster/spec/onoff", false},
 		{"controllerapi", "fabrictest", true},
 		{"controllerapi", "controller/camera/cameratest", true},
-		{"controllerapi", "thread/brdiscovery", false},
+		{"controllerapi", "thread/brdiscovery", true},
 		{"bridgeapi", "cluster/spec/powersource", false},
 		{"bridgeapi", "device", false},
 		{"bridgeapi", "node", false},

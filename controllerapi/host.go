@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/thread"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/thread"
 )
 
 // The host side of the server: what a second surface over the same

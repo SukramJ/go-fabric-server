@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/ble/esphome"
+	"thingfabric.dev/go-fabric/ble/esphome"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

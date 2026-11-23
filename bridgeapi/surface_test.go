@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/surface"
+	"thingfabric.dev/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
 	fsclient "github.com/SukramJ/go-fabric-server/client"

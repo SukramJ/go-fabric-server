@@ -15,8 +15,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/device"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/device"
 
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )

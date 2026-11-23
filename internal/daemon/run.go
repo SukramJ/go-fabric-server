@@ -21,17 +21,17 @@ import (
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
 	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
-	"github.com/SukramJ/go-fabric/ble/bluez"
-	"github.com/SukramJ/go-fabric/ble/esphome"
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/attestation"
-	"github.com/SukramJ/go-fabric/controller/ble"
-	"github.com/SukramJ/go-fabric/controller/camera"
-	"github.com/SukramJ/go-fabric/controller/dcl/snapshot"
-	"github.com/SukramJ/go-fabric/controller/topology"
-	"github.com/SukramJ/go-fabric/diag"
-	"github.com/SukramJ/go-fabric/node"
-	expvarmetrics "github.com/SukramJ/go-fabric/node/metrics/expvar"
+	"thingfabric.dev/go-fabric/ble/bluez"
+	"thingfabric.dev/go-fabric/ble/esphome"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/attestation"
+	"thingfabric.dev/go-fabric/controller/ble"
+	"thingfabric.dev/go-fabric/controller/camera"
+	"thingfabric.dev/go-fabric/controller/dcl/snapshot"
+	"thingfabric.dev/go-fabric/controller/topology"
+	"thingfabric.dev/go-fabric/diag"
+	"thingfabric.dev/go-fabric/node"
+	expvarmetrics "thingfabric.dev/go-fabric/node/metrics/expvar"
 
 	"github.com/SukramJ/go-fabric-server/bridgeapi"
 	"github.com/SukramJ/go-fabric-server/controllerapi"
@@ -77,7 +77,7 @@ type Config struct {
 	BridgeProfile    string
 	// BridgeBluetoothAdapter is the BLE adapter of the first device node's
 	// peripheral (--bridge-bluetooth-adapter: an HCI id, 0 for hci0, or an
-	// adapter name; go-fabric node.Network.BLE through ble/bluez); empty is
+	// adapter name; go-fabric node.Network.GATT through ble/bluez); empty is
 	// no radio. BridgeWiFiInterface is the interface of its Wi-Fi driver
 	// (--bridge-wifi-interface; node.Network.WiFi through
 	// wifi/wpasupplicant); empty is no Wi-Fi driver. The first node only,
@@ -106,7 +106,7 @@ type Config struct {
 	BluetoothAdapter string
 	// BluetoothProxies are the ESPHome Bluetooth proxies commission_with_code
 	// may commission through (--bluetooth-proxy, repeatable;
-	// github.com/SukramJ/go-fabric/ble/esphome); one BLE backend, so not
+	// thingfabric.dev/go-fabric/ble/esphome); one BLE backend, so not
 	// with BluetoothAdapter.
 	BluetoothProxies []esphome.Proxy
 	// Web is the address of the pages (go-fabric-ui: the node family over
@@ -681,7 +681,7 @@ func bleCentral(c Config, log *slog.Logger) (ble.Central, error) {
 }
 
 // adapterCentral is the BlueZ central of --bluetooth-adapter
-// (github.com/SukramJ/go-fabric/ble/bluez); nil without the flag. The flag
+// (thingfabric.dev/go-fabric/ble/bluez); nil without the flag. The flag
 // takes matterjs-server's HCI id ("0" is hci0); an adapter name (hci1) is
 // passed as it is. Opening fails without system-bus rights to org.bluez or
 // on a platform without BlueZ.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/controller"
-	"github.com/SukramJ/go-fabric/controller/attestation"
+	"thingfabric.dev/go-fabric/controller"
+	"thingfabric.dev/go-fabric/controller/attestation"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

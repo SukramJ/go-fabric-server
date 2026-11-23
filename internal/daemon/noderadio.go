@@ -13,15 +13,15 @@ import (
 	"sync"
 
 	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric/ble/bluez"
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/node"
-	"github.com/SukramJ/go-fabric/wifi/wpasupplicant"
+	"thingfabric.dev/go-fabric/ble/bluez"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/node"
+	"thingfabric.dev/go-fabric/wifi/wpasupplicant"
 )
 
 // The first node's host ports (brief S13, go-fabric ADR 0031 and its
 // docs/guides/first-boot-without-network.md): the BLE peripheral of
-// --bridge-bluetooth-adapter (node.Network.BLE) and the Wi-Fi driver of
+// --bridge-bluetooth-adapter (node.Network.GATT) and the Wi-Fi driver of
 // --bridge-wifi-interface (node.Network.WiFi.Driver). Both belong to the
 // configured node of the --bridge-* flags only — the registry's nodes are
 // built without them (docs/by_design.md B24) — and live as long as the
@@ -95,17 +95,20 @@ func checkNodeRadio(c Config) error {
 // Wi-Fi driver, either nil when its flag is not given. One value for the
 // daemon's life: every run of the first node — the first, and each an
 // erase brings back — is built on it. Both are reusable across node runs:
-// the peripheral serves again on a later Serve (ble/bluez
-// peripheral_linux.go Serve: ErrServing only while one runs), and the
-// driver holds no per-node state. A node's Stop ends its Serve and its
-// advertisement and waits for both — but only until the stop's context
-// ends (go-fabric bridge/ble.go StopBLE; a timeout is only logged,
-// matter.ble.stop, and Stop still returns nil). So an erase whose budget
-// ran out does not build the replacement on the radio
-// (nodeLifecycle.erase); a replacement whose Serve still meets the old one
-// is off the radio with go-fabric's Warn matter.ble.serve only.
+// the peripheral registers the GATT service again once the earlier one is
+// gone (ble/bluez peripheral_linux.go: ErrServing is a second registration
+// while one stands), and the driver holds no per-node state. A node's Stop
+// ends its service and its advertisement and waits for both — but only
+// until the stop's context ends (go-fabric bridge/ble.go StopBLE; a
+// timeout is only logged, matter.ble.stop, and Stop still returns nil). So
+// an erase whose budget ran out does not build the replacement on the
+// radio (nodeLifecycle.erase); a replacement whose registration still
+// meets the old one is refused by the peripheral before it advertises
+// (bridge/ble.go StartBLE), and the node logs go-fabric's Warn
+// commissioning.ble.start and runs off the radio — its Start does not
+// fail (node/commissioning.go).
 type nodeRadio struct {
-	ble  contract.BLEPeripheral
+	ble  contract.GATTPeripheral
 	wifi wifiPort
 	once sync.Once
 }
@@ -160,7 +163,7 @@ func (r *nodeRadio) apply(s nodeSpec, network *node.Network) {
 		return
 	}
 	if r.ble != nil {
-		network.BLE = r.ble
+		network.GATT = r.ble
 	}
 	if r.wifi != nil {
 		network.WiFi = &node.WiFi{Driver: r.wifi}

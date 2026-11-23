@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	csdef "github.com/SukramJ/go-fabric/cluster/spec/cameraavstreammanagement"
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/controller/camera/cameratest"
+	csdef "thingfabric.dev/go-fabric/cluster/spec/cameraavstreammanagement"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/controller/camera/cameratest"
 
 	"github.com/SukramJ/go-fabric-server/protocol"
 )

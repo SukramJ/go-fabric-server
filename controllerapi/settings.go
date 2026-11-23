@@ -14,8 +14,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SukramJ/go-fabric/controller/commissioner"
-	"github.com/SukramJ/go-fabric/thread"
+	"thingfabric.dev/go-fabric/controller/commissioner"
+	"thingfabric.dev/go-fabric/thread"
 )
 
 // defaultCredentialID is the reserved entry pre-schema-12 callers use

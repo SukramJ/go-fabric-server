@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-go-fabric-server: a daemon on [go-fabric](https://github.com/SukramJ/go-fabric)
+go-fabric-server: a daemon on [go-fabric](https://github.com/thingfabric/go-fabric)
 with a WebSocket/JSON API — the controller half at `/ws`, wire-compatible with
 matterjs-server (schema 14), and from S2 the bridge half at `/bridge`.
 `CONCEPT.md` is the design (go-fabric's concept v8); `docs/protocol.md` the

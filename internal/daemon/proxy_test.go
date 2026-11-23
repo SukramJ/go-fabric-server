@@ -15,12 +15,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SukramJ/go-fabric/ble/esphome"
-	"github.com/SukramJ/go-fabric/ble/esphome/esphometest"
-	"github.com/SukramJ/go-fabric/contract"
-	"github.com/SukramJ/go-fabric/controller/ble"
-	"github.com/SukramJ/go-fabric/fabrictest"
-	"github.com/SukramJ/go-fabric/node"
+	"thingfabric.dev/go-fabric/ble/esphome"
+	"thingfabric.dev/go-fabric/ble/esphome/esphometest"
+	"thingfabric.dev/go-fabric/contract"
+	"thingfabric.dev/go-fabric/controller/ble"
+	"thingfabric.dev/go-fabric/fabrictest"
+	"thingfabric.dev/go-fabric/node"
 
 	"github.com/SukramJ/go-fabric-server/controllerapi"
 )

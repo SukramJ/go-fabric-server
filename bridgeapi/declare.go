@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SukramJ/go-fabric/device"
-	"github.com/SukramJ/go-fabric/surface"
+	"thingfabric.dev/go-fabric/device"
+	"thingfabric.dev/go-fabric/surface"
 
 	"github.com/SukramJ/go-fabric-server/protocol/schema"
 )
