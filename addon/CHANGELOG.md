@@ -8,8 +8,13 @@ the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/bl
 - **Back up the add-on before this update**: the first start upgrades the
   database and the bridge node's store one way; the upgraded files do not
   run on 0.10.0.
-- New option **keep_onboarding_codes** (off): keep each paired device's
-  pairing code and show it in the web UI's onboarding inventory; the
+- **Known issue:** a fabric label of more than 32 bytes set under 0.10.0
+  (32 characters admitted then; umlauts and CJK characters take more than one byte each) stops
+  the add-on from starting until go-fabric #587 is fixed; the default
+  label `HomeAssistant` is not affected.
+- New option **keep_onboarding_codes** (off): keep the pairing code of
+  each device paired in its own commissioning mode (not one shared from
+  another controller) and show it in the web UI's onboarding inventory; the
   database then holds one setup code per device, unsealed.
 - Library update (go-fabric 0.25.0, go-fabric-ui 0.13.0): the web UI
   checks the host name of every request (the Ingress proxy's address is

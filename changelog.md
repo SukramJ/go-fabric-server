@@ -12,6 +12,9 @@ v12) and the controller's registry in `fabric-server.db` (v1 → v3) one
 way; the upgraded files do not run on 0.10.0 (`docs/operations.md`,
 Files).
 
+**Known issue:** a controller whose fabric label stored in its database is beyond 32 bytes — 0.10.0 admitted 32 characters, so a label with umlauts or CJK characters may exceed it, set through `set_default_fabric_label` or the pages — does not start under this build until go-fabric #587 is fixed (go-fabric v0.25.0 refuses the stored label at load). The label in `server.json` is cut at
+load (below); the fabric record in `fabric-server.db` is go-fabric's.
+
 ### Added
 
 - `--web-allowed-hosts name[,name…]` (`FABRIC_SERVER_WEB_ALLOWED_HOSTS`):
@@ -19,17 +22,28 @@ Files).
   `Options.AllowedHosts`); an entry with a port, scheme, path or wildcard
   stops the start, naming the flag.
 - `--controller-keep-onboarding-codes` (#70): the controller keeps the
-  pairing code of every device it pairs, and the controller pages show
+  pairing code of a device paired in its own (Basic) commissioning mode; the code of a window another controller opened (an Enhanced Commissioning Window), of a pairing by address and of a pairing that replaced the passcode is not kept (go-fabric `controller/controller.go:147-158`), and the controller pages show
   them in the onboarding inventory to an admin by `--web-admin-source`
   (501 in token mode). The database then holds one setup code per device,
   unsealed until the sealing follow-up. Add-on option
-  `keep_onboarding_codes`.
+  `keep_onboarding_codes`. Without `--web` the start warns
+  (`fabricserver.onboarding_codes.unserved`): nothing shows the codes.
+- `--web-proxy-source` (`FABRIC_SERVER_WEB_PROXY_SOURCE`): the address of
+  a proxy that forwards the browser's `Host` unchanged and authenticates
+  the user; its requests pass the pages' host check under any name
+  (go-fabric-ui `Options.AllowHost`). The add-on sets it, with
+  `--web-admin-source`, to the Ingress proxy.
 - The isSecret marks of go-fabric's snapshot in `protocol/schema`
   (`Field.Secret`, `Attribute.Secret`) and `"x-secret": true` in
-  `GET /schema` and `GET /schema/declaration`.
+  `GET /schema` and `GET /schema/declaration`. The generator resolves the
+  datatypes of the snapshot's definition sets
+  (`WebRtcTransportDefinitions.ICEServerStruct` and the other WebRTC
+  transport types), so they and their mark are in the tables and schemas.
 - The argument log: `fabricserver.ws.request` carries `args` at debug for
   `device_command` and `write_attribute`, a secret value `"[redacted]"`,
-  what the model cannot judge `"[unjudged]"`; `fabricserver.ws.error`
+  what the model cannot judge `"[unjudged]"` (a top-level member no
+  handler reads included), the `ice-ufrag`/`ice-pwd` lines of an SDP
+  masked; `fabricserver.ws.error`
   logs these commands' details `"[redacted]"` when their target holds a
   secret.
 
@@ -57,6 +71,11 @@ Files).
   (`docs/protocol.md`, `declare`).
 - The device nodes state the Aggregator as their device type, so the
   commissionable record names it before a device is declared.
+- `--default-fabric-label` is trimmed (blank is no pin) and, with the
+  controller, refused at start beyond 32 bytes, naming the flag and the
+  byte count; matterjs-server cuts it.
+- `--web-admin-source` alone no longer passes go-fabric-ui's host check
+  under any name; that is `--web-proxy-source`'s.
 - `--bridge-label` beyond 32 bytes stops the start with `--bridge`; a
   registry node's label (64 characters) is served cut to 32 bytes on a
   rune boundary.
@@ -66,8 +85,12 @@ Files).
 - `declare` replacing a served device by a withheld one under the same
   key: the served one is removed first (go-fabric 0.25.0 refused the
   add), and the key keeps its endpoint number for the device served after.
+  When that add fails, the key is listed in `removed` and its endpoint
+  number freed.
 - The fabric label is cut to 32 bytes on a rune boundary, not to 32
-  characters: a multibyte label could stop the controller's start (#73).
+  characters, when it is set (#73); a label of 0.10.0 beyond 32 bytes in
+  `server.json` is cut at load, logged at Warn (`fabricserver.label.cut`)
+  and saved back. See the known issue above for the fabric record.
 - A camera command after the camera service closed answers `NodeNotReady`
   (#73).
 

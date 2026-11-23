@@ -49,15 +49,20 @@ are on the Ingress port 8099; with host networking that
 listener is on the LAN too, so the daemon answers only the Ingress proxy
 (`172.30.32.2`, `--web-admin-source`), which authenticates the user and is
 the pages' administrator. The proxy forwards the browser's `Host` and
-`Origin` unchanged; the source address is the admission, so the pages
-answer under whatever name the browser uses (go-fabric-ui
-`Options.AllowHost`) and no host list is configured.
+`Origin` unchanged and authenticates the user, so the add-on also names it
+`--web-proxy-source`: its requests pass go-fabric-ui's host check under
+the name the browser uses (`Options.AllowHost`, `fabricui/options.go:320-329`)
+and no host list is configured. A reverse proxy in front of Home
+Assistant must forward `Host` unchanged: one that rewrites it makes the
+`Origin` differ, and admin writes answer 403 `origin_not_allowed`.
 
 ## Updating to the release after 0.10.0
 
 The first start upgrades the stores one way (go-fabric v0.25.0): back up
 the add-on (or `/data`'s `fabric-server.db` and `bridge*.db`) before the
 update; the upgraded files do not run on 0.10.0.
+
+**Known issue:** a controller whose fabric label stored in its database is beyond 32 bytes — 0.10.0 admitted 32 characters, so a label with umlauts or CJK characters may exceed it, set through `set_default_fabric_label` or the pages — does not start under this build until go-fabric #587 is fixed (go-fabric v0.25.0 refuses the stored label at load).
 
 ## No discovery
 

@@ -113,7 +113,7 @@ The camera citations on this page are matterjs-server at `0bd06f2`:
 | `open_commissioning_window` | implemented | an enhanced window (`client.Node.OpenCommissioningWindow`), `timeout` in seconds; `iteration`, `option`, `discriminator` accepted and not used, as matterjs-server |
 | `set_/remove_wifi_credentials`, `get_all_credentials` | implemented | secrets are write-only |
 | `set_/remove_thread_dataset` | implemented | the dataset must be hex and MeshCoP TLVs; `get_all_credentials` names its `networkName` and `extPanId` |
-| `set_default_fabric_label`, `get_fabric_label` | implemented | trimmed, empty is `HomeAssistant`, at most 32 characters; stored and pushed to every connected node in the background |
+| `set_default_fabric_label`, `get_fabric_label` | implemented | trimmed, empty is `HomeAssistant`, at most 32 bytes, cut on a rune boundary; stored and pushed to every connected node in the background |
 | `get_matter_fabrics`, `remove_matter_fabric` | implemented | |
 | `diagnostics` | implemented | `{info, nodes, events}`, the last 25 node events |
 | `get_loglevel`, `set_loglevel` | implemented | console level — the daemon's one level source, shared with the pages' Operation page (`PUT /api/v1/operation/log/level`); `file_loglevel` stays `null`: no log file, the pages' log ring is in memory |
@@ -354,9 +354,14 @@ Ignorable by a client that does not know them:
 - The fabric label (`set_default_fabric_label`, the pages' label) is cut
   to 32 **bytes** on a rune boundary: go-fabric counts the label in bytes
   and refuses a longer one (`commissioner.MaxLabelLength`, go-fabric
-  `CHANGELOG.md:759` at v0.25.0). matterjs-server cuts at 32 characters
-  (WebSocketControllerHandler.ts:1227-1262); an ASCII label is cut the
-  same.
+  `CHANGELOG.md:759` at v0.25.0). matterjs-server cuts at 32 UTF-16 code
+  units (`normalizeFabricLabel`, WebSocketControllerHandler.ts:201-204,
+  called at :1236); an ASCII label is cut the same.
+- `--default-fabric-label` is trimmed (blank is no pin) and refused at
+  start beyond 32 bytes, naming the flag; matterjs-server trims the pin and
+  cuts it to 32 (`packages/matter-server/src/MatterServer.ts:178-182`). A
+  pin is the operator's statement: a silently different label on every
+  device's fabric list is what a pin exists to prevent.
 - `camera_session_ended` may carry `cause: "signal_overflow"`: go-fabric's
   own end cause (`camera.EndSignalOverflow`, the session ended because its
   signals were not read while the camera kept signalling,
@@ -368,21 +373,28 @@ Ignorable by a client that does not know them:
 - The argument log: matterjs-server logs every request at debug with its
   `args` masked by a list of field names (`"[redacted]"`,
   `packages/ws-client/src/logging-redaction.ts:25-48`, `:120-123`,
-  `:198-204`; called at WebSocketControllerHandler.ts:934-937). This server
+  `:198-204`; called at WebSocketControllerHandler.ts:934-937), plus the
+  WebRTC secrets: an ICE server's `username` and `credential` (`:56`) and
+  the SDP's `a=ice-ufrag`/`a=ice-pwd` lines (`:72-76`, `:143-148`). This server
   logs `args` at debug for `device_command` and `write_attribute` only,
   judged by the model: a payload member or attribute the snapshot marks
   `isSecret` is `"[redacted]"` (null stays null), structs and lists are
   walked, a member is matched by every spelling the encoder accepts, and
   what the model cannot judge (an unknown cluster, command or attribute, a
-  value of another shape, a member the model does not define) is
-  `"[unjudged]"`. Every other command logs no argument; the raw frame is
-  never logged. `fabricserver.ws.error` logs the details of these two
+  value of another shape, a struct the tables do not resolve, a member the
+  model does not define, a top-level member no handler reads) is
+  `"[unjudged]"`; the `ice-ufrag`/`ice-pwd` lines of an SDP string are
+  masked as matterjs-server masks them. The ICE server's `Credential`
+  carries the snapshot's mark and is `"[redacted]"`; its `Username` has no
+  mark and is logged. Every other command logs no argument; the raw frame
+  is never logged. `fabricserver.ws.error` logs the details of these two
   commands `"[redacted]"` when their target holds a secret (the encoder's
   text quotes the refused value); the answer on the wire is unchanged.
 - A controller's image of a node is bounded: go-fabric's
   `client.DefaultMaxImageBytesPerNode`, 32 MiB (`controller.Config.MaxImageBytesPerNode`
   0, `controller/controller.go:292-305`, `controller/client/image_bounds.go:28`
-  at v0.25.0). A report above it is not applied and is logged at Warn,
+  at v0.25.0). A report above it is not applied and is logged once per
+  node at Warn,
   `matter.controller.client.image_quota_reached`; the server sets no
   other bound and has no flag for it.
 - A controller's write that leaves its cluster as it was advances no

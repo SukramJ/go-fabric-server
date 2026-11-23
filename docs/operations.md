@@ -23,7 +23,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--vendor-id` | `0xFFF1` | our fabric's vendor id, on the first run |
 | `--trust` | `production` | attestation roots: `production` (the DCL snapshot go-fabric embeds) or `development` (plus the CSA test roots) |
 | `--log-level` | `info` | `critical`, `error`, `warning`, `notice`, `info`, `debug`; `set_loglevel` changes it until the next start |
-| `--default-fabric-label` | — | pins the fabric label; `set_default_fabric_label` then has no effect |
+| `--default-fabric-label` | — | pins the fabric label, trimmed (blank is no pin); `set_default_fabric_label` then has no effect. Beyond 32 bytes the start stops, naming the flag and the byte count (with `--controller`) |
 | `--disable-auto-subscription` | `false` | new nodes are paired without the server's subscription; `subscribe`/`unsubscribe` become available. A camera's reports then never arrive: only a reissued session id ends a camera session (`camera_restarted`) |
 | `--controller` | `true` | run the controller half (`/ws`) |
 | `--bridge` | `false` | run the bridge half (`/bridge`) and its bridge node |
@@ -40,7 +40,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-bluetooth-adapter` | — | the BLE adapter of the first device node (the `--bridge-*` one): `0` is `hci0`, an adapter name is taken as it is. While that node has no fabric it is commissioned over Bluetooth LE — a node without a network at first boot. Needs `--bridge`, a `--bridge-passcode` other than the public test passcode `20202021` (refused: anyone in Bluetooth range could commission the node), and with `--controller` an adapter other than `--bluetooth-adapter`'s; the host runs bluetoothd and lets the daemon use `org.bluez` on the system bus; the start fails when the adapter cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--bridge-wifi-interface` | — | the Wi-Fi interface (`wlan0`) the first device node joins the network a commissioner provisions on, through wpa_supplicant; the node then serves NetworkCommissioning with the Wi-Fi feature. Needs `--bridge`; the host runs wpa_supplicant with its D-Bus interface (`fi.w1.wpa_supplicant1` on the system bus) and NetworkManager does not manage the interface; the start fails when the driver cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--node-limit` | `8` | the most device nodes the pages may create beside the `--bridge-*` one ([Several device nodes](#several-device-nodes)); `0` creates none |
-| `--controller-keep-onboarding-codes` | `false` | keep the pairing code of every device the controller pairs (go-fabric `controller.Config.KeepOnboardingCodes`) and show it in the controller pages' onboarding inventory, to an admin by `--web-admin-source` only (501 in token mode). The database then holds one setup code per paired device, unsealed ([Files](#files)); add-on option `keep_onboarding_codes` |
+| `--controller-keep-onboarding-codes` | `false` | keep the pairing code of a device paired in its own (Basic) commissioning mode; the code of a window another controller opened (an Enhanced Commissioning Window), of a pairing by address and of a pairing that replaced the passcode is not kept (go-fabric `controller.Config.KeepOnboardingCodes`, `controller/controller.go:147-158`) and show it in the controller pages' onboarding inventory, to an admin by `--web-admin-source` only (501 in token mode). The database then holds one setup code per paired device, unsealed ([Files](#files)); without `--web` the start warns, nothing shows them; add-on option `keep_onboarding_codes` |
 | `--controller-diagnostics-capacity` | `0` (go-fabric's `256`) | the events the controller's diagnostic trace keeps, the oldest dropped first (the controller pages' Diagnostics tab, [The pages](#the-pages)); `0` is go-fabric's `diag.DefaultDiagnosticsCapacity`; a negative value stops the start. No add-on option |
 | `--bridge-node`, `--node-default` | — | removed: further device nodes are created in the pages; either flag (or its environment variable) stops the start with that message |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
@@ -48,7 +48,8 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bluetooth-proxy` | — | an ESPHome Bluetooth proxy `commission_with_code` may commission through, `host[:port][,key]` (port 6053; `key` the base64 API encryption key, none for a plaintext API); repeatable, the environment variable gives one; not with `--bluetooth-adapter`. go-fabric's `ble/esphome` central, pure Go, no adapter or D-Bus; the start fails when a proxy refuses (wrong or missing key, no active connections) or none answers ([Bluetooth through ESPHome proxies](#bluetooth-through-esphome-proxies)) |
 | `--web` | — | serve go-fabric-ui's pages on this address: the device nodes' with `--bridge`, the controller's with `--controller`, the Operation page always; without `--web-admin` or `--web-admin-source` the status only ([The pages](#the-pages)) |
 | `--web-admin` | `false` | the pages may write, show the pairing code and use the controller's admin routes (the page's token mode) |
-| `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on); its requests pass the pages' host check under any name |
+| `--web-admin-source` | — | answer only requests from this IP address, as an admin (an Ingress proxy: `172.30.32.2` in a Home Assistant add-on) |
+| `--web-proxy-source` | — | the IP address of a proxy that forwards the browser's `Host` unchanged and authenticates the user (the Ingress proxy, `172.30.32.2`): its requests pass the pages' host check under any name (go-fabric-ui `Options.AllowHost`, which hands the check to such a proxy, `fabricui/options.go:320-329`). Never an address a browser connects from itself: every name would pass, and a page of another site under a name that resolves to it would get the pages' rights |
 | `--web-allowed-hosts` | — | the DNS names the pages answer under, `name[,name…]`, host names only (no scheme, port, path or wildcard; go-fabric-ui refuses one and the start stops naming the flag). Loopback names and IP addresses always pass; any other `Host` is 403 `host_not_allowed` |
 | `--health-check URL` | — | probe a `/health` URL and exit 0 when healthy, instead of running |
 | `--version` | — | print the version and exit |
@@ -241,7 +242,11 @@ fabric: every node must be commissioned again.
 `:635`, `:647`, `:693`, `:142`) and the controller's registry in
 `fabric-server.db` from v1 to v3 (`:483`). Back up `bridge*.db` and
 `fabric-server.db` before the upgrade: there is no way back to 0.10.0 with
-the upgraded files.
+the upgraded files (this server has no downgrade).
+
+A fabric label of 0.10.0 beyond 32 bytes in `server.json` is cut to 32
+bytes on a rune boundary at the first start, logged at Warn
+(`fabricserver.label.cut`) and saved back. **Known issue:** a controller whose fabric label stored in its database is beyond 32 bytes — 0.10.0 admitted 32 characters, so a label with umlauts or CJK characters may exceed it, set through `set_default_fabric_label` or the pages — does not start under this build until go-fabric #587 is fixed (go-fabric v0.25.0 refuses the stored label at load).
 
 With `--controller-keep-onboarding-codes`, `fabric-server.db` holds one
 setup code per paired device: secrets of the fabric keys' class (with a
@@ -435,9 +440,13 @@ passes go-fabric-ui's host check first: `localhost` and names under
 `.localhost`, an IP address, a name of `--web-allowed-hosts`; any other
 `Host` is 403 `host_not_allowed`. Behind the Ingress the browser's `Host`
 and `Origin` arrive unchanged and the peer is the proxy, `172.30.32.2`:
-with `--web-admin-source` a request from that address passes the check
-under any name (go-fabric-ui `Options.AllowHost`) — the address is the
-admission, and the proxy authenticates the user.
+with `--web-proxy-source` a request from that address passes the check
+under any name (go-fabric-ui `Options.AllowHost`, `fabricui/options.go:320-329`:
+the host check is then the proxy's — its authentication of the user and
+its server names). `--web-admin-source` alone keeps the check. A proxy in
+front of Home Assistant that rewrites `Host` makes the browser's `Origin`
+differ from it, and go-fabric-ui refuses an admin write with 403
+`origin_not_allowed`: such a proxy must forward `Host` unchanged.
 
 A device node without a fabric reopens its own commissioning window, on
 the configured passcode, after a window the page opened on fresh

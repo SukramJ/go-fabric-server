@@ -94,8 +94,8 @@ type Config struct {
 	// size in events (--controller-diagnostics-capacity): 0 keeps
 	// go-fabric's diag.DefaultDiagnosticsCapacity; negative is refused.
 	ControllerDiagnosticsCapacity int
-	// ControllerKeepOnboardingCodes keeps the pairing code of every device
-	// the controller pairs (--controller-keep-onboarding-codes; go-fabric
+	// ControllerKeepOnboardingCodes keeps the pairing code of a device
+	// the controller pairs in its own (Basic) commissioning mode (--controller-keep-onboarding-codes; go-fabric
 	// controller.Config.KeepOnboardingCodes) and serves the pages'
 	// onboarding inventory (go-fabric-ui gofabric.ControllerOptions
 	// .OnboardingCodes, served to an admin only). Off by default: the
@@ -181,7 +181,7 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.StringVar(&c.BridgeBluetoothAdapter, "bridge-bluetooth-adapter", "", "the BLE adapter (0 for hci0, or an adapter name) the first device node is commissioned over while it has no fabric — a node without a network at first boot; needs --bridge and a --bridge-passcode other than the public test passcode 20202021 (anyone in Bluetooth range could commission the node), and not the --bluetooth-adapter one; the host runs bluetoothd and lets the daemon use org.bluez on the system bus (Linux, BlueZ); empty is no radio")
 	fs.StringVar(&c.BridgeWiFiInterface, "bridge-wifi-interface", "", "the Wi-Fi interface (wlan0) the first device node joins the network a commissioner provisions on, through wpa_supplicant; needs --bridge; the host runs wpa_supplicant with its D-Bus interface (fi.w1.wpa_supplicant1 on the system bus) and NetworkManager does not manage the interface; empty is no Wi-Fi driver")
 	fs.IntVar(&c.NodeLimit, "node-limit", defaultNodeLimit, "the most device nodes the pages may create beside the --bridge-* one (the node registry, nodes.json)")
-	fs.BoolVar(&c.ControllerKeepOnboardingCodes, "controller-keep-onboarding-codes", false, "keep the pairing code of every device the controller pairs and show it in the pages' onboarding inventory (admins only); the database then holds one setup code per paired device")
+	fs.BoolVar(&c.ControllerKeepOnboardingCodes, "controller-keep-onboarding-codes", false, "keep the pairing code of a device the controller pairs in its own (Basic) commissioning mode and show it in the pages' onboarding inventory (admins only); the database then holds one setup code per paired device")
 	fs.IntVar(&c.ControllerDiagnosticsCapacity, "controller-diagnostics-capacity", 0, "the events the controller's diagnostic trace keeps (the pages' Diagnostics tab), the oldest dropped first; 0 is go-fabric's default ("+strconv.Itoa(diag.DefaultDiagnosticsCapacity)+")")
 	fs.Var(removedFlag(removedBridgeNode), "bridge-node", "removed: "+removedBridgeNode)
 	fs.Var(removedFlag(removedNodeDefault), "node-default", "removed: "+removedNodeDefault)

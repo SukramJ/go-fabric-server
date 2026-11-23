@@ -23,7 +23,8 @@ configuration:
   keep_onboarding_codes:
     name: Keep the pairing codes
     description: >-
-      Keep the pairing code of every device the add-on pairs and show it
+      Keep the pairing code of each device the add-on pairs in its own
+      commissioning mode (not one shared from another controller) and show it
       in the web UI's onboarding inventory, for when the paper is lost. The
       database then holds one setup code per device, stored unsealed until
       the database is sealed (a follow-up); back it up like a key.
