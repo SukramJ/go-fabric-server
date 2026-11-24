@@ -1,7 +1,7 @@
 # Changelog
 
 The add-on follows go-fabric-server's versions; the full list of changes is
-the repository's [`changelog.md`](https://github.com/SukramJ/go-fabric-server/blob/main/changelog.md).
+the repository's [`changelog.md`](https://github.com/thingfabric/go-fabric-server/blob/main/changelog.md).
 
 ## Unreleased
 

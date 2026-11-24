@@ -2,5 +2,5 @@
 # Settings -> Apps -> Install app -> Repositories; the Supervisor then finds
 # the add-on in addon/.
 name: go-fabric-server Add-ons
-url: https://github.com/SukramJ/go-fabric-server
+url: https://github.com/thingfabric/go-fabric-server
 maintainer: SukramJ <sukramj@icloud.com>

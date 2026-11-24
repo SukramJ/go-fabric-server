@@ -9,7 +9,7 @@
 # (FABRIC_SERVER_<FLAG>, see docs/operations.md).
 [Unit]
 Description=go-fabric-server (Matter controller server, matterjs-server compatible API)
-Documentation=https://github.com/SukramJ/go-fabric-server
+Documentation=https://github.com/thingfabric/go-fabric-server
 Wants=network-online.target
 After=network-online.target
 

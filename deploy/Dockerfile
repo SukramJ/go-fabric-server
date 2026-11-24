@@ -6,7 +6,7 @@
 # Run it with host networking — Matter needs the host's IPv6 link and
 # mDNS — and a volume for the state:
 #
-#   docker run -d --network host -v fabric-server:/data ghcr.io/sukramj/go-fabric-server
+#   docker run -d --network host -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server
 #
 # The default listener is 127.0.0.1:5580, the URL Home Assistant's Matter
 # integration connects to on the same host (ws://localhost:5580/ws). A

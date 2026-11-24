@@ -24,7 +24,7 @@ env:
 
 jobs:
   create_release:
-    if: github.repository_owner == 'SukramJ'
+    if: github.repository_owner == 'thingfabric'
     name: Create GitHub Release (${{ github.ref_name }})
     runs-on: ubuntu-latest
     steps:
@@ -69,7 +69,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   image:
-    if: github.repository_owner == 'SukramJ'
+    if: github.repository_owner == 'thingfabric'
     name: Image (${{ github.ref_name }})
     runs-on: ubuntu-latest
     needs: create_release
@@ -98,5 +98,5 @@ jobs:
             COMMIT=${{ env.COMMIT }}
             BUILD_DATE=${{ env.BUILD_DATE }}
           tags: |
-            ghcr.io/sukramj/go-fabric-server:${{ env.VERSION }}
-            ghcr.io/sukramj/go-fabric-server:latest
+            ghcr.io/thingfabric/go-fabric-server:${{ env.VERSION }}
+            ghcr.io/thingfabric/go-fabric-server:latest

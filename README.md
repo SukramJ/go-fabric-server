@@ -1,9 +1,9 @@
 # go-fabric-server
 
-[![ci](https://github.com/SukramJ/go-fabric-server/actions/workflows/ci.yml/badge.svg)](https://github.com/SukramJ/go-fabric-server/actions/workflows/ci.yml)
-[![codeql](https://github.com/SukramJ/go-fabric-server/actions/workflows/codeql.yml/badge.svg)](https://github.com/SukramJ/go-fabric-server/actions/workflows/codeql.yml)
+[![ci](https://github.com/thingfabric/go-fabric-server/actions/workflows/ci.yml/badge.svg)](https://github.com/thingfabric/go-fabric-server/actions/workflows/ci.yml)
+[![codeql](https://github.com/thingfabric/go-fabric-server/actions/workflows/codeql.yml/badge.svg)](https://github.com/thingfabric/go-fabric-server/actions/workflows/codeql.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Open your Home Assistant instance and add this add-on repository.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FSukramJ%2Fgo-fabric-server)
+[![Open your Home Assistant instance and add this add-on repository.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fthingfabric%2Fgo-fabric-server)
 
 A stand-alone daemon on [go-fabric](https://github.com/thingfabric/go-fabric) with
 a WebSocket/JSON API in both Matter roles: a **controller server**
@@ -45,14 +45,14 @@ python-matter-server / matterjs-server contract, schema 14), and a
 ## Quickstart
 
 ```sh
-go install github.com/SukramJ/go-fabric-server/cmd/fabric-server@latest
+go install thingfabric.dev/go-fabric-server/cmd/fabric-server@latest
 fabric-server --listen 127.0.0.1:5580 --storage-path ./data
 ```
 
 Point Home Assistant's Matter integration at `ws://localhost:5580/ws`
 (answer "No" to the official add-on, [`docs/home-assistant.md`](docs/home-assistant.md)). A
 container: `docker run -d --network host -v fabric-server:/data
-ghcr.io/sukramj/go-fabric-server`. Flags, files, ports and the token:
+ghcr.io/thingfabric/go-fabric-server`. Flags, files, ports and the token:
 [`docs/operations.md`](docs/operations.md).
 
 ## Why "Matter" is not in the name

@@ -1,7 +1,7 @@
 # Home Assistant add-on manifest for go-fabric-server.
 #
 # version MUST equal internal/version's Version and the published image tag
-# (ghcr.io/sukramj/go-fabric-server-addon-{arch}); `make version-check` and
+# (ghcr.io/thingfabric/go-fabric-server-addon-{arch}); `make version-check` and
 # the release workflow refuse a tag where they differ.
 name: go-fabric-server
 version: "0.10.0"
@@ -9,7 +9,7 @@ slug: go_fabric_server
 description: >-
   A Matter controller server for Home Assistant's Matter integration, on
   go-fabric (wire-compatible with matterjs-server, schema 14). Uncertified.
-url: https://github.com/SukramJ/go-fabric-server
+url: https://github.com/thingfabric/go-fabric-server
 arch:
   - amd64
   - aarch64
@@ -19,7 +19,7 @@ arch:
 # .github/workflows/addon-image.yml; the Supervisor substitutes {arch} and
 # pulls <image>:<version>. Remove this key to build addon/Dockerfile on the
 # host.
-image: "ghcr.io/sukramj/go-fabric-server-addon-{arch}"
+image: "ghcr.io/thingfabric/go-fabric-server-addon-{arch}"
 
 # The HA base image ships s6-overlay as its init.
 init: false

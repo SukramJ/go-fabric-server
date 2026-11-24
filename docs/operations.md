@@ -317,7 +317,7 @@ its backups like the fabric's keys.
 
 ```sh
 docker run -d --name fabric-server --network host \
-  -v fabric-server:/data ghcr.io/sukramj/go-fabric-server:0.1.0
+  -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server:0.1.0
 ```
 
 Host networking is what the device nodes advertise on; on a dual-homed
@@ -326,7 +326,7 @@ host, name the LAN interface beside it:
 ```sh
 docker run -d --name fabric-server --network host \
   -e FABRIC_SERVER_BRIDGE=true -e FABRIC_SERVER_BRIDGE_MDNS_INTERFACES=enp1s0 \
-  -v fabric-server:/data ghcr.io/sukramj/go-fabric-server:0.8.0
+  -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server:0.8.0
 ```
 
 The image (`deploy/Dockerfile`) is distroless and runs as `nonroot`; it
