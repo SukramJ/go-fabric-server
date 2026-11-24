@@ -16,7 +16,11 @@ the repository's [`changelog.md`](https://github.com/thingfabric/go-fabric-serve
   each device paired in its own commissioning mode (not one shared from
   another controller) and show it in the web UI's onboarding inventory; the
   database then holds one setup code per device, unsealed.
-- Library update (go-fabric 0.25.0, go-fabric-ui 0.13.0): the web UI
+- **The add-on moved**: its repository is now
+  `https://github.com/thingfabric/go-fabric-server` and its image
+  `ghcr.io/thingfabric/go-fabric-server-addon-{arch}`. Remove the old
+  repository URL in Home Assistant and add the new one.
+- Library update (go-fabric 0.25.0, go-fabric-ui 0.14.0): the web UI
   checks the host name of every request (the Ingress proxy's address is
   the admission) and requires its own request header for admin rights.
 

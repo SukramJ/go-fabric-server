@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-go-fabric-server: a daemon on [go-fabric](https://github.com/thingfabric/go-fabric)
+go-fabric-server (`thingfabric.dev/go-fabric-server`, repository
+`github.com/thingfabric/go-fabric-server`): a daemon on [go-fabric](https://github.com/thingfabric/go-fabric)
 with a WebSocket/JSON API — the controller half at `/ws`, wire-compatible with
 matterjs-server (schema 14), and from S2 the bridge half at `/bridge`.
 `CONCEPT.md` is the design (go-fabric's concept v8); `docs/protocol.md` the
@@ -43,7 +44,7 @@ make vuln licenses secrets   # the security job
   `internal/version.Version` and adds its changelog section in one commit.
 
 Go 1.27.4, `CGO_ENABLED=0`. Dependencies: go-fabric (`thingfabric.dev/go-fabric`, and its ble/bluez, ble/esphome and wifi/wpasupplicant), coder/websocket,
-go-fabric-ui — every further one is a decision recorded in
+go-fabric-ui (`thingfabric.dev/go-fabric-ui`) — every further one is a decision recorded in
 `THIRD-PARTY-NOTICES.md`.
 
 ## The architecture standard
