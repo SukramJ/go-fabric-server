@@ -17,7 +17,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/SukramJ/go-fabric-server/internal/daemon"
+	"thingfabric.dev/go-fabric-server/internal/daemon"
 )
 
 func main() {

@@ -17,7 +17,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller"
 
-	"github.com/SukramJ/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/controllerapi"
 )
 
 // TestHostCredentials: the host side of the credential store — the list

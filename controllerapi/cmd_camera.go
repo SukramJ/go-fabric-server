@@ -15,7 +15,7 @@ import (
 	"thingfabric.dev/go-fabric/controller/camera"
 	"thingfabric.dev/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // The camera commands of schema 14 and send_webrtc_provider_command, each

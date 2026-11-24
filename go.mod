@@ -1,11 +1,11 @@
-module github.com/SukramJ/go-fabric-server
+module thingfabric.dev/go-fabric-server
 
 go 1.27.4
 
 require (
-	github.com/SukramJ/go-fabric-ui v0.13.0
 	github.com/coder/websocket v1.8.15
 	thingfabric.dev/go-fabric v0.25.0
+	thingfabric.dev/go-fabric-ui v0.14.0
 	thingfabric.dev/go-fabric/ble/bluez v0.25.0
 	thingfabric.dev/go-fabric/ble/esphome v0.25.0
 	thingfabric.dev/go-fabric/wifi/wpasupplicant v0.25.0

@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // The texts the argument log puts in place of a value: a value the model

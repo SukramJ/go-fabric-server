@@ -14,7 +14,7 @@ import (
 	wrdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportrequestor"
 	"thingfabric.dev/go-fabric/controller/camera"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 func ptr[T any](v T) *T { return &v }

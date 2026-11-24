@@ -23,9 +23,9 @@ import (
 	"thingfabric.dev/go-fabric/fabrictest"
 	"thingfabric.dev/go-fabric/node"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/internal/daemon"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/internal/daemon"
 )
 
 // env is one test's site, server and client.

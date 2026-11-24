@@ -19,9 +19,9 @@ import (
 	onoffdef "thingfabric.dev/go-fabric/cluster/spec/onoff"
 	"thingfabric.dev/go-fabric/node"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/protocol"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // wantCode fails unless err is a protocol error with code (and, when

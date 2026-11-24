@@ -12,7 +12,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // The values of the protocol go through go-fabric's JSON route

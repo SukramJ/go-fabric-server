@@ -236,7 +236,7 @@ func (g *gen) declarationSchema(pkgs map[string]defPackage) ([]byte, error) {
 	}
 	doc := map[string]any{
 		"$schema":                "https://json-schema.org/draft/2020-12/schema",
-		"$id":                    "https://github.com/SukramJ/go-fabric-server/protocol/schema/declaration.schema.json",
+		"$id":                    "https://thingfabric.dev/go-fabric-server/protocol/schema/declaration.schema.json",
 		"title":                  "go-fabric-server bridge declaration",
 		"description":            "The declare document of the bridge half (/bridge): the devices, their device type by name and their clusters by name with the initial state. $defs/patch.<Cluster> is the patch of a set. Names are matched without regard to case.",
 		"x-go-fabric-version":    g.version,

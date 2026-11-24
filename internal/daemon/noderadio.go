@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui"
 	"thingfabric.dev/go-fabric/ble/bluez"
 	"thingfabric.dev/go-fabric/contract"
 	"thingfabric.dev/go-fabric/node"

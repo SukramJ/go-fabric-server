@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui"
 	"thingfabric.dev/go-fabric/device"
 	"thingfabric.dev/go-fabric/node"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // TestBridgeLabelBound: --bridge-label beyond the NodeLabel's 32 bytes

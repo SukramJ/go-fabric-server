@@ -10,7 +10,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/camera"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // cameraError maps an error of the camera service onto matterjs-server's

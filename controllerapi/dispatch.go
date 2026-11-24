@@ -10,7 +10,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // call is one request being answered.

@@ -23443,7 +23443,7 @@
    "type": "object"
   }
  },
- "$id": "https://github.com/SukramJ/go-fabric-server/protocol/schema/declaration.schema.json",
+ "$id": "https://thingfabric.dev/go-fabric-server/protocol/schema/declaration.schema.json",
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "additionalProperties": false,
  "description": "The declare document of the bridge half (/bridge): the devices, their device type by name and their clusters by name with the initial state. $defs/patch.<Cluster> is the patch of a set. Names are matched without regard to case.",

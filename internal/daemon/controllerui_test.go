@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
+	"thingfabric.dev/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui/gofabric"
 	"thingfabric.dev/go-fabric/clock"
 	"thingfabric.dev/go-fabric/contract"
 	"thingfabric.dev/go-fabric/controller"
@@ -29,8 +29,8 @@ import (
 	"thingfabric.dev/go-fabric/fabrictest"
 	"thingfabric.dev/go-fabric/node"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/controllerapi"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/controllerapi"
 )
 
 // pagesEnv is the daemon's composition of the controller half and the

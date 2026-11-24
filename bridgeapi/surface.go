@@ -12,7 +12,7 @@ import (
 
 	"thingfabric.dev/go-fabric/surface"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // ExtensionsFlag and SpecLevelFlag are the daemon flags that set the

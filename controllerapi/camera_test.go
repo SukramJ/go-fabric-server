@@ -12,7 +12,7 @@ import (
 	"thingfabric.dev/go-fabric/contract"
 	"thingfabric.dev/go-fabric/controller/camera/cameratest"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // cameraEndpoint is the camera's endpoint number on the site device.

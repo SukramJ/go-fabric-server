@@ -12,7 +12,7 @@ import (
 	csdef "thingfabric.dev/go-fabric/cluster/spec/cameraavstreammanagement"
 	"thingfabric.dev/go-fabric/controller/camera"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // The camera files of this package cite matterjs-server at 0bd06f2:

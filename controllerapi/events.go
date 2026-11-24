@@ -9,7 +9,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // eventHistorySize is matterjs-server's EVENT_HISTORY_SIZE
