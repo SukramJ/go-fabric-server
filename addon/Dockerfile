@@ -24,9 +24,9 @@ ARG BUILD_DATE=unknown
 ENV CGO_ENABLED=0
 RUN go build -trimpath \
       -ldflags="-s -w \
-        -X github.com/SukramJ/go-fabric-server/internal/version.Version=${VERSION} \
-        -X github.com/SukramJ/go-fabric-server/internal/version.Commit=${COMMIT} \
-        -X github.com/SukramJ/go-fabric-server/internal/version.BuildDate=${BUILD_DATE}" \
+        -X thingfabric.dev/go-fabric-server/internal/version.Version=${VERSION} \
+        -X thingfabric.dev/go-fabric-server/internal/version.Commit=${COMMIT} \
+        -X thingfabric.dev/go-fabric-server/internal/version.BuildDate=${BUILD_DATE}" \
       -o /out/fabric-server ./cmd/fabric-server
 
 # ---------- Stage 2: Home Assistant add-on runtime ----------

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // compatDir holds matterjs-server's documented examples

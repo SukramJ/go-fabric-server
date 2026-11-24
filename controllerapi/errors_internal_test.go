@@ -10,7 +10,7 @@ import (
 
 	"thingfabric.dev/go-fabric/ble/esphome"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // TestCommissionErrorProxy: a pairing that fails at an ESPHome proxy

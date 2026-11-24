@@ -37,7 +37,7 @@ import (
 	"thingfabric.dev/go-fabric/controller/client"
 	"thingfabric.dev/go-fabric/controller/topology"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // Options configures a [Server].

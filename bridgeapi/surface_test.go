@@ -12,9 +12,9 @@ import (
 	"thingfabric.dev/go-fabric/node"
 	"thingfabric.dev/go-fabric/surface"
 
-	"github.com/SukramJ/go-fabric-server/bridgeapi"
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/bridgeapi"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // schedulesRow is the "Ahead of matter.js" register ID of Thermostat's

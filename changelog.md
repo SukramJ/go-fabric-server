@@ -49,9 +49,26 @@ load (below); the fabric record in `fabric-server.db` is go-fabric's.
 
 ### Changed
 
+- **The project moved to `github.com/thingfabric/go-fabric-server`** (the
+  old URLs redirect). Breaking for anyone who builds, pulls or installs it:
+  - the module path is `thingfabric.dev/go-fabric-server`
+    (`go install thingfabric.dev/go-fabric-server/cmd/fabric-server@latest`;
+    an import of `client` or `protocol` changes its path);
+  - the images are `ghcr.io/thingfabric/go-fabric-server` and
+    `ghcr.io/thingfabric/go-fabric-server-addon-{arch}` (the old
+    namespace gets no new image);
+  - the add-on repository to add in Home Assistant is
+    `https://github.com/thingfabric/go-fabric-server`;
+  - the JSON Schemas' `$id` (`GET /schema`, `GET /schema/declaration`)
+    starts with `https://thingfabric.dev/go-fabric-server/`.
+- go-fabric-ui under its new module path `thingfabric.dev/go-fabric-ui`
+  (v0.14.0): the pages' problem `type` URIs are
+  `https://thingfabric.dev/go-fabric-ui/problems#problem-<code>` — a client
+  that compares `type` as a string matches the new base, or better `code`
+  (`X-Problem-Code`), which did not change.
 - go-fabric 0.22.2 → 0.25.0 under its new module path
   `thingfabric.dev/go-fabric` (with `ble/bluez`, `ble/esphome`,
-  `wifi/wpasupplicant`); go-fabric-ui 0.9.2 → 0.13.0. The first node's
+  `wifi/wpasupplicant`); go-fabric-ui 0.9.2 → 0.14.0. The first node's
   Bluetooth peripheral is go-fabric's `contract.GATTPeripheral`
   (`node.Network.GATT`).
 - `server_info`'s go-fabric version and `GET /schema`'s provenance

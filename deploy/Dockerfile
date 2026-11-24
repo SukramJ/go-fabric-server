@@ -6,7 +6,7 @@
 # Run it with host networking — Matter needs the host's IPv6 link and
 # mDNS — and a volume for the state:
 #
-#   docker run -d --network host -v fabric-server:/data ghcr.io/sukramj/go-fabric-server
+#   docker run -d --network host -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server
 #
 # The default listener is 127.0.0.1:5580, the URL Home Assistant's Matter
 # integration connects to on the same host (ws://localhost:5580/ws). A
@@ -25,9 +25,9 @@ ARG BUILD_DATE=unknown
 ENV CGO_ENABLED=0
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} go build -trimpath \
       -ldflags="-s -w \
-        -X github.com/SukramJ/go-fabric-server/internal/version.Version=${VERSION} \
-        -X github.com/SukramJ/go-fabric-server/internal/version.Commit=${COMMIT} \
-        -X github.com/SukramJ/go-fabric-server/internal/version.BuildDate=${BUILD_DATE}" \
+        -X thingfabric.dev/go-fabric-server/internal/version.Version=${VERSION} \
+        -X thingfabric.dev/go-fabric-server/internal/version.Commit=${COMMIT} \
+        -X thingfabric.dev/go-fabric-server/internal/version.BuildDate=${BUILD_DATE}" \
       -o /out/fabric-server ./cmd/fabric-server && \
     mkdir -p /out/data
 

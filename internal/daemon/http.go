@@ -14,12 +14,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui"
 
-	"github.com/SukramJ/go-fabric-server/bridgeapi"
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/bridgeapi"
+	"thingfabric.dev/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // Mux is the server's HTTP surface with the controller half only; see

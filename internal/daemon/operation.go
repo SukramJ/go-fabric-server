@@ -8,10 +8,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui"
 	"thingfabric.dev/go-fabric/logring"
 
-	"github.com/SukramJ/go-fabric-server/internal/version"
+	"thingfabric.dev/go-fabric-server/internal/version"
 )
 
 // exposureReason is fabricui.Options.ExposureReason: the daemon serves no

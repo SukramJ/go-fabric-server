@@ -16,7 +16,7 @@ import (
 	wpdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportprovider"
 	"thingfabric.dev/go-fabric/controller/camera"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // fixtureError is a python fixture's error.

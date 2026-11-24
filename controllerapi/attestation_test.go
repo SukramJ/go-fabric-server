@@ -10,7 +10,7 @@ import (
 	"thingfabric.dev/go-fabric/controller"
 	"thingfabric.dev/go-fabric/controller/attestation"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // The server's policy is matterjs-server's: a test certificate the trust

@@ -18,7 +18,7 @@ import (
 	"thingfabric.dev/go-fabric/contract"
 	"thingfabric.dev/go-fabric/device"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // clusterKit is one typed cluster package of go-fabric

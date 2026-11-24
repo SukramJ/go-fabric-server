@@ -20399,7 +20399,7 @@
    "type": "object"
   }
  },
- "$id": "https://github.com/SukramJ/go-fabric-server/protocol/schema/schema.json",
+ "$id": "https://thingfabric.dev/go-fabric-server/protocol/schema/schema.json",
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "additionalProperties": true,
  "description": "The attribute values of a node's data (MatterNodeData.attributes) for every cluster of the Matter 1.6.1 model: the node data keys a value by \"endpoint/cluster/attribute\"; $defs/cluster.<cluster id> types the values of one cluster by attribute id. Structs are keyed by field id, bytes are base64, enums and bitmaps numbers, epoch times Unix-based. A value of a cluster or attribute outside this model is sent as decoded from the TLV.",

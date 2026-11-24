@@ -17,7 +17,7 @@ import (
 	"thingfabric.dev/go-fabric/controller/client"
 	"thingfabric.dev/go-fabric/controller/commissioner"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // maxDiscoveryTimeout is matterjs-server's MAX_DISCOVERY_TIMEOUT_S, 48

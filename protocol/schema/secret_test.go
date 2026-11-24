@@ -10,7 +10,7 @@ import (
 
 	"thingfabric.dev/go-fabric/parity"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // The parts of the snapshot the secret marks sit in (parity/schema.json).

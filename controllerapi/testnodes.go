@@ -14,7 +14,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/topology"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // Test nodes are node dumps imported with import_test_node, answered from

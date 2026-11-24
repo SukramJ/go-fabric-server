@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-const module = "github.com/SukramJ/go-fabric-server/"
+const module = "thingfabric.dev/go-fabric-server/"
 
 type block struct {
 	stmts   int

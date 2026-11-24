@@ -11,7 +11,7 @@ import (
 
 	"thingfabric.dev/go-fabric/thread"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 func cmdServerInfo(_ context.Context, s *Server, _ *call) (any, *protocol.Error) {

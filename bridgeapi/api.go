@@ -19,7 +19,7 @@ import (
 	"thingfabric.dev/go-fabric/node"
 	"thingfabric.dev/go-fabric/surface"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // BridgeSchemaVersion is the schema number of the bridge half, apart from

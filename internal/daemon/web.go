@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui"
 )
 
 // webHandler is the pages of go-fabric-ui (0.13.0, docs/embedding.md):

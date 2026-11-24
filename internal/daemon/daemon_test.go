@@ -21,9 +21,9 @@ import (
 
 	expvarmetrics "thingfabric.dev/go-fabric/node/metrics/expvar"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 func TestParseFlagsAndEnvironment(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 	"thingfabric.dev/go-fabric/controller/camera"
 	"thingfabric.dev/go-fabric/controller/camera/cameratest"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // The offer of the tests: one H.264 video section the host only receives

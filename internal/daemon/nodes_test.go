@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui"
 	"thingfabric.dev/go-fabric/clock"
 	"thingfabric.dev/go-fabric/fabrictest"
 	"thingfabric.dev/go-fabric/node"
 
-	"github.com/SukramJ/go-fabric-server/bridgeapi"
+	"thingfabric.dev/go-fabric-server/bridgeapi"
 )
 
 // testRegistry is a registry on a temporary directory whose start must

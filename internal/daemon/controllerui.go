@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
+	"thingfabric.dev/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui/gofabric"
 	"thingfabric.dev/go-fabric/controller"
 	"thingfabric.dev/go-fabric/controller/topology"
 
-	"github.com/SukramJ/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/controllerapi"
 )
 
 // controllerSource is the controller pages' source (go-fabric-ui 0.13.0,

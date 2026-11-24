@@ -15,7 +15,7 @@ import (
 	"thingfabric.dev/go-fabric/device"
 	"thingfabric.dev/go-fabric/surface"
 
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // bridged is one declared device.

@@ -13,8 +13,8 @@ import (
 	onoffdef "thingfabric.dev/go-fabric/cluster/spec/onoff"
 	"thingfabric.dev/go-fabric/node"
 
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/protocol"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 func TestServerInfoShape(t *testing.T) {

@@ -2,7 +2,7 @@
 GO ?= go
 export CGO_ENABLED := 0
 
-MODULE   := github.com/SukramJ/go-fabric-server
+MODULE   := thingfabric.dev/go-fabric-server
 PKG_VER  := $(MODULE)/internal/version
 BIN_DIR  := bin
 DIST_DIR := dist

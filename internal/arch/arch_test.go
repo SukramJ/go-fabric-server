@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	module   = "github.com/SukramJ/go-fabric-server"
+	module   = "thingfabric.dev/go-fabric-server"
 	goFabric = "thingfabric.dev/go-fabric/"
 )
 

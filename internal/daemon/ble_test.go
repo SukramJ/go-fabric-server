@@ -10,7 +10,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/ble"
 
-	"github.com/SukramJ/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/controllerapi"
 )
 
 // fakeCentral stands in for the BlueZ central: no BLE in CI.

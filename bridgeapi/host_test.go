@@ -12,9 +12,9 @@ import (
 	"thingfabric.dev/go-fabric/device"
 	"thingfabric.dev/go-fabric/node"
 
-	"github.com/SukramJ/go-fabric-server/bridgeapi"
-	fsclient "github.com/SukramJ/go-fabric-server/client"
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/bridgeapi"
+	fsclient "thingfabric.dev/go-fabric-server/client"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // errLabelStore is the refusal of refusingLabels.

@@ -17,9 +17,9 @@ import (
 	"thingfabric.dev/go-fabric/controller"
 	"thingfabric.dev/go-fabric/node"
 
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // icdNodeConfig is a LIT ICD node of the program's own composition

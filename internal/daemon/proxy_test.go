@@ -22,7 +22,7 @@ import (
 	"thingfabric.dev/go-fabric/fabrictest"
 	"thingfabric.dev/go-fabric/node"
 
-	"github.com/SukramJ/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/controllerapi"
 )
 
 // testKey is an API encryption key: base64 of 32 bytes.

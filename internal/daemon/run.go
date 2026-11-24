@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SukramJ/go-fabric-ui/fabricui"
-	"github.com/SukramJ/go-fabric-ui/fabricui/gofabric"
+	"thingfabric.dev/go-fabric-ui/fabricui"
+	"thingfabric.dev/go-fabric-ui/fabricui/gofabric"
 	"thingfabric.dev/go-fabric/ble/bluez"
 	"thingfabric.dev/go-fabric/ble/esphome"
 	"thingfabric.dev/go-fabric/controller"
@@ -35,10 +35,10 @@ import (
 	"thingfabric.dev/go-fabric/node"
 	expvarmetrics "thingfabric.dev/go-fabric/node/metrics/expvar"
 
-	"github.com/SukramJ/go-fabric-server/bridgeapi"
-	"github.com/SukramJ/go-fabric-server/controllerapi"
-	"github.com/SukramJ/go-fabric-server/internal/version"
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/bridgeapi"
+	"thingfabric.dev/go-fabric-server/controllerapi"
+	"thingfabric.dev/go-fabric-server/internal/version"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // Config is the daemon's configuration: the flags, each with an

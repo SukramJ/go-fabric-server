@@ -15,8 +15,8 @@ import (
 	"thingfabric.dev/go-fabric/controller/dcl"
 	"thingfabric.dev/go-fabric/controller/dcl/snapshot"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // listWriteResult is set_acl_entry's and set_node_binding's result entry —

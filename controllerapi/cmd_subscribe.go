@@ -11,7 +11,7 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // subKey names a subscription: an id is only unique per node

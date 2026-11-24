@@ -391,7 +391,7 @@ func (g *gen) jsonSchema() ([]byte, error) {
 	}
 	doc := map[string]any{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
-		"$id":     "https://github.com/SukramJ/go-fabric-server/protocol/schema/schema.json",
+		"$id":     "https://thingfabric.dev/go-fabric-server/protocol/schema/schema.json",
 		"title":   "go-fabric-server node data values",
 		"description": "The attribute values of a node's data (MatterNodeData.attributes) for every cluster of the Matter " + g.s.Matter.Revision +
 			" model: the node data keys a value by \"endpoint/cluster/attribute\"; $defs/cluster.<cluster id> types the values of one cluster by attribute id. " +

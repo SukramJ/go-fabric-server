@@ -15,8 +15,8 @@ import (
 
 	"thingfabric.dev/go-fabric/controller/client"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
-	"github.com/SukramJ/go-fabric-server/protocol/schema"
+	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // nodeArg is the node_id argument every node-targeted command takes.

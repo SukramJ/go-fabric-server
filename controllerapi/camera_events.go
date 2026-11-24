@@ -12,7 +12,7 @@ import (
 	wpdef "thingfabric.dev/go-fabric/cluster/spec/webrtctransportprovider"
 	"thingfabric.dev/go-fabric/controller/camera"
 
-	"github.com/SukramJ/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol"
 )
 
 // The camera's events (brief S8 §5): who receives them, and what waits
