@@ -11,7 +11,7 @@ wire-compatible with the API Home Assistant's Matter integration speaks (the
 python-matter-server / matterjs-server contract, schema 14), and a
 **bridge door** (`/bridge`) for hosts that are not written in Go.
 
-> **Status: v0.10.0; `main` on go-fabric v0.25.0 and go-fabric-ui v0.14.0, unreleased.** The controller half (`/ws`) answers every
+> **Status: v0.10.0 (go-fabric v0.26.0, go-fabric-ui v0.14.1).** The controller half (`/ws`) answers every
 > command of matterjs-server's dispatch Home Assistant's Matter integration
 > uses, the ICD commands, the network topology (with Thread border routers),
 > test nodes and the camera

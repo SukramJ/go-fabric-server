@@ -3,15 +3,15 @@
 The add-on follows go-fabric-server's versions; the full list of changes is
 the repository's [`changelog.md`](https://github.com/thingfabric/go-fabric-server/blob/main/changelog.md).
 
-## Unreleased
+## 0.10.0
 
 - **Back up the add-on before this update**: the first start upgrades the
   database and the bridge node's store one way; the upgraded files do not
-  run on 0.10.0.
-- **Known issue:** a fabric label of more than 32 bytes set under 0.10.0
-  (32 characters admitted then; umlauts and CJK characters take more than one byte each) stops
-  the add-on from starting until go-fabric #587 is fixed; the default
-  label `HomeAssistant` is not affected.
+  run on 0.9.3.
+- A fabric label of more than 32 bytes set under 0.9.3 (32 characters
+  admitted then; umlauts and CJK characters take more than one byte each)
+  is cut to 32 bytes at the first start; the default label `HomeAssistant`
+  is not affected.
 - New option **keep_onboarding_codes** (off): keep the pairing code of
   each device paired in its own commissioning mode (not one shared from
   another controller) and show it in the web UI's onboarding inventory; the
@@ -20,17 +20,13 @@ the repository's [`changelog.md`](https://github.com/thingfabric/go-fabric-serve
   `https://github.com/thingfabric/go-fabric-server` and its image
   `ghcr.io/thingfabric/go-fabric-server-addon-{arch}`. Remove the old
   repository URL in Home Assistant and add the new one.
-- Library update (go-fabric 0.25.0, go-fabric-ui 0.14.0): the web UI
+- Library update (go-fabric 0.26.0, go-fabric-ui 0.14.1): the web UI
   checks the host name of every request (the Ingress proxy's address is
-  the admission) and requires its own request header for admin rights.
-
-## 0.10.0
-
-- No change for the add-on: the release adds Bluetooth and Wi-Fi for the
-  daemon's own first node, a standalone daemon's feature (the add-on gets
-  no option and no system-bus access).
-- Library update (go-fabric-ui 0.9.2): alignment with go-fabric 0.22.2;
-  no change in behaviour (from 0.9.4, never released).
+  the admission) and requires its own request header for admin rights;
+  the bridge node gets go-fabric's security fixes.
+- The release's Bluetooth and Wi-Fi for the daemon's own first node are a
+  standalone daemon's feature: the add-on gets no option and no system-bus
+  access.
 
 ## 0.9.3
 

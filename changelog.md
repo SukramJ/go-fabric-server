@@ -4,16 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.10.0] - 2026-11-25
 
-**Back up `--storage-path` before upgrading from 0.10.0.** The first start
+The first release under `github.com/thingfabric` (see *Changed*); 0.10.0
+was never tagged before, so this section holds everything since 0.9.3.
+
+**Back up `--storage-path` before upgrading from 0.9.3.** The first start
 upgrades the device stores (`bridge.db`, `bridge-<key>.db`, schema v7 →
 v12) and the controller's registry in `fabric-server.db` (v1 → v3) one
-way; the upgraded files do not run on 0.10.0 (`docs/operations.md`,
+way; the upgraded files do not run on 0.9.3 (`docs/operations.md`,
 Files).
-
-**Known issue:** a controller whose fabric label stored in its database is beyond 32 bytes — 0.10.0 admitted 32 characters, so a label with umlauts or CJK characters may exceed it, set through `set_default_fabric_label` or the pages — does not start under this build until go-fabric #587 is fixed (go-fabric v0.25.0 refuses the stored label at load). The label in `server.json` is cut at
-load (below); the fabric record in `fabric-server.db` is go-fabric's.
 
 ### Added
 
@@ -47,6 +47,29 @@ load (below); the fabric record in `fabric-server.db` is go-fabric's.
   logs these commands' details `"[redacted]"` when their target holds a
   secret.
 
+- The first device node without a network at first boot (brief S13,
+  [`docs/reports/S13.md`](docs/reports/S13.md); go-fabric ADR 0031):
+  `--bridge-bluetooth-adapter <adapter>` gives the `--bridge-*` node a BLE
+  peripheral (go-fabric `ble/bluez`, `node.Network.BLE`; `0` is `hci0`), so
+  while it has no fabric it is commissioned over Bluetooth LE and its QR
+  code names BLE discovery; `--bridge-wifi-interface <ifname>` gives it a
+  Wi-Fi driver through wpa_supplicant (go-fabric `wifi/wpasupplicant`,
+  `node.Network.WiFi`), so it serves NetworkCommissioning's Wi-Fi feature
+  and joins the network a commissioner provisions. Each works alone; both
+  need `--bridge`, the node an erase brings back gets the same ones, and the
+  nodes the pages create never do. Either flag without `--bridge`,
+  `--bridge-bluetooth-adapter` with the public test passcode `20202021`
+  (`--bridge-passcode`'s default: anyone in Bluetooth range could
+  commission the node; no override), the adapter of `--bluetooth-adapter`
+  named again with `--controller` (`0` and `hci0` alike), or a port that
+  cannot be opened stops the start, naming the flags. One log line
+  per port (`fabricserver.node_ble`, `fabricserver.node_wifi`); the Wi-Fi
+  credential is never logged. Standalone daemon only: the add-on has no
+  option and no `host_dbus` ([docs/operations.md](docs/operations.md),
+  [docs/by_design.md](docs/by_design.md) B24–B27).
+- Dependency `thingfabric.dev/go-fabric/wifi/wpasupplicant` (Apache-2.0;
+  its D-Bus library godbus is already in through `ble/bluez`).
+
 ### Changed
 
 - **The project moved to `github.com/thingfabric/go-fabric-server`** (the
@@ -62,17 +85,19 @@ load (below); the fabric record in `fabric-server.db` is go-fabric's.
   - the JSON Schemas' `$id` (`GET /schema`, `GET /schema/declaration`)
     starts with `https://thingfabric.dev/go-fabric-server/`.
 - go-fabric-ui under its new module path `thingfabric.dev/go-fabric-ui`
-  (v0.14.0): the pages' problem `type` URIs are
+  (from v0.14.0): the pages' problem `type` URIs are
   `https://thingfabric.dev/go-fabric-ui/problems#problem-<code>` — a client
   that compares `type` as a string matches the new base, or better `code`
   (`X-Problem-Code`), which did not change.
-- go-fabric 0.22.2 → 0.25.0 under its new module path
+- go-fabric 0.22.2 → 0.26.0 under its new module path
   `thingfabric.dev/go-fabric` (with `ble/bluez`, `ble/esphome`,
-  `wifi/wpasupplicant`); go-fabric-ui 0.9.2 → 0.14.0. The first node's
+  `wifi/wpasupplicant`); go-fabric-ui 0.9.1 → 0.14.1. The DCL ledger
+  client of `get_vendor_names` is go-fabric's `dcl` package (moved from
+  `controller/dcl` in 0.26.0). The first node's
   Bluetooth peripheral is go-fabric's `contract.GATTPeripheral`
   (`node.Network.GATT`).
 - `server_info`'s go-fabric version and `GET /schema`'s provenance
-  (`x-go-fabric-version`, `x-matter-source-commit`) name go-fabric v0.25.0
+  (`x-go-fabric-version`, `x-matter-source-commit`) name go-fabric v0.26.0
   and matter.js `b25ed960`.
 - `--web` without `--web-admin` or `--web-admin-source` shows the status
   only: go-fabric-ui 0.13.0 makes most reading routes an admin's. Every
@@ -97,6 +122,13 @@ load (below); the fabric record in `fabric-server.db` is go-fabric's.
   registry node's label (64 characters) is served cut to 32 bytes on a
   rune boundary.
 
+- An erase of a device node whose stop does not end within the erase's
+  30 s budget now fails as an erase (`node_erase_failed`; erase again to
+  retry) instead of starting the replacement node, which could meet the old
+  node's Bluetooth service still registered.
+- `--bluetooth-adapter`'s help says it takes an adapter name as well as an
+  HCI id (it always did).
+
 ### Fixed
 
 - `declare` replacing a served device by a withheld one under the same
@@ -111,58 +143,33 @@ load (below); the fabric record in `fabric-server.db` is go-fabric's.
   listed the refused device as declared. The half's devices follow what the
   node serves.
 - The fabric label is cut to 32 bytes on a rune boundary, not to 32
-  characters, when it is set (#73); a label of 0.10.0 beyond 32 bytes in
+  characters, when it is set (#73); a label of 0.9.3 beyond 32 bytes in
   `server.json` is cut at load, logged at Warn (`fabricserver.label.cut`)
-  and saved back. See the known issue above for the fabric record.
+  and saved back. A fabric label beyond 32 bytes stored in
+  `fabric-server.db` (0.9.3 admitted 32 characters, so a label with
+  umlauts or CJK characters may exceed it) is cut to 32 bytes between two
+  characters when the controller loads it, with a warning, and saved back
+  (go-fabric 0.26.0, #587); under go-fabric 0.25.0 such a controller did
+  not start.
 - A camera command after the camera service closed answers `NodeNotReady`
   (#73).
+- The first device node's radios (go-fabric 0.26.0): Wi-Fi through
+  wpa_supplicant no longer leaves a network with its credential behind when
+  `AddNetwork` went unanswered, and the BLE peripheral registers its GATT
+  application and advertisement again after its adapter returns (a
+  re-plugged controller, a bluetoothd restart).
 
 ### Security
 
+- go-fabric 0.26.0's security fixes, which the daemon's device nodes get
+  with the update: a CASE session is installed from the handshake step that
+  established it; the DiagnosticLogs a controller retrieves carry peer
+  addresses and session ids of the accessing fabric's own sessions only;
+  a secret-bearing value whose wire form is another type than its model
+  is redacted instead of passed through.
 - `GET /metrics` publishes the daemon's `fabricserver.*` variables and
   `memstats` only; expvar's `cmdline` published the daemon's arguments,
   `--token` and `--bridge-passcode` among them when given as flags.
-
-## [0.10.0] - 2026-11-13
-
-### Added
-
-- The first device node without a network at first boot (brief S13,
-  [`docs/reports/S13.md`](docs/reports/S13.md); go-fabric ADR 0031):
-  `--bridge-bluetooth-adapter <adapter>` gives the `--bridge-*` node a BLE
-  peripheral (go-fabric `ble/bluez`, `node.Network.BLE`; `0` is `hci0`), so
-  while it has no fabric it is commissioned over Bluetooth LE and its QR
-  code names BLE discovery; `--bridge-wifi-interface <ifname>` gives it a
-  Wi-Fi driver through wpa_supplicant (go-fabric `wifi/wpasupplicant`,
-  `node.Network.WiFi`), so it serves NetworkCommissioning's Wi-Fi feature
-  and joins the network a commissioner provisions. Each works alone; both
-  need `--bridge`, the node an erase brings back gets the same ones, and the
-  nodes the pages create never do. Either flag without `--bridge`,
-  `--bridge-bluetooth-adapter` with the public test passcode `20202021`
-  (`--bridge-passcode`'s default: anyone in Bluetooth range could
-  commission the node; no override), the adapter of `--bluetooth-adapter`
-  named again with `--controller` (`0` and `hci0` alike), or a port that
-  cannot be opened stops the start, naming the flags. One log line
-  per port (`fabricserver.node_ble`, `fabricserver.node_wifi`); the Wi-Fi
-  credential is never logged. Standalone daemon only: the add-on has no
-  option and no `host_dbus` ([docs/operations.md](docs/operations.md),
-  [docs/by_design.md](docs/by_design.md) B24–B27).
-- Dependency `github.com/SukramJ/go-fabric/wifi/wpasupplicant` `v0.22.1`
-  (Apache-2.0; its D-Bus library godbus is already in through `ble/bluez`).
-
-### Changed
-
-- An erase of a device node whose stop does not end within the erase's
-  30 s budget now fails as an erase (`node_erase_failed`; erase again to
-  retry) instead of starting the replacement node, which could meet the old
-  node's Bluetooth service still registered.
-- `--bluetooth-adapter`'s help says it takes an adapter name as well as an
-  HCI id (it always did).
-- go-fabric-ui `v0.9.1` → `v0.9.2` (a bump, no brief): the dependency only
-  (go-fabric-ui `v0.9.2` carries go-fabric `v0.22.2` and Go 1.27.4; the UI
-  contract stays 0.9.0). No behaviour change; `protocol/schema` does not move
-  (its `x-go-fabric-version` stays `v0.22.2`). Folded in from 0.9.4, which
-  was never tagged.
 
 ## [0.9.3] - 2026-11-12
 
