@@ -359,7 +359,7 @@ func TestDeclareForgetRefusedAtCall(t *testing.T) {
 	e.host.Close()
 	time.Sleep(50 * time.Millisecond)
 	h := e.dialBridge(fsclient.Options{})
-	var keys []string
+	keys := make([]string, 0, len(h.Devices()))
 	for _, d := range h.Devices() {
 		keys = append(keys, d.Key)
 	}

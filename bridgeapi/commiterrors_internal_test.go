@@ -27,7 +27,7 @@ func TestCommitErrors(t *testing.T) {
 	if len(withheld) != 1 || withheld["w"] != w {
 		t.Errorf("withheld %v", withheld)
 	}
-	if len(refusals) != 2 || refusals[0] != forget || refusals[1] != dup {
+	if len(refusals) != 2 || !errors.Is(refusals[0], node.ErrUnknownKey) || !errors.Is(refusals[1], node.ErrDuplicateKey) {
 		t.Errorf("refusals %v", refusals)
 	}
 	if len(other) != 1 || !errors.Is(other[0], store) {
