@@ -176,8 +176,8 @@ func TestFabricLabelMultibyte(t *testing.T) {
 	})
 }
 
-// TestStoredLabelCut: a server.json of 0.10.0, whose fabric label of 32
-// two-byte runes (64 bytes) was within 0.10.0's 32 characters, is cut at
+// TestStoredLabelCut: a server.json of 0.9.3, whose fabric label of 32
+// two-byte runes (64 bytes) was within 0.9.3's 32 characters, is cut at
 // load to 32 bytes on a rune boundary, logged at Warn and saved back; the
 // controller starts with the cut label.
 func TestStoredLabelCut(t *testing.T) {

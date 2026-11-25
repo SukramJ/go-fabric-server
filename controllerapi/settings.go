@@ -56,11 +56,11 @@ type settingsStore struct {
 }
 
 // openSettings loads server.json under dir. A stored fabric label beyond
-// commissioner.MaxLabelLength bytes — 0.10.0 cut labels to 32 characters,
-// go-fabric v0.25.0 refuses more than 32 bytes at the controller's start —
+// commissioner.MaxLabelLength bytes — 0.9.3 cut labels to 32 characters —
 // is cut to the bound on a rune boundary, logged at Warn and saved back,
 // as go-fabric cuts a stored NodeLabel (CHANGELOG.md, 0.25.0,
-// RestoreNodeLabel).
+// RestoreNodeLabel) and, since v0.26.0, a stored fabric label
+// (CHANGELOG.md:149 at v0.26.0, #587).
 func openSettings(dir string, log *slog.Logger) (*settingsStore, error) {
 	s := &settingsStore{data: settingsData{FabricLabel: defaultFabricLabel}}
 	if dir == "" {
@@ -117,7 +117,8 @@ func (s *settingsStore) label() string {
 // :1227-1262): trimmed, empty is "HomeAssistant", cut to the maximum —
 // which matterjs-server counts in characters and go-fabric in bytes
 // (commissioner.MaxLabelLength, 32 bytes since v0.25.0: a longer label
-// fails the fabric's creation, its load and SetLabel). So the label is cut
+// fails the fabric's creation and SetLabel; since v0.26.0 a stored one is
+// cut at load, CHANGELOG.md:149 at v0.26.0). So the label is cut
 // to commissioner.MaxLabelLength bytes on a rune boundary; an ASCII label
 // is cut as matterjs-server cuts it (docs/protocol.md, Deliberate
 // differences).

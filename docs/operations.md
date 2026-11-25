@@ -236,17 +236,22 @@ Back up the whole directory with the daemon stopped (or with
 `sqlite3 fabric-server.db .backup`). Losing `fabric-server.db` loses the
 fabric: every node must be commissioned again.
 
-**The stores upgrade one way.** The first start on go-fabric v0.25.0
-(this server after 0.10.0) upgrades the device stores (`bridge.db`,
-`bridge-<key>.db`) from schema v7 to v12 (go-fabric `CHANGELOG.md:513`,
-`:635`, `:647`, `:693`, `:142`) and the controller's registry in
-`fabric-server.db` from v1 to v3 (`:483`). Back up `bridge*.db` and
-`fabric-server.db` before the upgrade: there is no way back to 0.10.0 with
+**The stores upgrade one way.** The first start on go-fabric v0.25.0 or
+later (this server from 0.10.0, upgrading from 0.9.3) upgrades the device
+stores (`bridge.db`, `bridge-<key>.db`) from schema v7 to v12 (go-fabric
+`CHANGELOG.md:513`, `:635`, `:647`, `:693`, `:142` at v0.25.0) and the
+controller's registry in `fabric-server.db` from v1 to v3 (`:483`). Back up `bridge*.db` and
+`fabric-server.db` before the upgrade: there is no way back to 0.9.3 with
 the upgraded files (this server has no downgrade).
 
-A fabric label of 0.10.0 beyond 32 bytes in `server.json` is cut to 32
+A fabric label of 0.9.3 beyond 32 bytes in `server.json` is cut to 32
 bytes on a rune boundary at the first start, logged at Warn
-(`fabricserver.label.cut`) and saved back. **Known issue:** a controller whose fabric label stored in its database is beyond 32 bytes — 0.10.0 admitted 32 characters, so a label with umlauts or CJK characters may exceed it, set through `set_default_fabric_label` or the pages — does not start under this build until go-fabric #587 is fixed (go-fabric v0.25.0 refuses the stored label at load).
+(`fabricserver.label.cut`) and saved back. The fabric label stored in
+`fabric-server.db` is go-fabric's: beyond 32 bytes — 0.9.3 admitted 32
+characters, so a label with umlauts or CJK characters may exceed it — it is
+cut to 32 bytes between two characters when the controller loads it, with
+a warning, and the record saved back (go-fabric `CHANGELOG.md:149` at
+v0.26.0, #587).
 
 With `--controller-keep-onboarding-codes`, `fabric-server.db` holds one
 setup code per paired device: secrets of the fabric keys' class (with a
@@ -317,7 +322,7 @@ its backups like the fabric's keys.
 
 ```sh
 docker run -d --name fabric-server --network host \
-  -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server:0.1.0
+  -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server:0.10.0
 ```
 
 Host networking is what the device nodes advertise on; on a dual-homed
@@ -326,7 +331,7 @@ host, name the LAN interface beside it:
 ```sh
 docker run -d --name fabric-server --network host \
   -e FABRIC_SERVER_BRIDGE=true -e FABRIC_SERVER_BRIDGE_MDNS_INTERFACES=enp1s0 \
-  -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server:0.8.0
+  -v fabric-server:/data ghcr.io/thingfabric/go-fabric-server:0.10.0
 ```
 
 The image (`deploy/Dockerfile`) is distroless and runs as `nonroot`; it

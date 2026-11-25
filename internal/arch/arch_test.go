@@ -46,8 +46,9 @@ var facade = map[string]bool{
 	// no one-call production store (report S1, Questions Q10).
 	"controller/dcl/snapshot": true,
 	// The DCL client of get_vendor_names (brief S2 §2): the ledger's
-	// vendor records, as matterjs-server's vendor info service reads them.
-	"controller/dcl": true,
+	// vendor records, as matterjs-server's vendor info service reads them
+	// (role-neutral package since go-fabric v0.26.0, brief S15 §2).
+	"dcl": true,
 	// The network graph of the controller's nodes (brief S §2): the
 	// service get_network_topology and the controller pages answer from
 	// (go-fabric-ui's gofabric.ControllerOptions.Topology takes it).

@@ -509,7 +509,7 @@ Names, not ids; every name is matched without regard to case:
   `<value>` is the enabled IDs and the refused ones. The policies are the
   operator's (operations, §Surface policies); a declaration cannot change
   them.
-- go-fabric v0.25.0 refuses declarations 0.10.0 accepted (go-fabric
+- go-fabric v0.25.0 refuses declarations 0.9.3 accepted (go-fabric
   `CHANGELOG.md` at v0.25.0): a device whose kit server lists an attribute
   matter.js requires a value of at initialisation, built bare or with the
   named feature selections (`:665`); an optional command selected for a
@@ -538,11 +538,24 @@ Names, not ids; every name is matched without regard to case:
   `remove`, `forget` and a re-`declare` treat a withheld key as any
   other: declared again as a type the level knows, it gets its endpoint;
   a served key declared as a withheld type leaves the node and keeps its
-  endpoint number, as a replaced device does. At go-fabric v0.15.3 the
+  endpoint number, as a replaced device does — in one step (go-fabric
+  `Batch.Replace`, #585): a replacement the node refuses leaves the served
+  device served and declared, its entry carrying the `error`. At go-fabric v0.15.3 the
   node's surface report keeps listing a removed withheld key's elements
   until the key is declared again as a type the level knows or the
   daemon restarts (go-fabric `node/surface.go` `recordWithheld` clears
   its in-memory record only when the key is added again served).
+- The node judges the batch at its commit (go-fabric v0.26.0,
+  `node.Partition.Batch`): a device that collides with a key another
+  endpoint of the node serves is refused then, not at its call. Its entry
+  carries the `error` (`the node refused it when the batch committed: …`,
+  go-fabric's `ErrDuplicateKey` text); an added device so refused is not
+  declared, a replaced one leaves the device it replaced declared, and the
+  other devices' results stand. What the half lists afterwards is what the
+  node serves or records withheld. A commit error that is no key refusal
+  (the node's store, its reassembly), and a key the node could not forget,
+  answer `UnknownError` (`declare: the node's batch: …`), the devices —
+  the unforgotten key included — listed as the node holds them.
 - `GET /schema/declaration` serves the JSON Schema of the document
   (`protocol/schema/declaration.schema.json`, generated from go-fabric's
   snapshot and its typed cluster packages): `$defs/patch.<Cluster>` is a

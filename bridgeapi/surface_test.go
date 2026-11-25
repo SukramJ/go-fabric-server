@@ -8,13 +8,16 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"thingfabric.dev/go-fabric/device"
 	"thingfabric.dev/go-fabric/node"
 	"thingfabric.dev/go-fabric/surface"
 
 	"thingfabric.dev/go-fabric-server/bridgeapi"
 	fsclient "thingfabric.dev/go-fabric-server/client"
 	"thingfabric.dev/go-fabric-server/protocol"
+	"thingfabric.dev/go-fabric-server/protocol/schema"
 )
 
 // schedulesRow is the "Ahead of matter.js" register ID of Thermostat's
@@ -226,32 +229,146 @@ func TestSurfaceWithheldReplaced(t *testing.T) {
 	}
 }
 
-// TestSurfaceReplaceFailsAfterRemove: a served device replaced by a
-// withheld one whose add fails after the served one's removal leaves the
-// node without the key: the answer names the error and lists the key in
-// removed, node_info no longer lists it, and its endpoint number is freed
-// (a later declare of the key gets a fresh one).
-func TestSurfaceReplaceFailsAfterRemove(t *testing.T) {
+// TestSurfaceReplaceRefusedKeepsServed: a served device replaced by a
+// withheld one in one step (go-fabric #585, Batch.Replace): when the
+// replacement is refused, the served device stays — on the node at its
+// number and declared here — and the answer names the error and removes
+// nothing.
+func TestSurfaceReplaceRefusedKeepsServed(t *testing.T) {
 	e := newEnv(t, bridgeapi.Options{Surface: surface.Policies{Level: "1.4.2"}})
 	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"OnOffLight"},{"key":"d","type":"OnOffLight"}]}`))
 	if err != nil || res.Devices[0].Endpoint == nil {
 		t.Fatalf("declare: %+v %v", res, err)
 	}
 	first := *res.Devices[0].Endpoint
-	refused := errors.New("the add is refused")
-	restore := bridgeapi.SetBatchAdd(func(*node.Batch, node.Endpoint) error { return refused })
+	refused := errors.New("the replacement is refused")
+	restore := bridgeapi.SetBatchReplace(func(*node.Batch, device.SourceKey, node.Endpoint) error { return refused })
 	res, err = e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"Closure"},{"key":"d","type":"OnOffLight"}]}`))
 	restore()
-	if err != nil || res.Devices[0].Error == "" || !slices.Equal(res.Removed, []string{"c"}) {
-		t.Fatalf("the failed replace: %+v %v", res, err)
+	if err != nil || !strings.Contains(res.Devices[0].Error, refused.Error()) || len(res.Removed) != 0 || len(res.Withheld) != 0 {
+		t.Fatalf("the refused replace: %+v %v", res, err)
 	}
-	if keys := nodeKeys(t, e); !slices.Equal(keys, []string{"d"}) {
-		t.Fatalf("node_info keys %v, want [d]", keys)
+	if keys := nodeKeys(t, e); !slices.Equal(keys, []string{"c", "d"}) {
+		t.Fatalf("node_info keys %v, want [c d]", keys)
 	}
-	// d keeps its number; c's was freed, so c comes back under another
-	// one than it had: the next free after d's.
+	if err := e.host.Set(e.ctx, "c", "OnOff", map[string]any{"onOff": true}); err != nil {
+		t.Errorf("set on the kept light: %v", err)
+	}
+	// The light is still the declared device: declared again, it is
+	// unchanged and keeps its number.
 	res, err = e.host.Declare(e.ctx, doc(`{"devices":[{"key":"c","type":"OnOffLight"},{"key":"d","type":"OnOffLight"}]}`))
-	if err != nil || res.Devices[0].Action != "added" || res.Devices[0].Endpoint == nil || *res.Devices[0].Endpoint == first {
-		t.Fatalf("declare after the failed replace: %+v %v (the number %d)", res, err, first)
+	if err != nil || res.Devices[0].Action != "unchanged" || res.Devices[0].Endpoint == nil || *res.Devices[0].Endpoint != first {
+		t.Fatalf("declare after the refused replace: %+v %v (the number %d)", res, err, first)
+	}
+}
+
+// foreignLight adds an OnOffLight under key to the node's Aggregator
+// directly, past the bridge half: an endpoint the half did not declare.
+func foreignLight(t *testing.T, e *env, key string) node.Endpoint {
+	t.Helper()
+	typ, ok := device.Lookup(schema.DeviceTypeByName("OnOffLight").ID)
+	if !ok {
+		t.Fatal("no OnOffLight in the kit")
+	}
+	dev, err := device.New(typ, device.Options{StableKey: device.StringKey(key)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.dev.Node().Aggregator().Add(e.ctx, dev); err != nil {
+		t.Fatal(err)
+	}
+	return dev
+}
+
+// TestDeclareCommitRefusal: go-fabric v0.26.0 judges a Batch at its
+// commit, so an Add of a key another endpoint serves returns nil at the
+// call and is refused with ErrDuplicateKey when the batch commits. The
+// declaration answers that device's error and the others' results, the
+// half does not take the refused device as declared, and a later
+// declaration without the key leaves the other endpoint alone.
+func TestDeclareCommitRefusal(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{})
+	foreign := foreignLight(t, e, "x")
+	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"x","type":"OnOffLight"},{"key":"l","type":"OnOffLight"}]}`))
+	if err != nil || len(res.Devices) != 2 {
+		t.Fatalf("declare: %+v %v", res, err)
+	}
+	x, l := res.Devices[0], res.Devices[1]
+	if x.Action != "added" || x.Endpoint != nil || !strings.Contains(x.Error, node.ErrDuplicateKey.Error()) {
+		t.Errorf("x: %+v, want added with the duplicate key refusal", x)
+	}
+	if l.Action != "added" || l.Error != "" || l.Endpoint == nil {
+		t.Errorf("l: %+v, want added with an endpoint", l)
+	}
+	if err := e.host.Set(e.ctx, "x", "OnOff", map[string]any{"onOff": true}); err == nil {
+		t.Error("set on the refused key: no error")
+	}
+	res, err = e.host.Declare(e.ctx, doc(`{"devices":[{"key":"l","type":"OnOffLight"}]}`))
+	if err != nil || len(res.Removed) != 0 {
+		t.Fatalf("declare without x: %+v %v", res, err)
+	}
+	if !slices.Contains(e.dev.Node().Aggregator().Endpoints(), foreign) {
+		t.Error("the foreign endpoint left the node")
+	}
+}
+
+// sliceEndpoint is a host endpoint that is a value Go cannot compare (a
+// slice field), which go-fabric's Aggregator takes (CHANGELOG.md:171 at
+// v0.26.0).
+type sliceEndpoint struct {
+	*device.Device
+	tags []string
+}
+
+// TestDeclareBesideNonComparableEndpoint: a declaration on a node whose
+// Aggregator also holds an endpoint that cannot be compared answers as
+// usual (review S15 L1: the half's served set must not hash it).
+func TestDeclareBesideNonComparableEndpoint(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{})
+	typ, _ := device.Lookup(schema.DeviceTypeByName("OnOffLight").ID)
+	dev, err := device.New(typ, device.Options{StableKey: device.StringKey("y")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.dev.Node().Aggregator().Add(e.ctx, sliceEndpoint{Device: dev, tags: []string{"t"}}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"l","type":"OnOffLight"}]}`))
+	if err != nil || len(res.Devices) != 1 || res.Devices[0].Error != "" || res.Devices[0].Endpoint == nil {
+		t.Fatalf("declare: %+v %v", res, err)
+	}
+}
+
+// TestDeclareForgetRefusedAtCall: a key the document no longer names whose
+// Forget fails at its call stays declared — in the next listening
+// client's dump — and the declare answers UnknownError naming the
+// failure (review S15 L2); a later declare forgets it.
+func TestDeclareForgetRefusedAtCall(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{})
+	if _, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"},{"key":"b","type":"OnOffLight"}]}`)); err != nil {
+		t.Fatal(err)
+	}
+	refused := errors.New("the forget is refused")
+	restore := bridgeapi.SetBatchForget(func(*node.Batch, device.SourceKey) error { return refused })
+	_, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"}]}`))
+	restore()
+	var perr *protocol.Error
+	if !errors.As(err, &perr) || perr.ErrorCode != protocol.UnknownError || !strings.Contains(perr.Details, refused.Error()) {
+		t.Fatalf("declare with the refused forget: %v", err)
+	}
+	e.host.Close()
+	time.Sleep(50 * time.Millisecond)
+	h := e.dialBridge(fsclient.Options{})
+	keys := make([]string, 0, len(h.Devices()))
+	for _, d := range h.Devices() {
+		keys = append(keys, d.Key)
+	}
+	slices.Sort(keys)
+	if !slices.Equal(keys, []string{"a", "b"}) {
+		t.Fatalf("dump keys %v, want [a b]", keys)
+	}
+	res, err := h.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"}]}`))
+	if err != nil || !slices.Equal(res.Removed, []string{"b"}) {
+		t.Fatalf("declare after: %+v %v", res, err)
 	}
 }
