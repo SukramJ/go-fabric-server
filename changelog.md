@@ -100,10 +100,16 @@ load (below); the fabric record in `fabric-server.db` is go-fabric's.
 ### Fixed
 
 - `declare` replacing a served device by a withheld one under the same
-  key: the served one is removed first (go-fabric 0.25.0 refused the
-  add), and the key keeps its endpoint number for the device served after.
-  When that add fails, the key is listed in `removed` and its endpoint
-  number freed.
+  key: one step (go-fabric 0.26.0 `Batch.Replace`, #585; 0.25.0 refused
+  it); the key keeps its endpoint number for the device served after, and
+  a replacement the node refuses leaves the served device served and
+  declared, its entry carrying the `error`.
+- `declare` when the node refuses a device at the batch's commit (go-fabric
+  0.26.0 judges a batch at its end, e.g. a key another endpoint of the node
+  serves): that device's entry carries the `error` and the others' results
+  stand; before, the whole `declare` answered `UnknownError` and the half
+  listed the refused device as declared. The half's devices follow what the
+  node serves.
 - The fabric label is cut to 32 bytes on a rune boundary, not to 32
   characters, when it is set (#73); a label of 0.10.0 beyond 32 bytes in
   `server.json` is cut at load, logged at Warn (`fabricserver.label.cut`)
