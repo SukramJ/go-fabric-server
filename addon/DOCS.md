@@ -55,12 +55,11 @@ the pages answer under the name your browser uses. A reverse proxy in
 front of Home Assistant must forward the `Host` header unchanged, or the
 web UI refuses changes (`origin_not_allowed`).
 
-Back up the add-on before updating from 0.10.0: the first start upgrades
-the database one way, with no way back to 0.10.0. **Known issue:** a
-fabric label of more than 32 bytes set under 0.10.0 (32 characters admitted
-then; umlauts and CJK characters take more than one byte each) stops the add-on
-from starting until go-fabric #587 is fixed; the default label
-`HomeAssistant` is not affected.
+Back up the add-on before updating from 0.9.3: the first start upgrades
+the database one way, with no way back to 0.9.3. A fabric label of more
+than 32 bytes set under 0.9.3 (32 characters admitted then; umlauts and
+CJK characters take more than one byte each) is cut to 32 bytes at the
+first start; the default label `HomeAssistant` is not affected.
 
 ## Bluetooth through ESPHome proxies
 

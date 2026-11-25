@@ -56,13 +56,17 @@ and no host list is configured. A reverse proxy in front of Home
 Assistant must forward `Host` unchanged: one that rewrites it makes the
 `Origin` differ, and admin writes answer 403 `origin_not_allowed`.
 
-## Updating to the release after 0.10.0
+## Updating from 0.9.3
 
-The first start upgrades the stores one way (go-fabric v0.25.0): back up
-the add-on (or `/data`'s `fabric-server.db` and `bridge*.db`) before the
-update; the upgraded files do not run on 0.10.0.
+The first start upgrades the stores one way (go-fabric v0.25.0 and
+later): back up the add-on (or `/data`'s `fabric-server.db` and
+`bridge*.db`) before the update; the upgraded files do not run on 0.9.3.
 
-**Known issue:** a controller whose fabric label stored in its database is beyond 32 bytes — 0.10.0 admitted 32 characters, so a label with umlauts or CJK characters may exceed it, set through `set_default_fabric_label` or the pages — does not start under this build until go-fabric #587 is fixed (go-fabric v0.25.0 refuses the stored label at load).
+A fabric label beyond 32 bytes stored in the database — 0.9.3 admitted 32
+characters, so a label with umlauts or CJK characters may exceed it, set
+through `set_default_fabric_label` or the pages — is cut to 32 bytes
+between two characters when the controller loads it, with a warning, and
+saved back (go-fabric v0.26.0, #587).
 
 ## No discovery
 

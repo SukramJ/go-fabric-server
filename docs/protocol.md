@@ -509,7 +509,7 @@ Names, not ids; every name is matched without regard to case:
   `<value>` is the enabled IDs and the refused ones. The policies are the
   operator's (operations, §Surface policies); a declaration cannot change
   them.
-- go-fabric v0.25.0 refuses declarations 0.10.0 accepted (go-fabric
+- go-fabric v0.25.0 refuses declarations 0.9.3 accepted (go-fabric
   `CHANGELOG.md` at v0.25.0): a device whose kit server lists an attribute
   matter.js requires a value of at initialisation, built bare or with the
   named feature selections (`:665`); an optional command selected for a
