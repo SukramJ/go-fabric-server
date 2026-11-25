@@ -111,6 +111,10 @@ type withheldDevice struct {
 // batchAdd is node.Batch.Add; a variable so a test can make an add fail.
 var batchAdd = func(bt *node.Batch, ep node.Endpoint) error { return bt.Add(ep) }
 
+// batchForget is node.Batch.Forget; a variable so a test can make a
+// forget fail at its call.
+var batchForget = func(bt *node.Batch, key device.SourceKey) error { return bt.Forget(key) }
+
 // batchReplace is node.Batch.Replace; a variable so a test can make a
 // replacement fail.
 var batchReplace = func(bt *node.Batch, key device.SourceKey, ep node.Endpoint) error { return bt.Replace(key, ep) }
@@ -198,9 +202,12 @@ func commitErrors(err error) (withheld map[string]*surface.WithheldError, refusa
 // The half's devices follow what the node serves once the batch
 // committed: a call the batch held and refused at its commit leaves its
 // device undeclared (an Add) or the replaced device declared (a Replace),
-// with the refusal as that device's error; a key the batch could not
-// forget stays declared. An error of the commit that is no key refusal,
-// or a key refusal no device carries, answers UnknownError.
+// with the refusal as that device's error. A key the batch could not
+// forget (at the call or at the commit) stays declared and answers
+// UnknownError, as does an error of the commit that is no key refusal or
+// a key refusal no device carries. A device refused at the commit carries
+// every key refusal of the batch: go-fabric's refusals name their key
+// only in their text (go-fabric #616 asks for a typed per-call error).
 func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	n := s.node.Load()
 	devs, err := s.decodeDeclaration(ctx, c.req.Args)
@@ -215,6 +222,9 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 	results := make([]declared, len(devs))
 	named := map[string]bool{}
 	var removed []string
+	// forgetErrs are the Forgets that failed at their call: their keys
+	// stay declared.
+	var forgetErrs []error
 	batchErr := n.Aggregator().Batch(ctx, func(bt *node.Batch) error {
 		for i, b := range devs {
 			named[b.key] = true
@@ -241,16 +251,24 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 			// removed Batch.MarkComplete; a stored number is kept until
 			// Forget erases it, as matter.js keeps it until its store is
 			// erased, ServerEndpointInitializer.ts:59-65 eraseDescendant).
-			if err := bt.Forget(device.StringKey(key)); err == nil {
-				removed = append(removed, key)
+			if err := batchForget(bt, device.StringKey(key)); err != nil {
+				forgetErrs = append(forgetErrs, fmt.Errorf("forget %s: %w", key, err))
+				continue
 			}
+			removed = append(removed, key)
 		}
 		return nil
 	})
 	withheldAtCommit, refusals, other := commitErrors(batchErr)
-	served := map[node.Endpoint]bool{}
+	other = append(forgetErrs, other...)
+	// served by the device, not by the node.Endpoint: a host's endpoint
+	// on the same Aggregator may be a value Go cannot compare (go-fabric
+	// CHANGELOG.md:171 at v0.26.0), which a map key would panic on.
+	served := map[*device.Device]bool{}
 	for _, ep := range n.Aggregator().Endpoints() {
-		served[ep] = true
+		if d, ok := ep.(*device.Device); ok {
+			served[d] = true
+		}
 	}
 	// taken reports whether the node took b's declaration: served, or
 	// recorded withheld at the call or at the commit.
@@ -301,12 +319,14 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 			r.Endpoint = &ep
 		}
 	}
+	// A key the document no longer names that the batch did not forget
+	// (its Forget failed at the call, or was held and refused at the
+	// commit: the node still serves the device) stays declared.
 	gone := removed[:0]
+	forgetRefused := false
 	for _, key := range removed {
 		if prev := old[key]; prev.withheld == nil && served[prev.dev] {
-			// A Forget the batch held and refused at its commit: the
-			// node still serves the device.
-			order = append(order, key)
+			forgetRefused = true
 			continue
 		}
 		prev := old[key]
@@ -315,6 +335,14 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 		gone = append(gone, key)
 	}
 	removed = gone
+	kept := make([]string, 0, len(old))
+	for key := range old {
+		if _, ok := s.devices[key]; ok && !named[key] {
+			kept = append(kept, key)
+		}
+	}
+	sort.Strings(kept)
+	order = append(order, kept...)
 	s.order = order
 	var withheld []withheldDevice
 	for _, key := range order {
@@ -324,7 +352,9 @@ func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) 
 	}
 	s.mu.Unlock()
 	sort.Strings(removed)
-	if unclaimed := refusal != nil && !refusedAtCommit; len(other) > 0 || unclaimed {
+	// A key refusal is claimed by the devices refused at the commit; a
+	// refused Forget has no device entry to carry it.
+	if unclaimed := refusal != nil && (!refusedAtCommit || forgetRefused); len(other) > 0 || unclaimed {
 		var errs []error
 		if unclaimed {
 			errs = append(errs, refusal)

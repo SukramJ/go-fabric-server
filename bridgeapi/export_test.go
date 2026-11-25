@@ -23,3 +23,11 @@ func SetBatchReplace(f func(bt *node.Batch, key device.SourceKey, ep node.Endpoi
 	batchReplace = f
 	return func() { batchReplace = prev }
 }
+
+// SetBatchForget replaces node.Batch.Forget for one test; the returned
+// function restores it.
+func SetBatchForget(f func(bt *node.Batch, key device.SourceKey) error) (restore func()) {
+	prev := batchForget
+	batchForget = f
+	return func() { batchForget = prev }
+}

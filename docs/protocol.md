@@ -553,9 +553,9 @@ Names, not ids; every name is matched without regard to case:
   declared, a replaced one leaves the device it replaced declared, and the
   other devices' results stand. What the half lists afterwards is what the
   node serves or records withheld. A commit error that is no key refusal
-  (the node's store, its reassembly) answers `UnknownError`
-  (`declare: the node's batch: …`), the devices listed as the node holds
-  them.
+  (the node's store, its reassembly), and a key the node could not forget,
+  answer `UnknownError` (`declare: the node's batch: …`), the devices —
+  the unforgotten key included — listed as the node holds them.
 - `GET /schema/declaration` serves the JSON Schema of the document
   (`protocol/schema/declaration.schema.json`, generated from go-fabric's
   snapshot and its typed cluster packages): `$defs/patch.<Cluster>` is a

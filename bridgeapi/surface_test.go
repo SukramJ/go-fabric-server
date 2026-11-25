@@ -8,8 +8,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"thingfabric.dev/go-fabric/device"
+	"thingfabric.dev/go-fabric/endpoint"
 	"thingfabric.dev/go-fabric/node"
 	"thingfabric.dev/go-fabric/surface"
 
@@ -308,5 +310,68 @@ func TestDeclareCommitRefusal(t *testing.T) {
 	}
 	if !slices.Contains(e.dev.Node().Aggregator().Endpoints(), foreign) {
 		t.Error("the foreign endpoint left the node")
+	}
+}
+
+// sliceEndpoint is a host endpoint that is a value Go cannot compare (a
+// slice field), which go-fabric's Aggregator takes (CHANGELOG.md:171 at
+// v0.26.0).
+type sliceEndpoint struct {
+	dev  *device.Device
+	tags []string
+}
+
+func (s sliceEndpoint) Spec() endpoint.Spec { return s.dev.Spec() }
+
+// TestDeclareBesideNonComparableEndpoint: a declaration on a node whose
+// Aggregator also holds an endpoint that cannot be compared answers as
+// usual (review S15 L1: the half's served set must not hash it).
+func TestDeclareBesideNonComparableEndpoint(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{})
+	typ, _ := device.Lookup(schema.DeviceTypeByName("OnOffLight").ID)
+	dev, err := device.New(typ, device.Options{StableKey: device.StringKey("y")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.dev.Node().Aggregator().Add(e.ctx, sliceEndpoint{dev: dev, tags: []string{"t"}}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"l","type":"OnOffLight"}]}`))
+	if err != nil || len(res.Devices) != 1 || res.Devices[0].Error != "" || res.Devices[0].Endpoint == nil {
+		t.Fatalf("declare: %+v %v", res, err)
+	}
+}
+
+// TestDeclareForgetRefusedAtCall: a key the document no longer names whose
+// Forget fails at its call stays declared — in the next listening
+// client's dump — and the declare answers UnknownError naming the
+// failure (review S15 L2); a later declare forgets it.
+func TestDeclareForgetRefusedAtCall(t *testing.T) {
+	e := newEnv(t, bridgeapi.Options{})
+	if _, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"},{"key":"b","type":"OnOffLight"}]}`)); err != nil {
+		t.Fatal(err)
+	}
+	refused := errors.New("the forget is refused")
+	restore := bridgeapi.SetBatchForget(func(*node.Batch, device.SourceKey) error { return refused })
+	_, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"}]}`))
+	restore()
+	var perr *protocol.Error
+	if !errors.As(err, &perr) || perr.ErrorCode != protocol.UnknownError || !strings.Contains(perr.Details, refused.Error()) {
+		t.Fatalf("declare with the refused forget: %v", err)
+	}
+	e.host.Close()
+	time.Sleep(50 * time.Millisecond)
+	h := e.dialBridge(fsclient.Options{})
+	var keys []string
+	for _, d := range h.Devices() {
+		keys = append(keys, d.Key)
+	}
+	slices.Sort(keys)
+	if !slices.Equal(keys, []string{"a", "b"}) {
+		t.Fatalf("dump keys %v, want [a b]", keys)
+	}
+	res, err := h.Declare(e.ctx, doc(`{"devices":[{"key":"a","type":"OnOffLight"}]}`))
+	if err != nil || !slices.Equal(res.Removed, []string{"b"}) {
+		t.Fatalf("declare after: %+v %v", res, err)
 	}
 }

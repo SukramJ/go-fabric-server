@@ -141,7 +141,8 @@ Files).
   serves): that device's entry carries the `error` and the others' results
   stand; before, the whole `declare` answered `UnknownError` and the half
   listed the refused device as declared. The half's devices follow what the
-  node serves.
+  node serves: a key the node could not forget stays declared (and in the
+  listening dump), and the `declare` answers `UnknownError` naming why.
 - The fabric label is cut to 32 bytes on a rune boundary, not to 32
   characters, when it is set (#73); a label of 0.9.3 beyond 32 bytes in
   `server.json` is cut at load, logged at Warn (`fabricserver.label.cut`)
@@ -149,8 +150,7 @@ Files).
   `fabric-server.db` (0.9.3 admitted 32 characters, so a label with
   umlauts or CJK characters may exceed it) is cut to 32 bytes between two
   characters when the controller loads it, with a warning, and saved back
-  (go-fabric 0.26.0, #587); under go-fabric 0.25.0 such a controller did
-  not start.
+  (go-fabric 0.26.0, #587).
 - A camera command after the camera service closed answers `NodeNotReady`
   (#73).
 - The first device node's radios (go-fabric 0.26.0): Wi-Fi through
