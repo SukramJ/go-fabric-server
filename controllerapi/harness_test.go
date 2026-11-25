@@ -44,6 +44,10 @@ type env struct {
 	// go-fabric's test camera (controller/camera/cameratest).
 	camera *cameratest.Camera
 	port   *cameratest.Port
+	// subscribed: the server subscribes to a commissioned node itself
+	// (Options.DisableAutoSubscription unset), so the node becomes
+	// available on its own.
+	subscribed bool
 }
 
 type envOptions struct {
@@ -167,7 +171,7 @@ func newEnv(t *testing.T, o envOptions) *env {
 		api.Shutdown(sctx)
 		srv.Close()
 	})
-	e := &env{t: t, site: site, light: light, dev: dev, api: api, ctrl: ctrl, cam: svc, camera: cam, port: port, url: "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws", ctx: ctx}
+	e := &env{t: t, site: site, light: light, dev: dev, api: api, ctrl: ctrl, cam: svc, camera: cam, port: port, url: "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws", ctx: ctx, subscribed: !o.server.DisableAutoSubscription}
 	if !o.noDial {
 		e.client = e.dial(fsclient.Options{Token: o.token})
 	}
@@ -185,7 +189,8 @@ func (e *env) dial(o fsclient.Options) *fsclient.Client {
 }
 
 // commission pairs the site's light through commission_with_code with its
-// QR code and returns the node data.
+// QR code and returns the node data the command answered — with the
+// server's own subscription, once the node is available (waitAvailable).
 func (e *env) commission() fsclient.Node {
 	e.t.Helper()
 	payload, err := e.dev.Node().SetupPayload()
@@ -197,7 +202,32 @@ func (e *env) commission() fsclient.Node {
 	if err != nil {
 		e.t.Fatalf("commission_with_code: %v", err)
 	}
+	if e.subscribed {
+		e.waitAvailable(n.NodeID)
+	}
 	return n
+}
+
+// waitAvailable waits until the node is available. The commissioning
+// answers before the node's subscription is up (available false): a
+// change the node reports before the server saw it available is sent as
+// node_updated only, never as attribute_updated (cache.go nodeState.primed,
+// docs/websockets_api.md:2065), so a test that waits for attribute_updated
+// first waits for this (#78). get_node refreshes the node's entry, so the
+// poll also primes it.
+func (e *env) waitAvailable(nodeID uint64) {
+	e.t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		got, err := e.client.GetNode(e.ctx, nodeID)
+		if err == nil && got.Available {
+			return
+		}
+		if time.Now().After(deadline) {
+			e.t.Fatalf("node %d not available: %+v %v", nodeID, got, err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 // lightEndpoint is the light's endpoint number on the site device.
