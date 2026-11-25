@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"thingfabric.dev/go-fabric/device"
-	"thingfabric.dev/go-fabric/endpoint"
 	"thingfabric.dev/go-fabric/node"
 	"thingfabric.dev/go-fabric/surface"
 
@@ -317,11 +316,9 @@ func TestDeclareCommitRefusal(t *testing.T) {
 // slice field), which go-fabric's Aggregator takes (CHANGELOG.md:171 at
 // v0.26.0).
 type sliceEndpoint struct {
-	dev  *device.Device
+	*device.Device
 	tags []string
 }
-
-func (s sliceEndpoint) Spec() endpoint.Spec { return s.dev.Spec() }
 
 // TestDeclareBesideNonComparableEndpoint: a declaration on a node whose
 // Aggregator also holds an endpoint that cannot be compared answers as
@@ -333,7 +330,7 @@ func TestDeclareBesideNonComparableEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.dev.Node().Aggregator().Add(e.ctx, sliceEndpoint{dev: dev, tags: []string{"t"}}); err != nil {
+	if err := e.dev.Node().Aggregator().Add(e.ctx, sliceEndpoint{Device: dev, tags: []string{"t"}}); err != nil {
 		t.Fatal(err)
 	}
 	res, err := e.host.Declare(e.ctx, doc(`{"devices":[{"key":"l","type":"OnOffLight"}]}`))
