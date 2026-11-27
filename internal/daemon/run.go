@@ -101,7 +101,17 @@ type Config struct {
 	// .OnboardingCodes, served to an admin only). Off by default: the
 	// database then holds one setup code per paired device.
 	ControllerKeepOnboardingCodes bool
-	ShowVersion                   bool
+	// SealKeyFile is the key file sealing the secrets of the controller's
+	// database and of every device node's store at rest (--seal-key-file,
+	// #76; go-fabric controller.Config.Sealer and node.Store.Sealer):
+	// 64 hex digits, created when missing, owner-only. Empty is no
+	// sealing. One-way: a sealed store does not open without the key.
+	SealKeyFile string
+	// SealKeyPreviousFile is the key the stores were sealed under before
+	// (--seal-key-previous-file): each store is resealed from it to
+	// SealKeyFile's at start (controller.Reseal, node.Reseal).
+	SealKeyPreviousFile string
+	ShowVersion         bool
 	// HealthCheck, when set, is a URL to probe instead of running: exit 0
 	// when it answers 200 (the image's HEALTHCHECK; distroless has no
 	// shell or curl).
@@ -185,6 +195,8 @@ func ParseFlags(args []string, stderr io.Writer) (Config, error) {
 	fs.IntVar(&c.ControllerDiagnosticsCapacity, "controller-diagnostics-capacity", 0, "the events the controller's diagnostic trace keeps (the pages' Diagnostics tab), the oldest dropped first; 0 is go-fabric's default ("+strconv.Itoa(diag.DefaultDiagnosticsCapacity)+")")
 	fs.Var(removedFlag(removedBridgeNode), "bridge-node", "removed: "+removedBridgeNode)
 	fs.Var(removedFlag(removedNodeDefault), "node-default", "removed: "+removedNodeDefault)
+	fs.StringVar(&c.SealKeyFile, "seal-key-file", "", "seal the secrets of the controller's database and of every device node's store at rest under the key in this file (64 hex digits; created with a new random key when missing; readable by its owner only); one-way: a sealed store does not open without the key — keep it outside the storage directory's backup")
+	fs.StringVar(&c.SealKeyPreviousFile, "seal-key-previous-file", "", "rotate: reseal every store from the key in this file to --seal-key-file's at start; a store already under the new key is left as it is")
 	fs.BoolVar(&c.ShowVersion, "version", false, "print the version and exit")
 	fs.StringVar(&c.HealthCheck, "health-check", "", "probe this /health URL and exit 0 when healthy, instead of running")
 	fs.BoolVar(&c.EnableTestNetDCL, "enable-test-net-dcl", false, "trust the CSA test roots besides the production DCL (as --trust development)")
@@ -274,6 +286,13 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		return err
 	}
 	log.Info("fabricserver.start", slog.String("version", version.Version), slog.String("go_fabric", version.GoFabric()), slog.String("listen", listen.String()))
+	seal, err := openSealing(c, log)
+	if err != nil {
+		return err
+	}
+	if seal == nil && c.Controller && c.ControllerKeepOnboardingCodes {
+		log.Warn("fabricserver.seal.off", slog.String("reason", "--controller-keep-onboarding-codes without --seal-key-file: the database keeps the codes unsealed"))
+	}
 
 	var api *controllerapi.Server
 	var ctrl *controller.Controller
@@ -306,11 +325,16 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			// (no /ws command, #74).
 			log.Warn("fabricserver.onboarding_codes.unserved", slog.String("reason", "--controller-keep-onboarding-codes without --web: the database keeps the codes and no page shows them"))
 		}
-		db, err := controller.OpenDB(filepath.Join(c.StoragePath, "fabric-server.db"))
+		dbPath := filepath.Join(c.StoragePath, "fabric-server.db")
+		_, statErr := os.Stat(dbPath)
+		db, err := controller.OpenDB(dbPath)
 		if err != nil {
 			return err
 		}
 		defer func() { _ = db.Close() }()
+		if err := seal.resealController(ctx, db, dbPath, statErr == nil); err != nil {
+			return err
+		}
 		api, err = controllerapi.New(controllerOptions(c, log, lvl, central))
 		if err != nil {
 			return err
@@ -322,6 +346,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			// closed in v0.12.1): node_event names its node.
 			HooksFor:            api.Hooks,
 			KeepOnboardingCodes: c.ControllerKeepOnboardingCodes,
+			Sealer:              seal.sealer(),
 		}
 		controllerTelemetry(&cfg, c)
 		// The controller pages' stream: go-fabric-ui's hooks chained
@@ -352,7 +377,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 		var reports camera.Reports
 		reports.Install(&cfg)
 		ctrl, err = controller.New(ctx, cfg)
-		if err != nil {
+		if err := seal.explain(err); err != nil {
 			return fmt.Errorf("controller: %w", err)
 		}
 		topo := topology.New(ctrl, topology.Config{Changes: &changes})
@@ -410,7 +435,7 @@ func Run(ctx context.Context, c Config, stderr io.Writer) error {
 			return err
 		}
 		defer radio.close()
-		life = newNodeLifecycle(ctx, nodeStarter(c, radio, log), routes, log)
+		life = newNodeLifecycle(ctx, nodeStarter(c, radio, seal, log), routes, log)
 		def, err = life.startHalf(spec)
 		if err != nil {
 			return err
@@ -506,9 +531,9 @@ const (
 
 // nodeStarter is the lifecycle's startFunc: each device node built and
 // started by startBridge, the first one on radio.
-func nodeStarter(c Config, radio *nodeRadio, log *slog.Logger) startFunc {
+func nodeStarter(c Config, radio *nodeRadio, seal *sealing, log *slog.Logger) startFunc {
 	return func(ctx context.Context, s nodeSpec) (liveNode, error) {
-		br, n, err := startBridge(ctx, c, s, radio, log)
+		br, n, err := startBridge(ctx, c, s, radio, seal, log)
 		if err != nil {
 			return liveNode{}, err
 		}
@@ -521,8 +546,9 @@ func nodeStarter(c Config, radio *nodeRadio, log *slog.Logger) startFunc {
 // its store under --storage-path, the daemon's logger, the
 // surface policies and the mDNS interfaces every node shares
 // (surfacePolicies, mdnsInterfaces), and — the first node only — the
-// radio's BLE peripheral and Wi-Fi driver (nodeRadio.apply).
-func bridgeConfig(c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (node.Config, error) {
+// radio's BLE peripheral and Wi-Fi driver (nodeRadio.apply); the store
+// sealed under --seal-key-file's key (nil seal: not sealed).
+func bridgeConfig(c Config, s nodeSpec, radio *nodeRadio, seal *sealing, log *slog.Logger) (node.Config, error) {
 	// Widths only: node.New validates the values (Config.Validate).
 	if s.Passcode > math.MaxUint32 || s.Discriminator > math.MaxUint16 || s.VendorID > math.MaxUint16 || s.ProductID > math.MaxUint16 {
 		return node.Config{}, errors.New("--bridge-passcode, --bridge-discriminator, --bridge-vendor-id or --bridge-product-id is wider than its field")
@@ -553,7 +579,7 @@ func bridgeConfig(c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (nod
 			VendorName: bridgeVendorName, ProductName: bridgeProductName, NodeLabel: device.ComposeNodeLabel(s.Label, ""),
 			SerialNumber: s.Serial, SoftwareVersionString: version.Version,
 		},
-		Store:   node.Store{Path: filepath.Join(c.StoragePath, s.Store)},
+		Store:   node.Store{Path: filepath.Join(c.StoragePath, s.Store), Sealer: seal.sealer()},
 		Logger:  log,
 		Surface: policies,
 	}, nil
@@ -574,14 +600,18 @@ func mdnsInterfaces(value string) []string {
 }
 
 // startBridge builds one device node with its bridge half's observers,
-// starts it and binds the half to it.
-func startBridge(ctx context.Context, c Config, s nodeSpec, radio *nodeRadio, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
+// starts it and binds the half to it. With --seal-key-previous-file its
+// store is resealed first, once per run.
+func startBridge(ctx context.Context, c Config, s nodeSpec, radio *nodeRadio, seal *sealing, log *slog.Logger) (*bridgeapi.Server, *node.Node, error) {
 	if s.Key != fabricui.DefaultNodeKey {
 		log = log.With(slog.String("node", s.Key))
 	}
-	cfg, err := bridgeConfig(c, s, radio, log)
+	cfg, err := bridgeConfig(c, s, radio, seal, log)
 	if err != nil {
 		return nil, nil, err
+	}
+	if err := seal.resealNode(ctx, cfg.Store.Path); err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", nodeName(s.Key), err)
 	}
 	br := bridgeapi.New(bridgeapi.Options{
 		Version: version.Version, GoFabricVersion: version.GoFabric(), ResultTimeout: c.BridgeResultTimeout,
@@ -595,7 +625,7 @@ func startBridge(ctx context.Context, c Config, s nodeSpec, radio *nodeRadio, lo
 	// into the config.
 	cfg.Observers = br.Observers()
 	n, err := node.New(ctx, cfg)
-	if err != nil {
+	if err := seal.explain(err); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", nodeName(s.Key), err)
 	}
 	if err := n.Start(ctx); err != nil {

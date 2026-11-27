@@ -211,7 +211,7 @@ func TestBridgeConfigRadio(t *testing.T) {
 	second := registrySpec(primary, &registryEntry{Key: "second", Label: "Second", Listen: "[::1]:0", Discriminator: 3841, Passcode: 20202022})
 	network := func(s nodeSpec, radio *nodeRadio) node.Network {
 		t.Helper()
-		cfg, err := bridgeConfig(c, s, radio, nil)
+		cfg, err := bridgeConfig(c, s, radio, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -251,7 +251,7 @@ func TestNodeRadioPairingCode(t *testing.T) {
 		if withBLE {
 			radio = &nodeRadio{ble: newTestRadio()}
 		}
-		cfg, err := bridgeConfig(c, primaryNode(c), radio, slog.New(slog.DiscardHandler))
+		cfg, err := bridgeConfig(c, primaryNode(c), radio, nil, slog.New(slog.DiscardHandler))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -294,7 +294,7 @@ func TestEraseKeepsRadio(t *testing.T) {
 	log := slog.New(slog.DiscardHandler)
 	r, w := newTestRadio(), &testWiFi{wifiDriver: &wifiDriver{}}
 	radio := &nodeRadio{ble: r, wifi: w}
-	life := newNodeLifecycle(ctx, nodeStarter(c, radio, log), newBridgeRoutes(), log)
+	life := newNodeLifecycle(ctx, nodeStarter(c, radio, nil, log), newBridgeRoutes(), log)
 	def, err := life.startHalf(primaryNode(c))
 	if err != nil {
 		t.Fatal(err)

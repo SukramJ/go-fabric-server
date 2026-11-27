@@ -22,6 +22,12 @@ Environment=FABRIC_SERVER_LISTEN=127.0.0.1:5580
 Environment=FABRIC_SERVER_STORAGE_PATH=/var/lib/fabric-server
 # A dual-homed host: the device nodes advertise on the LAN interface alone.
 #Environment=FABRIC_SERVER_BRIDGE_MDNS_INTERFACES=enp1s0
+# Seal the stores' secrets at rest (docs/operations.md, Sealing at rest):
+# a key outside the state directory, created once as root with
+# `umask 077; openssl rand -hex 32 > /etc/fabric-server/seal.key`, handed
+# to the dynamic user as a credential.
+#LoadCredential=seal.key:/etc/fabric-server/seal.key
+#Environment=FABRIC_SERVER_SEAL_KEY_FILE=%d/seal.key
 Restart=on-failure
 RestartSec=5s
 
