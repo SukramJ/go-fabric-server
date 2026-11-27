@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -47,7 +48,7 @@ func TestOpenSealingKeyFile(t *testing.T) {
 		t.Fatalf("create: %+v %v", s, err)
 	}
 	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0o600 {
+	if err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o600) {
 		t.Fatalf("created file: %v %v", info, err)
 	}
 	b, _ := os.ReadFile(path)
@@ -68,13 +69,15 @@ func TestOpenSealingKeyFile(t *testing.T) {
 	}
 	// Refused: group or others may read; not 64 hex digits; a previous
 	// key that is missing or the same.
-	loose := filepath.Join(dir, "loose.key")
-	writeKey(t, loose, 1)
-	if err := os.Chmod(loose, 0o640); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := openSealing(Config{SealKeyFile: loose}, discard()); err == nil || !strings.Contains(err.Error(), "readable by group or others") {
-		t.Fatalf("mode 0640: %v", err)
+	if runtime.GOOS != "windows" { // no group or other bits there
+		loose := filepath.Join(dir, "loose.key")
+		writeKey(t, loose, 1)
+		if err := os.Chmod(loose, 0o640); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := openSealing(Config{SealKeyFile: loose}, discard()); err == nil || !strings.Contains(err.Error(), "readable by group or others") {
+			t.Fatalf("mode 0640: %v", err)
+		}
 	}
 	bad := filepath.Join(dir, "bad.key")
 	if err := os.WriteFile(bad, []byte("abc\n"), 0o600); err != nil {

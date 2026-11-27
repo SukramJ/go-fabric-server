@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"runtime"
 	"sync"
 
 	"thingfabric.dev/go-fabric/controller"
@@ -99,7 +100,9 @@ func readSealKey(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if info.Mode().Perm()&0o077 != 0 {
+	// Windows has no group or other bits: Go reports 0666 or 0444 from the
+	// read-only attribute (os.FileMode), so the check runs elsewhere only.
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
 		return nil, fmt.Errorf("%s is readable by group or others (mode %v): chmod 600 it", path, info.Mode().Perm())
 	}
 	b, err := os.ReadFile(path) //nolint:gosec // G304: the operator names the key file

@@ -13,7 +13,7 @@ All notable changes to this project are documented here. The format follows
   onboarding codes, the ICD keys) and of every device node's store at rest
   under one key (go-fabric `controller.Config.Sealer`,
   `node.Store.Sealer`), opt-in. The key file holds 64 hex digits, is
-  created when missing and refused when group or others may read it. The
+  created when missing and refused when group or others may read it (not checked on Windows). The
   first start with it seals and scrubs an existing database — one way;
   back up first. `--seal-key-previous-file` rotates the key at start,
   store by store. A start under another key, or without the key on a sealed
