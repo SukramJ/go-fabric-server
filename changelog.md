@@ -6,7 +6,33 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `--seal-key-file` seals the secrets of `fabric-server.db` (the CA, the
+  fabric's keys, the resumption records, the group keys, the kept
+  onboarding codes, the ICD keys) and of every device node's store at rest
+  under one key (go-fabric `controller.Config.Sealer`,
+  `node.Store.Sealer`), opt-in. The key file holds 64 hex digits, is
+  created when missing and refused when group or others may read it. The
+  first start with it seals and scrubs an existing database — one way;
+  back up first. `--seal-key-previous-file` rotates the key at start,
+  store by store. A start under another key or without the key on a
+  sealed store fails naming the flag; nothing is deleted. With
+  `--controller-keep-onboarding-codes` and no key the start warns
+  (`fabricserver.seal.off`). `server.json` and `nodes.json` are not
+  sealed. Standalone daemon only, no add-on option yet
+  (`docs/operations.md`, Sealing at rest; #76).
+
 ### Changed
+
+- `/ws`: a node's `available` follows matterjs-server — true while its
+  connection is Connected or Reconnecting; a node restored at start is
+  unavailable until it was Connected once. A node that briefly
+  re-subscribes no longer flaps to unavailable, and a node is available in
+  its commissioning's answer (#81).
+- `/ws`: a stored node that failed to load stays hidden, as in
+  matterjs-server; documented, with the onboarding codes not being on
+  `/ws` (#75, #74; `docs/protocol.md`).
 
 - go-fabric-ui `v0.14.1` → `v0.16.0` (contract 0.16.0). The controller
   pages answer `POST /api/v1/controller/commission` on a closed controller,
