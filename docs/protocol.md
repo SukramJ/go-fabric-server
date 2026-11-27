@@ -194,6 +194,13 @@ DeviceTypeList), `attributes`, `attribute_subscriptions` (always `[]`),
 `matter_version` (from SpecificationVersion, else estimated from
 DataModelRevision) and `endpoint_parents`.
 
+A stored node that failed to load (go-fabric keeps it in the registry with
+its `LoadError`, not commissioned) is not a node on `/ws`: not in
+`get_nodes`, `start_listening` or the node count, and every command
+answers `NodeNotExists` for it — as matterjs-server, which registers only
+matter.js's `peers.commissioned` at start (`ControllerCommandHandler.ts:1115-1132`
+at `0bd06f22`). The controller pages show it with its load error.
+
 Values follow matterjs-server's conversion:
 
 - attribute values are tag-based: a struct is an object keyed by field id;
@@ -294,6 +301,12 @@ Ignorable by a client that does not know them:
   a key) carries `"x-secret": true`, also in `GET /schema/declaration`;
 - `GET /health`: `{version, node_count, healthy}`;
 - the bearer token (see operations).
+
+Not on `/ws`: the controller's kept onboarding codes
+(`--controller-keep-onboarding-codes`, #74). `/ws` has only the optional
+bearer token, weaker than the pages' admin gate, and matterjs-server has no
+such command; the inventory is served by the controller pages only, with
+`Options.Admin` (501 in token mode).
 
 ## Deliberate differences from matterjs-server
 
