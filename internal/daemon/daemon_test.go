@@ -90,6 +90,8 @@ func TestRunRefuses(t *testing.T) {
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", VendorID: 70000, StoragePath: t.TempDir()}, "--vendor-id"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Controller: true, Trust: "production", BluetoothAdapter: "0", StoragePath: t.TempDir()}, "--bluetooth-adapter 0: bluez: no such adapter"},
 		{Config{Listen: "127.0.0.1:0", LogLevel: "info", Web: "127.0.0.1:0", WebAdminSource: "nope", StoragePath: t.TempDir()}, "--web-admin-source"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", SealKeyPreviousFile: "old.key", StoragePath: t.TempDir()}, "--seal-key-previous-file needs --seal-key-file"},
+		{Config{Listen: "127.0.0.1:0", LogLevel: "info", SealKeyFile: filepath.Join(t.TempDir(), "none", "seal.key"), StoragePath: t.TempDir()}, "--seal-key-file: "},
 	} {
 		err := Run(ctx, c.cfg, io.Discard)
 		if err == nil || !strings.Contains(err.Error(), c.want) {

@@ -22,6 +22,7 @@ Environment=FABRIC_SERVER_LISTEN=127.0.0.1:5580
 Environment=FABRIC_SERVER_STORAGE_PATH=/var/lib/fabric-server
 # A dual-homed host: the device nodes advertise on the LAN interface alone.
 #Environment=FABRIC_SERVER_BRIDGE_MDNS_INTERFACES=enp1s0
+# Sealing the stores at rest: docs/operations.md, "Sealing at rest".
 Restart=on-failure
 RestartSec=5s
 

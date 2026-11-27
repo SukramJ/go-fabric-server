@@ -157,39 +157,47 @@ func (s *Server) replace(bt *node.Batch, r *declared, prev, b *bridged) {
 	s.took(r, b, batchReplace(bt, device.StringKey(b.key), b.dev))
 }
 
-// commitErrors sorts the error of a Batch: since go-fabric v0.26.0 a
-// batch is judged at its commit, and a call that returned nil can be
-// refused there (go-fabric CHANGELOG.md:72 at v0.26.0,
-// node/aggregator.go:523-617 Partition.Batch). withheld are the keys whose
-// held declaration the node recorded withheld at the commit (no error);
-// refusals the key refusals
-// (ErrDuplicateKey, ErrUnknownKey, ErrReservedKey, ErrPolicyMismatch);
-// other the rest — the store's, the reassembly's, a device's attach error.
+// commitErrors sorts the error of a Batch by go-fabric v0.28.0's shape:
+// nil, fn's own error when nothing failed after fn, an error of no call
+// (node.ErrStopped), or a *node.BatchError whose
+// Calls are the calls that answered nil and failed after fn returned, one
+// entry per call (node/batch_error.go:47-83, :113-134 at v0.28.0; the
+// result, node/aggregator.go:589-611). withheld are the keys whose held
+// declaration the node recorded withheld at the commit (no error);
+// refusals the calls refused with a key refusal (ErrDuplicateKey,
+// ErrUnknownKey, ErrReservedKey, ErrPolicyMismatch); other the rest — fn's
+// error, a call's store work or a device's attach error, the store errors
+// of no call (BatchError.Store) and the reassembly's.
 func commitErrors(err error) (withheld map[string]*surface.WithheldError, refusals, other []error) {
 	withheld = map[string]*surface.WithheldError{}
-	var walk func(error)
-	walk = func(err error) {
-		if err == nil {
-			return
-		}
-		if j, ok := err.(interface{ Unwrap() []error }); ok {
-			for _, e := range j.Unwrap() {
-				walk(e)
-			}
-			return
-		}
-		var w *surface.WithheldError
-		switch {
-		case errors.As(err, &w):
+	if err == nil {
+		return withheld, nil, nil
+	}
+	be, ok := errors.AsType[*node.BatchError](err)
+	if !ok {
+		return withheld, nil, []error{err}
+	}
+	if be.Fn != nil {
+		other = append(other, be.Fn)
+	}
+	for _, c := range be.Calls {
+		if w, ok := errors.AsType[*surface.WithheldError](c.Err); ok {
 			withheld[w.Endpoint] = w
-		case errors.Is(err, node.ErrDuplicateKey), errors.Is(err, node.ErrUnknownKey),
-			errors.Is(err, node.ErrReservedKey), errors.Is(err, node.ErrPolicyMismatch):
-			refusals = append(refusals, err)
+			continue
+		}
+		switch {
+		case errors.Is(c.Err, node.ErrDuplicateKey), errors.Is(c.Err, node.ErrUnknownKey),
+			errors.Is(c.Err, node.ErrReservedKey), errors.Is(c.Err, node.ErrPolicyMismatch):
+			refusals = append(refusals, c)
 		default:
-			other = append(other, err)
+			other = append(other, c)
 		}
 	}
-	walk(err)
+	for _, e := range []error{be.Store, be.Reassembly} {
+		if e != nil {
+			other = append(other, e)
+		}
+	}
 	return withheld, refusals, other
 }
 
@@ -206,8 +214,9 @@ func commitErrors(err error) (withheld map[string]*surface.WithheldError, refusa
 // forget (at the call or at the commit) stays declared and answers
 // UnknownError, as does an error of the commit that is no key refusal or
 // a key refusal no device carries. A device refused at the commit carries
-// every key refusal of the batch: go-fabric's refusals name their key
-// only in their text (go-fabric #616 asks for a typed per-call error).
+// every key refusal of the batch, as before go-fabric v0.28.0, which names
+// each failed call by its key (node.BatchCallError.Key, go-fabric #616):
+// the answer's shape stays as it was.
 func cmdDeclare(ctx context.Context, s *Server, c *call) (any, *protocol.Error) {
 	n := s.node.Load()
 	devs, err := s.decodeDeclaration(ctx, c.req.Args)

@@ -98,7 +98,7 @@ func TestRegistryLabelCut(t *testing.T) {
 	}
 	c.StoragePath, c.BridgeListen = t.TempDir(), "[::1]:0"
 	log := slog.New(slog.DiscardHandler)
-	life := newNodeLifecycle(ctx, nodeStarter(c, nil, log), newBridgeRoutes(), log)
+	life := newNodeLifecycle(ctx, nodeStarter(c, nil, nil, log), newBridgeRoutes(), log)
 	reg, err := openRegistry(registryOptions{dir: c.StoragePath, limit: 1, primary: primaryNode(c), life: life})
 	if err != nil {
 		t.Fatal(err)

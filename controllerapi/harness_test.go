@@ -190,7 +190,7 @@ func (e *env) dial(o fsclient.Options) *fsclient.Client {
 
 // commission pairs the site's light through commission_with_code with its
 // QR code and returns the node data the command answered — with the
-// server's own subscription, once the node is available (waitAvailable).
+// server's own subscription, once the node is primed (waitPrimed).
 func (e *env) commission() fsclient.Node {
 	e.t.Helper()
 	payload, err := e.dev.Node().SetupPayload()
@@ -203,28 +203,29 @@ func (e *env) commission() fsclient.Node {
 		e.t.Fatalf("commission_with_code: %v", err)
 	}
 	if e.subscribed {
-		e.waitAvailable(n.NodeID)
+		e.waitPrimed(n.NodeID)
 	}
 	return n
 }
 
-// waitAvailable waits until the node is available. The commissioning
-// answers before the node's subscription is up (available false): a
-// change the node reports before the server saw it available is sent as
-// node_updated only, never as attribute_updated (cache.go nodeState.primed,
+// waitPrimed waits until the server's entry of the node is primed. The
+// commissioning answers before the node's subscription is up: the node is
+// already available then (Reconnecting counts, #81), but a change it
+// reports before the server saw it Connected is sent as node_updated only,
+// never as attribute_updated (cache.go nodeState.primed,
 // docs/websockets_api.md:2065), so a test that waits for attribute_updated
 // first waits for this (#78). get_node refreshes the node's entry, so the
 // poll also primes it.
-func (e *env) waitAvailable(nodeID uint64) {
+func (e *env) waitPrimed(nodeID uint64) {
 	e.t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
 	for {
 		got, err := e.client.GetNode(e.ctx, nodeID)
-		if err == nil && got.Available {
+		if err == nil && got.Available && e.api.Primed(nodeID) {
 			return
 		}
 		if time.Now().After(deadline) {
-			e.t.Fatalf("node %d not available: %+v %v", nodeID, got, err)
+			e.t.Fatalf("node %d not primed: %+v %v", nodeID, got, err)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

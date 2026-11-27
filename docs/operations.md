@@ -40,7 +40,9 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-bluetooth-adapter` | — | the BLE adapter of the first device node (the `--bridge-*` one): `0` is `hci0`, an adapter name is taken as it is. While that node has no fabric it is commissioned over Bluetooth LE — a node without a network at first boot. Needs `--bridge`, a `--bridge-passcode` other than the public test passcode `20202021` (refused: anyone in Bluetooth range could commission the node), and with `--controller` an adapter other than `--bluetooth-adapter`'s; the host runs bluetoothd and lets the daemon use `org.bluez` on the system bus; the start fails when the adapter cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--bridge-wifi-interface` | — | the Wi-Fi interface (`wlan0`) the first device node joins the network a commissioner provisions on, through wpa_supplicant; the node then serves NetworkCommissioning with the Wi-Fi feature. Needs `--bridge`; the host runs wpa_supplicant with its D-Bus interface (`fi.w1.wpa_supplicant1` on the system bus) and NetworkManager does not manage the interface; the start fails when the driver cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--node-limit` | `8` | the most device nodes the pages may create beside the `--bridge-*` one ([Several device nodes](#several-device-nodes)); `0` creates none |
-| `--controller-keep-onboarding-codes` | `false` | keep the pairing code of a device paired in its own (Basic) commissioning mode; the code of a window another controller opened (an Enhanced Commissioning Window), of a pairing by address and of a pairing that replaced the passcode is not kept (go-fabric `controller.Config.KeepOnboardingCodes`, `controller/controller.go:147-158`) and show it in the controller pages' onboarding inventory, to an admin by `--web-admin-source` only (501 in token mode). The database then holds one setup code per paired device, unsealed ([Files](#files)); without `--web` the start warns, nothing shows them; add-on option `keep_onboarding_codes` |
+| `--controller-keep-onboarding-codes` | `false` | keep the pairing code of a device paired in its own (Basic) commissioning mode; the code of a window another controller opened (an Enhanced Commissioning Window), of a pairing by address and of a pairing that replaced the passcode is not kept (go-fabric `controller.Config.KeepOnboardingCodes`, `controller/controller.go:147-158`) and show it in the controller pages' onboarding inventory, to an admin by `--web-admin-source` only (501 in token mode). The database then holds one setup code per paired device, unsealed unless `--seal-key-file` ([Sealing at rest](#sealing-at-rest)); without `--web` the start warns, nothing shows them; without `--seal-key-file` the start warns (`fabricserver.seal.off`); add-on option `keep_onboarding_codes` |
+| `--seal-key-file` | — | seal the secrets of `fabric-server.db` and of every device node's store at rest under the key in this file: 64 hex digits, created with a new random key (mode 0600) when missing; a file readable by group or others stops the start (not checked on Windows, which has no such bits). One-way: the controller's database and a commissioned device node's store do not open again without the same file ([Sealing at rest](#sealing-at-rest)). Standalone daemon only, no add-on option |
+| `--seal-key-previous-file` | — | rotate the key: at start each store is resealed from the key in this file to `--seal-key-file`'s; needs `--seal-key-file`; a store already under the new key is left as it is ([Sealing at rest](#sealing-at-rest)) |
 | `--controller-diagnostics-capacity` | `0` (go-fabric's `256`) | the events the controller's diagnostic trace keeps, the oldest dropped first (the controller pages' Diagnostics tab, [The pages](#the-pages)); `0` is go-fabric's `diag.DefaultDiagnosticsCapacity`; a negative value stops the start. No add-on option |
 | `--bridge-node`, `--node-default` | — | removed: further device nodes are created in the pages; either flag (or its environment variable) stops the start with that message |
 | `--enable-test-net-dcl` | `false` | trust the CSA test roots besides the production DCL (as `--trust development`; matterjs-server's flag) |
@@ -227,14 +229,16 @@ Under `--storage-path` (created with mode 0700):
 | File | Content |
 | --- | --- |
 | `fabric-server.db` (+ `-wal`, `-shm`) | the controller's SQLite database: our fabric and its CA, the paired nodes and their attribute images (go-fabric's stores) |
-| `server.json` (mode 0600) | the server's settings: the fabric label, the stored Wi-Fi credentials and Thread datasets |
+| `server.json` (mode 0600) | the server's settings: the fabric label, the stored Wi-Fi credentials and Thread datasets; not sealed by `--seal-key-file` |
 | `bridge.db` | with `--bridge`: the bridge node's SQLite store — its fabrics, ACLs and the endpoint numbers of the declared keys; an erase in the pages empties it and keeps the file |
-| `nodes.json` (mode 0600) | with `--bridge`: the node registry, `{"nodes": [{"key", "label", "listen", "discriminator", "passcode", "created_at"}]}` — the nodes created in the pages, in their order; it holds their passcodes |
+| `nodes.json` (mode 0600) | with `--bridge`: the node registry, `{"nodes": [{"key", "label", "listen", "discriminator", "passcode", "created_at"}]}` — the nodes created in the pages, in their order; it holds their passcodes; not sealed by `--seal-key-file` |
 | `bridge-<key>.db` | per registry node: that node's store, the same content |
 
 Back up the whole directory with the daemon stopped (or with
 `sqlite3 fabric-server.db .backup`). Losing `fabric-server.db` loses the
-fabric: every node must be commissioned again.
+fabric: every node must be commissioned again. With `--seal-key-file`, the
+key file is backed up separately, not with the directory
+([Sealing at rest](#sealing-at-rest)).
 
 **The stores upgrade one way.** The first start on go-fabric v0.25.0 or
 later (this server from 0.10.0, upgrading from 0.9.3) upgrades the device
@@ -256,8 +260,92 @@ v0.26.0, #587).
 With `--controller-keep-onboarding-codes`, `fabric-server.db` holds one
 setup code per paired device: secrets of the fabric keys' class (with a
 code and a factory reset anyone can commission the device), stored
-unsealed until the database is sealed (a follow-up). Treat the file and
-its backups like the fabric's keys.
+unsealed unless `--seal-key-file` is set. Treat the file and its backups
+like the fabric's keys.
+
+### Sealing at rest
+
+`--seal-key-file <path>` seals the secrets of the stores at rest with
+go-fabric's AES-256-GCM sealer, one key for all of them
+(`controller.Config.Sealer` is the same sealer `node.Store.Sealer` takes,
+go-fabric `controller/controller.go:159-168` at v0.28.0):
+
+- in `fabric-server.db`: the CA, the controller's fabric, the CASE
+  resumption records, the group key sets, the kept onboarding codes and
+  the ICD Check-In keys; certificates, fabric and node ids and the nodes'
+  attribute values stay readable (`controller/controller.go:162-168`);
+- in `bridge.db` and every `bridge-<key>.db`: the node's credential store
+  (`node/config.go:803-817`).
+
+`server.json` (the Wi-Fi credentials and Thread datasets) and `nodes.json`
+(the registry nodes' passcodes) are JSON files, not databases, and are not
+sealed.
+
+The key file holds 32 bytes as 64 hex digits (white space around them is
+ignored), the format of go-fabric's reference controller
+(`examples/reference-controller/cli/sealkey.go:22-87`). A missing file is
+created with a new random key, mode 0600, and the start logs
+`fabricserver.seal.key_created` at Warn; a file readable by group or
+others stops the start. Keep a copy of the key outside the storage
+directory's backup: a backup that carries its key protects nothing, and
+the sealed controller's database and a commissioned node's sealed store do
+not open without it (an uncommissioned node's store opens and reads its
+secrets as `ErrNoSealer`, `node/config.go:813-815`).
+
+**Turning it on is one-way.** The first start with the key seals every
+secret it finds in clear and scrubs the file, so the deleted clear values
+do not stay in its free pages (`controller/controller.go:168-170`,
+`node/config.go:803-806`, `store/seal.go:147-148`). There is no unseal: the way back to a clear
+database is a restore or a factory reset (`controller/reseal.go:35-38`).
+Back up the directory before the first sealed start; copies taken before
+keep the clear values (`store/seal.go:151-152`). A scrub that cannot
+finish — a reader holding the `-wal`, a full disk, or a process that ended
+first (`controller/controller.go:171-172`) — does not stop
+the start: it stays owed, is logged once at Warn
+(`matter.store.seal_scrub_owed`) and the next start runs it again
+(`controller/controller.go:171-174`); restart once nothing else reads the
+file.
+
+**Starts that fail.** The daemon never deletes a store:
+
+- under another key: `the database is sealed under another key than
+  --seal-key-file's`, nothing written (`controller/controller.go:177-181`,
+  `node/config.go:811-813`). When this start created the key file — the
+  stores were sealed under a key that is gone — the new file is removed
+  again and the message says so;
+- without the key on the sealed controller's database or a commissioned
+  node's sealed store: `the database is sealed: set
+  --seal-key-file to its key` — the controller's database fails reading
+  its sealed CA (`controller/seal.go:16-19`, `controller/controller.go:180-181`), and a commissioned device
+  node's store fails loading its group key sets (measured,
+  `internal/daemon/sealkey_test.go`, `TestSealedNodeStore`).
+
+A lost key loses the sealed secrets: remove the stores (`fabric-server.db`
+with its `-wal` and `-shm`, `bridge*.db`) and commission every device
+again — a device node whose sealed store does not open is erased by
+removing its file, and the next start is uncommissioned (go-fabric
+`docs/security.md:174-179`).
+
+**Rotation.** With the daemon stopped, keep the old key file, then start
+with `--seal-key-previous-file <old>` and `--seal-key-file <new>` (a
+missing new file is created). Before each store opens, it is resealed from
+the old key to the new one: `fabric-server.db` in one transaction over
+both of its stores (`controller.Reseal`, `controller/reseal.go:16-39`),
+each device node's file on its own (`node.Reseal`, `node/facade.go:132-153`).
+Each store logs `fabricserver.seal.rotated`, or
+`fabricserver.seal.not_rotated` when Reseal refuses it — a store already
+rotated, or a never-sealed store holding a secret in clear (a controller's
+database, its CA; `controller/reseal.go:29-31`), which the open under the
+new key then seals. A never-sealed store without a secret in clear (an
+uncommissioned node's) is moved to the new key and logs
+`fabricserver.seal.rotated` (measured, `TestResealNeverSealed`). A
+start that ends between two files is safe: start again with the same
+flags. Once every store logged one of the two, drop
+`--seal-key-previous-file` and retire the old key.
+
+Sealing gives confidentiality, not integrity: it does not detect a store
+replaced by an older copy, and deleting its seal mark makes it count as
+never sealed (`store/seal.go:122-126`, `:137-138`).
 
 ## Ports and network
 

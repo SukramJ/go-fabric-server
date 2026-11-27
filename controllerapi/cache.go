@@ -35,11 +35,20 @@ type nodeState struct {
 	endpoints map[uint16]bool
 	parents   map[uint16]uint16
 	available bool
-	// primed is set once the node was available since the server started:
-	// before, a change is sent as node_updated only, as the values of a
-	// first report are not sent as attribute_updated
-	// (docs/websockets_api.md:2065).
-	primed        bool
+	// primed is set once the node was Connected since the server started —
+	// matterjs-server's change bus latching the peer as reporting from its
+	// first established subscription (PeerChangeBus.ts:57-63, :113-115,
+	// :118-129 at 0bd06f22). Before, a change is sent as node_updated only,
+	// as the values of a first report are not sent as attribute_updated
+	// (docs/websockets_api.md:2065). go-fabric's Connected additionally
+	// needs a session (controller/client/network.go:668 at v0.28.0): an
+	// approximation of the latch, stated.
+	primed bool
+	// restored is set for an entry built at Start from the stored nodes
+	// (matterjs-server registers those with restored=true,
+	// ControllerCommandHandler.ts:1127, a commissioned one with false,
+	// :2114); such a node is not available before it is primed.
+	restored      bool
 	commissioned  time.Time
 	lastInterview time.Time
 }
@@ -61,7 +70,9 @@ var (
 )
 
 // snapshot renders a node's image; prev, when not nil, lends the rendered
-// values of the clusters whose data version did not change. nil for a node
+// values of the clusters whose data version did not change and carries
+// primed and restored (Start passes an empty entry with restored set).
+// nil for a node
 // that is not commissioned — Node.IsCommissioned, not PeerAddress, which
 // since go-fabric v0.25.0 also answers for a node that failed to load
 // (controller/client/record.go:714-754); such a node stays off /ws.
@@ -77,11 +88,10 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 		nodeID: addr.NodeID, local: n.ID(),
 		attrs: map[string]json.RawMessage{}, clusters: map[string]clusterState{},
 		endpoints: map[uint16]bool{}, parents: map[uint16]uint16{},
-		available:    n.ConnectionState() == client.Connected,
 		commissioned: n.Record().CommissionedAt,
 	}
 	if prev != nil {
-		st.primed, st.lastInterview = prev.primed, prev.lastInterview
+		st.primed, st.restored, st.lastInterview = prev.primed, prev.restored, prev.lastInterview
 		if !prev.commissioned.IsZero() {
 			st.commissioned = prev.commissioned
 		}
@@ -89,9 +99,7 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 	if st.lastInterview.IsZero() {
 		st.lastInterview = time.Now()
 	}
-	if st.available {
-		st.primed = true
-	}
+	st.setState(n.ConnectionState())
 	for _, ep := range n.Endpoints() {
 		if !ep.Installed() {
 			continue
@@ -131,6 +139,27 @@ func (s *Server) snapshot(n *client.Node, prev *nodeState) *nodeState {
 		}
 	}
 	return st
+}
+
+// setState takes the node's connection state: primed latches on the
+// first Connected, available follows availableFor.
+func (st *nodeState) setState(state client.ConnectionState) {
+	if state == client.Connected {
+		st.primed = true
+	}
+	st.available = availableFor(state, st.restored, st.primed)
+}
+
+// availableFor is matterjs-server's availability of a node
+// (Nodes.ts:122-137 at 0bd06f22): its connection state is Connected or
+// Reconnecting (:127-129), and it does not wait for its first report
+// (:135-137) — only a restored node waits, until it is primed
+// (ControllerCommandHandler.ts:949-951).
+func availableFor(state client.ConnectionState, restored, primed bool) bool {
+	if state != client.Connected && state != client.Reconnecting {
+		return false
+	}
+	return !restored || primed
 }
 
 // nodeData is MatterNodeData (packages/ws-client/src/models/node.ts:9-33).
@@ -372,6 +401,12 @@ func (s *Server) refresh(id string) {
 	if n != nil && n.IsCommissioned() && !s.left[id] {
 		st = s.snapshot(n, old)
 	}
+	s.applyLocked(id, old, st)
+}
+
+// applyLocked replaces a node's cache entry old with st (nil: the node
+// left) and emits what changed; the caller holds s.mu.
+func (s *Server) applyLocked(id string, old, st *nodeState) {
 	switch {
 	case st == nil && old == nil:
 		return

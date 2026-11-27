@@ -251,7 +251,7 @@ func (s *Server) Start(ctx context.Context, b Backend, svc Services) error {
 	s.backend.Store(&backendRef{b: b, topo: topo, cam: svc.Camera})
 	s.mu.Lock()
 	for _, n := range b.Registry().Commissioned() {
-		if st := s.snapshot(n, nil); st != nil {
+		if st := s.snapshot(n, &nodeState{restored: true}); st != nil {
 			s.nodes[n.ID()] = st
 		}
 	}
