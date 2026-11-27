@@ -42,7 +42,7 @@ func TestCommitErrors(t *testing.T) {
 	if len(refusals) != 2 || !errors.Is(refusals[0], node.ErrUnknownKey) || !errors.Is(refusals[1], node.ErrDuplicateKey) {
 		t.Errorf("refusals %v", refusals)
 	}
-	if len(other) != 3 || !errors.Is(other[0], attach) || other[1] != store || other[2] != reassembly {
+	if len(other) != 3 || !errors.Is(other[0], attach) || !errors.Is(other[1], store) || !errors.Is(other[2], reassembly) {
 		t.Errorf("other %v", other)
 	}
 	// The text a device's answer carries is the call's, as before.
@@ -52,7 +52,7 @@ func TestCommitErrors(t *testing.T) {
 	if w, r, o := commitErrors(nil); len(w) != 0 || r != nil || o != nil {
 		t.Errorf("nil: %v %v %v", w, r, o)
 	}
-	if w, r, o := commitErrors(node.ErrStopped); len(w) != 0 || r != nil || len(o) != 1 || o[0] != node.ErrStopped {
+	if w, r, o := commitErrors(node.ErrStopped); len(w) != 0 || r != nil || len(o) != 1 || !errors.Is(o[0], node.ErrStopped) {
 		t.Errorf("ErrStopped: %v %v %v", w, r, o)
 	}
 }
