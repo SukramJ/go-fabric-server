@@ -158,7 +158,8 @@ func (s *Server) replace(bt *node.Batch, r *declared, prev, b *bridged) {
 }
 
 // commitErrors sorts the error of a Batch by go-fabric v0.28.0's shape:
-// nil, an error of no call (node.ErrStopped), or a *node.BatchError whose
+// nil, fn's own error when nothing failed after fn, an error of no call
+// (node.ErrStopped), or a *node.BatchError whose
 // Calls are the calls that answered nil and failed after fn returned, one
 // entry per call (node/batch_error.go:47-83, :113-134 at v0.28.0; the
 // result, node/aggregator.go:589-611). withheld are the keys whose held

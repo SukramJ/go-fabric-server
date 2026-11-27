@@ -185,9 +185,11 @@ func (s *sealing) resealNode(ctx context.Context, path string) error {
 }
 
 // outcome maps a Reseal's result (controller/reseal.go:16-39,
-// node/facade.go:132-153 at v0.28.0): nil is rotated; ErrUnseal leaves the
-// file as it was — already under the current key, or under neither, which
-// the open under the current key then tells; ErrScrubIncomplete is
+// node/facade.go:132-153 at v0.28.0): nil is rotated — also a never-sealed
+// store without a secret in clear (an uncommissioned node's, measured);
+// ErrUnseal leaves the file as it was — already under the current key, a
+// never-sealed store with a secret in clear (controller/reseal.go:29-31),
+// or under neither, which the open under the current key then tells; ErrScrubIncomplete is
 // rotated with the scrub owed, which the next open runs.
 func (s *sealing) outcome(name string, err error) error {
 	switch {

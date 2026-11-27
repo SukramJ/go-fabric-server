@@ -16,8 +16,9 @@ All notable changes to this project are documented here. The format follows
   created when missing and refused when group or others may read it. The
   first start with it seals and scrubs an existing database — one way;
   back up first. `--seal-key-previous-file` rotates the key at start,
-  store by store. A start under another key or without the key on a
-  sealed store fails naming the flag; nothing is deleted. With
+  store by store. A start under another key, or without the key on a sealed
+  controller database or a commissioned node's sealed store, fails naming
+  the flag; nothing is deleted. With
   `--controller-keep-onboarding-codes` and no key the start warns
   (`fabricserver.seal.off`). `server.json` and `nodes.json` are not
   sealed. Standalone daemon only, no add-on option yet

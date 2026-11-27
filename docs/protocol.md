@@ -304,8 +304,10 @@ Ignorable by a client that does not know them:
 
 Not on `/ws`: the controller's kept onboarding codes
 (`--controller-keep-onboarding-codes`, #74). `/ws` has only the optional
-bearer token, weaker than the pages' admin gate, and matterjs-server has no
-such command; the inventory is served by the controller pages only, with
+bearer token, weaker than the pages' admin gate, and matterjs-server at
+`0bd06f22` has no command for it (no hit for `onboarding` outside the
+payload decoder in `packages/ws-controller/src` and
+`packages/matter-server/src`); the inventory is served by the controller pages only, with
 `Options.Admin` (501 in token mode).
 
 ## Deliberate differences from matterjs-server
@@ -421,6 +423,15 @@ such command; the inventory is served by the controller pages only, with
   DataVersion and is reported to no subscriber (go-fabric
   `CHANGELOG.md:620-621` at v0.25.0), so it raises no `attribute_updated`.
 
+- On a commissioning, `node_added` can say `available: false` while the
+  answer says `true`: go-fabric fires `Hooks.Commissioned`
+  (`controller/client/fabricops.go:273-275` at v0.28.0), which adds the
+  node to the cache, before it starts the node (`:277`); a `node_updated`
+  with `true` follows. matterjs-server sends `node_added` and the answer
+  with the same `available`, read at registration after the commission
+  returned (`ControllerCommandHandler.ts:2114`, `:2119`;
+  `WebSocketControllerHandler.ts:515-519`, `:1357`; `Nodes.ts:104-106` via
+  `ControllerCommandHandler.ts:954`). To align later.
 - A change that lands in the same refresh pass as a node's first
   Connected goes out in `node_updated` only: the pass diffs against the
   entry before it, which was not yet primed (`controllerapi/cache.go`,

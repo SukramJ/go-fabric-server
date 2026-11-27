@@ -41,7 +41,7 @@ Every flag has an environment variable `FABRIC_SERVER_<FLAG>` (upper case,
 | `--bridge-wifi-interface` | — | the Wi-Fi interface (`wlan0`) the first device node joins the network a commissioner provisions on, through wpa_supplicant; the node then serves NetworkCommissioning with the Wi-Fi feature. Needs `--bridge`; the host runs wpa_supplicant with its D-Bus interface (`fi.w1.wpa_supplicant1` on the system bus) and NetworkManager does not manage the interface; the start fails when the driver cannot be opened. Registry nodes never get it. Standalone daemon only, no add-on option ([A node without a network](#a-node-without-a-network-bluetooth-and-wi-fi-on-the-daemons-host)) |
 | `--node-limit` | `8` | the most device nodes the pages may create beside the `--bridge-*` one ([Several device nodes](#several-device-nodes)); `0` creates none |
 | `--controller-keep-onboarding-codes` | `false` | keep the pairing code of a device paired in its own (Basic) commissioning mode; the code of a window another controller opened (an Enhanced Commissioning Window), of a pairing by address and of a pairing that replaced the passcode is not kept (go-fabric `controller.Config.KeepOnboardingCodes`, `controller/controller.go:147-158`) and show it in the controller pages' onboarding inventory, to an admin by `--web-admin-source` only (501 in token mode). The database then holds one setup code per paired device, unsealed unless `--seal-key-file` ([Sealing at rest](#sealing-at-rest)); without `--web` the start warns, nothing shows them; without `--seal-key-file` the start warns (`fabricserver.seal.off`); add-on option `keep_onboarding_codes` |
-| `--seal-key-file` | — | seal the secrets of `fabric-server.db` and of every device node's store at rest under the key in this file: 64 hex digits, created with a new random key (mode 0600) when missing; a file readable by group or others stops the start. One-way, and every later start needs the same file ([Sealing at rest](#sealing-at-rest)). Standalone daemon only, no add-on option |
+| `--seal-key-file` | — | seal the secrets of `fabric-server.db` and of every device node's store at rest under the key in this file: 64 hex digits, created with a new random key (mode 0600) when missing; a file readable by group or others stops the start. One-way: the controller's database and a commissioned device node's store do not open again without the same file ([Sealing at rest](#sealing-at-rest)). Standalone daemon only, no add-on option |
 | `--seal-key-previous-file` | — | rotate the key: at start each store is resealed from the key in this file to `--seal-key-file`'s; needs `--seal-key-file`; a store already under the new key is left as it is ([Sealing at rest](#sealing-at-rest)) |
 | `--controller-diagnostics-capacity` | `0` (go-fabric's `256`) | the events the controller's diagnostic trace keeps, the oldest dropped first (the controller pages' Diagnostics tab, [The pages](#the-pages)); `0` is go-fabric's `diag.DefaultDiagnosticsCapacity`; a negative value stops the start. No add-on option |
 | `--bridge-node`, `--node-default` | — | removed: further device nodes are created in the pages; either flag (or its environment variable) stops the start with that message |
@@ -287,17 +287,20 @@ ignored), the format of go-fabric's reference controller
 created with a new random key, mode 0600, and the start logs
 `fabricserver.seal.key_created` at Warn; a file readable by group or
 others stops the start. Keep a copy of the key outside the storage
-directory's backup: a backup that carries its key protects nothing, and a
-sealed store does not open without it.
+directory's backup: a backup that carries its key protects nothing, and
+the sealed controller's database and a commissioned node's sealed store do
+not open without it (an uncommissioned node's store opens and reads its
+secrets as `ErrNoSealer`, `node/config.go:813-815`).
 
 **Turning it on is one-way.** The first start with the key seals every
 secret it finds in clear and scrubs the file, so the deleted clear values
-do not stay in its pages (`controller/controller.go:168-170`,
-`node/config.go:803-806`). There is no unseal: the way back to a clear
+do not stay in its free pages (`controller/controller.go:168-170`,
+`node/config.go:803-806`, `store/seal.go:147-148`). There is no unseal: the way back to a clear
 database is a restore or a factory reset (`controller/reseal.go:35-38`).
 Back up the directory before the first sealed start; copies taken before
 keep the clear values (`store/seal.go:151-152`). A scrub that cannot
-finish — another process reading the file, a full disk — does not stop
+finish — a reader holding the `-wal`, a full disk, or a process that ended
+first (`controller/controller.go:171-172`) — does not stop
 the start: it stays owed, is logged once at Warn
 (`matter.store.seal_scrub_owed`) and the next start runs it again
 (`controller/controller.go:171-174`); restart once nothing else reads the
@@ -310,9 +313,10 @@ file.
   `node/config.go:811-813`). When this start created the key file — the
   stores were sealed under a key that is gone — the new file is removed
   again and the message says so;
-- without the key on a sealed store: `the database is sealed: set
+- without the key on the sealed controller's database or a commissioned
+  node's sealed store: `the database is sealed: set
   --seal-key-file to its key` — the controller's database fails reading
-  its sealed CA (`controller/seal.go:16-19`), and a commissioned device
+  its sealed CA (`controller/seal.go:16-19`, `controller/controller.go:180-181`), and a commissioned device
   node's store fails loading its group key sets (measured,
   `internal/daemon/sealkey_test.go`, `TestSealedNodeStore`).
 
@@ -329,8 +333,12 @@ the old key to the new one: `fabric-server.db` in one transaction over
 both of its stores (`controller.Reseal`, `controller/reseal.go:16-39`),
 each device node's file on its own (`node.Reseal`, `node/facade.go:132-153`).
 Each store logs `fabricserver.seal.rotated`, or
-`fabricserver.seal.not_rotated` when it is not under the old key — already
-rotated, or never sealed, which the open under the new key then seals. A
+`fabricserver.seal.not_rotated` when Reseal refuses it — a store already
+rotated, or a never-sealed store holding a secret in clear (a controller's
+database, its CA; `controller/reseal.go:29-31`), which the open under the
+new key then seals. A never-sealed store without a secret in clear (an
+uncommissioned node's) is moved to the new key and logs
+`fabricserver.seal.rotated` (measured, `TestResealNeverSealed`). A
 start that ends between two files is safe: start again with the same
 flags. Once every store logged one of the two, drop
 `--seal-key-previous-file` and retire the old key.
