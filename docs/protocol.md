@@ -185,8 +185,11 @@ matterjs-server adds from route tables is left out, in go-fabric too.
 
 The node data is matterjs-server's `MatterNodeData`: `node_id`,
 `date_commissioned` and `last_interview` (local time,
-`YYYY-MM-DDTHH:mm:ss.SSS000`), `interview_version` 6, `available` (the node's
-connection state is Connected), `is_bridge` (an Aggregator in any endpoint's
+`YYYY-MM-DDTHH:mm:ss.SSS000`), `interview_version` 6, `available`
+(matterjs-server's rule, `Nodes.ts:122-137` at `0bd06f22`: the node's
+connection state is Connected or Reconnecting, and a node restored from
+storage at start has reported once — it was Connected since the server
+started; a node commissioned while the server runs does not wait), `is_bridge` (an Aggregator in any endpoint's
 DeviceTypeList), `attributes`, `attribute_subscriptions` (always `[]`),
 `matter_version` (from SpecificationVersion, else estimated from
 DataModelRevision) and `endpoint_parents`.
@@ -218,8 +221,12 @@ The JSON Schema of the values is served at `GET /schema`
 `endpoint_added`, `endpoint_removed`, `node_event`, `subscription_report`,
 `subscription_ended`, `server_info_updated`, `server_shutdown` — matterjs-server's
 shapes. The values of a node's first report after a start or a commissioning
-are not sent as `attribute_updated`; the node becomes available in a
-`node_updated`.
+are not sent as `attribute_updated`; they arrive in a `node_updated`. A
+restored node becomes available in that `node_updated`; a commissioned node
+can already be available in the commissioning's answer (it is Reconnecting
+until its subscription is up). A node that was Connected and drops to
+Reconnecting stays available and raises no event
+(`ControllerCommandHandler.ts:1039-1058`).
 
 The camera's events (schema 14) are not tied to `start_listening`; a
 connection opts in by the commands it issues, before they run:
@@ -400,6 +407,23 @@ Ignorable by a client that does not know them:
 - A controller's write that leaves its cluster as it was advances no
   DataVersion and is reported to no subscriber (go-fabric
   `CHANGELOG.md:620-621` at v0.25.0), so it raises no `attribute_updated`.
+
+- A change that lands in the same refresh pass as a node's first
+  Connected goes out in `node_updated` only: the pass diffs against the
+  entry before it, which was not yet primed (`controllerapi/cache.go`,
+  `applyLocked`). matterjs-server forwards every change after its change
+  bus latched the peer as `attribute_updated` (`PeerChangeBus.ts:118-129`,
+  `:171-175` at `0bd06f22`). No value is lost: `node_updated` carries all
+  attributes.
+- The latch that ends a node's wait for its first report is go-fabric's
+  Connected, which needs a session besides the active subscription
+  (go-fabric `controller/client/network.go:668` at v0.28.0); matterjs-server
+  latches on the subscription becoming active (`PeerChangeBus.ts:57-63`).
+- The network topology's `available` stays go-fabric's, Connected only
+  (`controller/topology/image.go:68` at v0.28.0), where the node data's `available`
+  counts Reconnecting too. Whether matterjs-server's topology differs is
+  open: it reads `node.available` (`NetworkTopologyService.ts:221`, `:328`),
+  and where that node comes from was not traced.
 
 `docs/by_design.md` keeps each deliberate difference with its reason.
 
