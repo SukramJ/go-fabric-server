@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- go-fabric-ui `v0.14.1` → `v0.16.0` (contract 0.16.0). The controller
+  pages answer `POST /api/v1/controller/commission` on a closed controller,
+  or with a pairing template go-fabric refuses as `ErrConfiguration`, with
+  500 instead of 400 (the cause in the log); a pairing code's own fault
+  stays 400. A controller source error of a kind the route does not
+  declare is 500. `PUT /api/v1/controller/fabric/label` refused by
+  `--default-fabric-label` stays 409, now a declared status titled
+  "Refused by the host"; `POST /api/v1/controller/nodes/{id}/ping`
+  declares 409 and 502.
+- go-fabric `v0.26.0` → `v0.28.0`; `ble/bluez`, `ble/esphome`,
+  `wifi/wpasupplicant` `v0.26.0` → `v0.27.0` (go-fabric did not change
+  them in `v0.28.0`). No source change; `protocol/schema` regenerated
+  (`x-go-fabric-version`). A `/bridge` batch's failure now arrives as
+  go-fabric's `*node.BatchError`, one entry per failed call.
+- `github.com/oapi-codegen/runtime` `v1.9.0` → `v1.9.1` (indirect,
+  through go-fabric-ui).
+- Tools: golangci-lint `v2.14.0` → `v2.15.0`, govulncheck `v1.8.0` →
+  `v1.10.0` (Makefile and CI together).
+
 ## [0.10.0] - 2026-11-25
 
 The first release under `github.com/thingfabric` (see *Changed*); 0.10.0
